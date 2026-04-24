@@ -509,12 +509,21 @@ input[type=range]::-webkit-slider-thumb {
   user-select: none;
   border: 0.5px solid var(--border);
 }
-#crop-canvas { display: block; width: 100%; height: auto; }
+#crop-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.canvas-wrap {
+  position: relative;
+  width: fit-content;
+}
 .crop-box {
   position: absolute;
   border: 1.5px solid var(--accent);
   box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
   cursor: move;
+  will-change: transform;
 }
 .crop-handle {
   position: absolute;
@@ -847,7 +856,7 @@ function openModal(i) {
   var ir = srcImg.width / srcImg.height, cw, ch;
   if (ir > maxW / maxH) { cw = maxW; ch = Math.round(maxW / ir); }
   else { ch = maxH; cw = Math.round(maxH * ir); }
-  cv.width = cw; cv.height = ch; canvasW = cw; canvasH = ch;
+  cv.style.width = cw + 'px'; cv.style.height = ch + 'px'; canvasW = cw; canvasH = ch;
   cv.getContext('2d').drawImage(srcImg, 0, 0, cw, ch);
   if (f.crop) { cBox = { x: f.crop.x * cw, y: f.crop.y * ch, w: f.crop.w * cw, h: f.crop.h * ch }; }
   else { resetCropBox(); }
@@ -901,10 +910,18 @@ function clampBox(b) {
 }
 
 function getPos(e) {
-  var cv = document.getElementById('crop-canvas'), rect = cv.getBoundingClientRect();
-  var sx = canvasW / rect.width, sy = canvasH / rect.height;
+  var wrap = document.getElementById('canvas-wrap');
+  var rect = wrap.getBoundingClientRect();
+
+  var sx = canvasW / rect.width;
+  var sy = canvasH / rect.height;
+
   var src = e.touches ? e.touches[0] : e;
-  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
+
+  return {
+    x: (src.clientX - rect.left) * sx,
+    y: (src.clientY - rect.top) * sy
+  };
 }
 
 function onDown(e, h) { e.preventDefault(); var p = getPos(e); drag = { h: h, sx: p.x, sy: p.y, ob: { x: cBox.x, y: cBox.y, w: cBox.w, h: cBox.h } }; }
