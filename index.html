@@ -856,8 +856,15 @@ function openModal(i) {
   var ir = srcImg.width / srcImg.height, cw, ch;
   if (ir > maxW / maxH) { cw = maxW; ch = Math.round(maxW / ir); }
   else { ch = maxH; cw = Math.round(maxH * ir); }
-  cv.style.width = cw + 'px'; cv.style.height = ch + 'px'; canvasW = cw; canvasH = ch;
-  cv.getContext('2d').drawImage(srcImg, 0, 0, cw, ch);
+  cv.width = cw;
+  cv.height = ch;
+  cv.style.width = cw + 'px';
+  cv.style.height = ch + 'px';
+  canvasW = cw;
+  canvasH = ch;
+  var ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.drawImage(srcImg, 0, 0, cw, ch);
   if (f.crop) { cBox = { x: f.crop.x * cw, y: f.crop.y * ch, w: f.crop.w * cw, h: f.crop.h * ch }; }
   else { resetCropBox(); }
   updateCropBox();
