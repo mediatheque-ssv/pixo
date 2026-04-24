@@ -4,175 +4,214 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Convertisseur d'images</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #f5f4f1;
-  --surface: #ffffff;
-  --surface-2: #f0efe9;
-  --border: rgba(0,0,0,0.1);
-  --border-md: rgba(0,0,0,0.18);
-  --text: #1a1a18;
-  --text-2: #6b6b65;
-  --text-3: #9e9e97;
-  --info: #3b5bdb;
-  --info-bg: #edf2ff;
-  --info-border: #bac8ff;
-  --danger: #c92a2a;
-  --danger-bg: #fff5f5;
-  --danger-border: #ffc9c9;
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #141413;
-    --surface: #1e1e1c;
-    --surface-2: #262624;
-    --border: rgba(255,255,255,0.08);
-    --border-md: rgba(255,255,255,0.14);
-    --text: #f0efe9;
-    --text-2: #9e9e97;
-    --text-3: #6b6b65;
-    --info: #748ffc;
-    --info-bg: #1c2360;
-    --info-border: #3451b2;
-    --danger: #ff6b6b;
-    --danger-bg: #3b1a1a;
-    --danger-border: #c92a2a;
-  }
+  --bg: #0c0c0b;
+  --surface: #141413;
+  --surface-2: #1c1c1a;
+  --surface-3: #242422;
+  --border: rgba(255,255,255,0.07);
+  --border-md: rgba(255,255,255,0.13);
+  --border-hi: rgba(255,255,255,0.22);
+  --text: #e8e6de;
+  --text-2: #8a887e;
+  --text-3: #555450;
+  --accent: #d4ff4e;
+  --accent-dim: rgba(212,255,78,0.12);
+  --accent-border: rgba(212,255,78,0.35);
+  --danger: #ff6b6b;
+  --danger-bg: rgba(255,107,107,0.08);
+  --danger-border: rgba(255,107,107,0.3);
+  --radius-sm: 5px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }
 
 body {
-  font-family: 'DM Sans', -apple-system, sans-serif;
+  font-family: 'Syne', sans-serif;
   font-size: 14px;
   color: var(--text);
   background: var(--bg);
   min-height: 100vh;
-  padding: 2rem 1rem;
+  padding: 2.5rem 1rem 4rem;
+  line-height: 1.5;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap');
+/* Subtle grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
 
 .container {
-  max-width: 720px;
+  max-width: 740px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
-h1 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  margin-bottom: 1.75rem;
+/* Header */
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 2.5rem;
+}
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   color: var(--text);
+}
+.header-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  border: 0.5px solid var(--border-md);
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
 }
 
 /* Drop zone */
 .drop-zone {
-  border: 1.5px dashed var(--border-md);
-  border-radius: var(--radius-lg);
-  padding: 2.25rem 2rem;
+  border: 1px dashed var(--border-md);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem 2rem;
   text-align: center;
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  transition: border-color .2s, background .2s;
   background: var(--surface);
+  position: relative;
+  overflow: hidden;
 }
-.drop-zone:hover { background: var(--surface-2); }
-.drop-zone.over { background: var(--info-bg); border-color: var(--info-border); }
+.drop-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(212,255,78,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+.drop-zone:hover { border-color: var(--border-hi); background: var(--surface-2); }
+.drop-zone.over { border-color: var(--accent-border); background: var(--accent-dim); }
 .drop-icon {
-  width: 40px; height: 40px;
-  margin: 0 auto 12px;
+  width: 44px; height: 44px;
+  margin: 0 auto 14px;
   border-radius: 50%;
   background: var(--surface-2);
-  border: 0.5px solid var(--border);
+  border: 0.5px solid var(--border-md);
   display: flex; align-items: center; justify-content: center;
 }
-.drop-label { font-size: 13px; color: var(--text-2); font-weight: 500; }
-.drop-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.drop-label { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
+.drop-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-3); margin-top: 5px;
+  letter-spacing: 0.04em;
+}
 
 /* Preview strip */
 .preview-strip {
   display: none;
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
+  gap: 14px;
+  padding: 12px 14px;
   background: var(--surface);
-  border: 0.5px solid var(--border);
+  border: 0.5px solid var(--border-md);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
 }
 .preview-thumb {
-  width: 56px; height: 56px;
+  width: 52px; height: 52px;
   object-fit: cover;
   border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border);
+  border: 0.5px solid var(--border-md);
   display: none;
 }
 .preview-meta { flex: 1; min-width: 0; }
-.preview-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.preview-size { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.preview-name {
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+.preview-size {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-2); margin-top: 3px;
+}
 .change-btn {
-  font-size: 12px; padding: 5px 12px;
+  font-size: 12px; font-family: 'Syne', sans-serif;
+  padding: 6px 14px;
   border: 0.5px solid var(--border-md);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text-2);
   cursor: pointer;
-  transition: background .12s;
+  transition: all .15s;
+  font-weight: 500;
   white-space: nowrap;
 }
-.change-btn:hover { background: var(--surface); }
+.change-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
 /* Section */
-.section { margin-top: 1.75rem; }
+.section { margin-top: 2rem; }
 .section-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px;
 }
 .section-label {
-  font-size: 11px; font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 500;
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: .1em;
 }
 .add-btn {
-  font-size: 12px;
-  color: var(--info);
-  background: none;
-  border: 0.5px solid var(--info-border);
+  font-size: 11px; font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent-border);
   border-radius: var(--radius-sm);
-  padding: 4px 12px;
+  padding: 5px 12px;
   cursor: pointer;
-  transition: background .12s;
+  transition: all .15s;
+  letter-spacing: 0.02em;
 }
-.add-btn:hover { background: var(--info-bg); }
+.add-btn:hover { background: rgba(212,255,78,0.18); }
 
 /* Formats table */
 .formats-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0 6px;
+  border-spacing: 0 5px;
 }
 .th {
-  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
   color: var(--text-3);
-  padding: 0 8px 2px;
+  padding: 0 8px 3px;
   font-weight: 400;
   text-align: left;
+  letter-spacing: 0.05em;
 }
 .th.center { text-align: center; }
 .frow td {
   background: var(--surface);
   border-top: 0.5px solid var(--border);
   border-bottom: 0.5px solid var(--border);
-  padding: 6px 4px;
+  padding: 5px 4px;
   vertical-align: middle;
+  transition: background .15s;
 }
+.frow:hover td { background: var(--surface-2); }
 .frow td:first-child {
   border-left: 0.5px solid var(--border);
   border-radius: var(--radius) 0 0 var(--radius);
@@ -185,40 +224,42 @@ h1 {
 }
 .frow input[type=text] {
   width: 100%; height: 30px;
-  font-size: 13px; padding: 0 8px;
+  font-size: 13px; font-family: 'Syne', sans-serif;
+  font-weight: 500;
+  padding: 0 8px;
   border: 0.5px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
-  transition: border-color .12s, background .12s;
-  font-family: inherit;
+  transition: border-color .15s, background .15s;
 }
 .frow input[type=text]:hover,
 .frow input[type=text]:focus {
   border-color: var(--border-md);
-  background: var(--surface-2);
+  background: var(--surface-3);
   outline: none;
 }
 .frow input[type=number] {
   width: 100%; height: 30px;
-  font-size: 13px; padding: 0 6px;
+  font-size: 13px; font-family: 'JetBrains Mono', monospace;
+  padding: 0 6px;
   border: 0.5px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
   text-align: center;
-  font-family: inherit;
 }
-.frow input[type=number]:focus { outline: none; border-color: var(--border-md); }
+.frow input[type=number]:focus { outline: none; border-color: var(--border-hi); }
 .frow select {
   width: 100%; height: 30px;
-  font-size: 12px; padding: 0 6px;
+  font-size: 12px; font-family: 'Syne', sans-serif;
+  padding: 0 6px;
   border: 0.5px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
-  font-family: inherit;
 }
+.frow select:focus { outline: none; border-color: var(--border-hi); }
 .icon-btn {
   width: 30px; height: 30px;
   border: 0.5px solid var(--border);
@@ -228,125 +269,168 @@ h1 {
   border-radius: var(--radius-sm);
   font-size: 14px;
   display: flex; align-items: center; justify-content: center;
-  transition: all .12s;
+  transition: all .15s;
   margin: auto;
 }
 .icon-btn.del:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
-.icon-btn.crop:hover { background: var(--info-bg); color: var(--info); border-color: var(--info-border); }
-.icon-btn.has-crop { border-color: var(--info-border); color: var(--info); background: var(--info-bg); }
+.icon-btn.crop:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-border); }
+.icon-btn.has-crop { border-color: var(--accent-border); color: var(--accent); background: var(--accent-dim); }
 
 /* Export bar */
 .export-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   padding: 14px 16px;
   background: var(--surface);
-  border: 0.5px solid var(--border);
+  border: 0.5px solid var(--border-md);
   border-radius: var(--radius-lg);
-  margin-top: 1.75rem;
+  margin-top: 2rem;
   flex-wrap: wrap;
-  box-shadow: var(--shadow);
 }
 .export-group { display: flex; align-items: center; gap: 8px; }
-.export-group label { font-size: 12px; color: var(--text-2); }
+.export-group label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
 .export-group select {
-  height: 30px; font-size: 13px;
-  padding: 0 8px;
+  height: 30px; font-size: 12px;
+  font-family: 'Syne', sans-serif;
+  padding: 0 10px;
   border: 0.5px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
-  font-family: inherit;
 }
-.quality-wrap { display: flex; align-items: center; gap: 8px; }
-.quality-val { font-size: 12px; color: var(--text-2); min-width: 32px; }
+.export-group select:focus { outline: none; border-color: var(--border-hi); }
+.quality-wrap { display: flex; align-items: center; gap: 10px; }
+.quality-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-2); min-width: 36px;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
 
 /* Toggle */
 .text-toggle {
   display: flex; align-items: center;
-  gap: 10px; margin-top: 1.75rem; cursor: pointer;
+  gap: 10px; margin-top: 2rem; cursor: pointer;
+  width: fit-content;
 }
 .toggle-track {
   width: 36px; height: 20px;
-  background: var(--border-md);
+  background: var(--surface-3);
+  border: 0.5px solid var(--border-md);
   border-radius: 10px;
   position: relative; flex-shrink: 0;
-  transition: background .15s;
+  transition: background .2s, border-color .2s;
 }
-.toggle-track.on { background: var(--info); }
+.toggle-track.on { background: var(--accent); border-color: var(--accent); }
 .toggle-thumb {
   position: absolute;
   width: 14px; height: 14px;
   background: #fff;
   border-radius: 50%;
-  top: 3px; left: 3px;
-  transition: transform .15s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  top: 2px; left: 2px;
+  transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 .toggle-track.on .toggle-thumb { transform: translateX(16px); }
-.toggle-label { font-size: 13px; font-weight: 500; }
+.toggle-label { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
 
 /* Text panel */
 .txt-panel {
   margin-top: 1rem;
   background: var(--surface);
-  border: 0.5px solid var(--border);
+  border: 0.5px solid var(--border-md);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
-  box-shadow: var(--shadow);
 }
 .txt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field label {
-  font-size: 11px; color: var(--text-3);
-  text-transform: uppercase; letter-spacing: .05em;
-  display: block; margin-bottom: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .08em;
+  display: block; margin-bottom: 6px;
 }
 .field input, .field select, .field textarea {
   width: 100%; font-size: 13px;
-  padding: 6px 10px;
+  font-family: 'Syne', sans-serif;
+  padding: 7px 10px;
   border: 0.5px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
-  font-family: inherit;
+  transition: border-color .15s;
 }
-.field textarea { resize: none; height: 54px; }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--border-hi);
+}
+.field textarea { resize: none; height: 58px; line-height: 1.5; }
 .field.full { grid-column: 1 / -1; }
 .color-row { display: flex; align-items: center; gap: 8px; }
 .color-swatch {
   width: 30px; height: 30px;
   border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border);
+  border: 0.5px solid var(--border-md);
   padding: 2px; cursor: pointer;
   background: var(--surface-2);
 }
-.range-row { display: flex; align-items: center; gap: 8px; }
+.range-row { display: flex; align-items: center; gap: 10px; }
 .range-row input[type=range] { flex: 1; }
-.range-val { font-size: 12px; color: var(--text-2); min-width: 32px; }
+.range-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-2); min-width: 36px;
+}
+.color-hex {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-2);
+}
 
 /* Generate button */
 .gen-btn {
-  width: 100%; height: 44px;
-  margin-top: 1.75rem;
-  background: var(--surface);
-  border: 0.5px solid var(--border-md);
+  width: 100%; height: 48px;
+  margin-top: 2rem;
+  background: var(--accent);
+  border: none;
   border-radius: var(--radius-lg);
-  font-size: 14px; font-weight: 500;
-  cursor: pointer; color: var(--text);
-  font-family: inherit;
-  transition: all .15s;
+  font-size: 14px; font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  cursor: pointer; color: #0c0c0b;
+  letter-spacing: -0.01em;
+  transition: all .2s;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 0 0 0 rgba(212,255,78,0);
 }
-.gen-btn:hover { background: var(--surface-2); box-shadow: var(--shadow-md); }
-.gen-btn:active { transform: scale(0.99); }
+.gen-btn:hover {
+  background: #dcff6a;
+  box-shadow: 0 0 24px rgba(212,255,78,0.25);
+  transform: translateY(-1px);
+}
+.gen-btn:active { transform: scale(0.99) translateY(0); }
 
 /* Results */
+.results-header {
+  display: none;
+  margin-top: 2rem;
+  margin-bottom: 12px;
+}
 .results {
-  margin-top: 1.5rem;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 10px;
 }
 .rcard {
@@ -354,8 +438,9 @@ h1 {
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--surface);
-  box-shadow: var(--shadow);
+  transition: border-color .15s, transform .15s;
 }
+.rcard:hover { border-color: var(--border-md); transform: translateY(-2px); }
 .rcard-thumb {
   width: 100%; height: 100px;
   object-fit: contain;
@@ -364,60 +449,78 @@ h1 {
 }
 .rcard-body { padding: 10px 12px; }
 .rcard-name {
-  font-size: 12px; font-weight: 500;
+  font-size: 12px; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
-.rcard-dim { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.rcard-dim {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-3); margin-top: 3px;
+}
 .dl-btn {
-  width: 100%; margin-top: 8px;
+  width: 100%; margin-top: 9px;
   padding: 6px 0; font-size: 12px;
-  background: var(--surface-2);
-  border: 0.5px solid var(--border);
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent-border);
   border-radius: var(--radius-sm);
-  cursor: pointer; color: var(--text);
-  font-family: inherit;
-  transition: background .12s;
+  cursor: pointer;
+  color: var(--accent);
+  transition: background .15s;
+  letter-spacing: -0.01em;
 }
-.dl-btn:hover { background: var(--surface); }
+.dl-btn:hover { background: rgba(212,255,78,0.2); }
 
 /* Modal */
 .modal-overlay {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
   align-items: center; justify-content: center;
   z-index: 1000;
 }
 .modal {
   background: var(--surface);
   border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: 1.25rem;
   width: 500px; max-width: 94vw;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  animation: modal-in .2s ease;
 }
-.modal-title { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-title {
+  font-size: 14px; font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 3px;
+}
 .modal-sub { font-size: 12px; color: var(--text-2); margin-bottom: 1rem; }
 .canvas-wrap {
   position: relative;
   cursor: crosshair;
   border-radius: var(--radius);
   overflow: hidden;
-  background: #1a1a18;
+  background: #0c0c0b;
   user-select: none;
+  border: 0.5px solid var(--border);
 }
 #crop-canvas { display: block; width: 100%; height: auto; }
 .crop-box {
   position: absolute;
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 0 9999px rgba(0,0,0,0.42);
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
   cursor: move;
 }
 .crop-handle {
   position: absolute;
   width: 9px; height: 9px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.25);
+  background: var(--accent);
+  border: 1px solid rgba(0,0,0,0.3);
   border-radius: 2px;
 }
 .crop-handle.tl { top: -5px; left: -5px; cursor: nw-resize; }
@@ -432,202 +535,210 @@ h1 {
   display: flex; justify-content: space-between;
   align-items: center; margin-top: 1rem;
 }
-.crop-dims { font-size: 11px; color: var(--text-2); }
+.crop-dims {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-3);
+}
 .modal-actions { display: flex; gap: 8px; }
 .modal-actions button {
   height: 30px; padding: 0 14px;
-  font-size: 12px; border-radius: var(--radius-sm);
+  font-size: 12px; font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  border: 0.5px solid var(--border);
+  border: 0.5px solid var(--border-md);
   background: var(--surface-2);
-  color: var(--text);
-  font-family: inherit;
-  transition: background .12s;
+  color: var(--text-2);
+  transition: all .15s;
 }
-.modal-actions button:hover { background: var(--surface); }
+.modal-actions button:hover { border-color: var(--border-hi); color: var(--text); }
 .modal-actions .confirm {
-  background: var(--info-bg);
-  color: var(--info);
-  border-color: var(--info-border);
+  background: var(--accent);
+  color: #0c0c0b;
+  border-color: var(--accent);
 }
-.modal-actions .confirm:hover { opacity: 0.85; }
-.modal-actions .reset { color: var(--text-2); }
+.modal-actions .confirm:hover { background: #dcff6a; }
 </style>
 </head>
 <body>
 <div class="container">
 
-<h1>Convertisseur d'images</h1>
+  <div class="header">
+    <h1>Convertisseur d'images</h1>
+    <span class="header-tag">v2.0</span>
+  </div>
 
-<div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()">
-  <div class="drop-icon">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
-      <rect x="3" y="3" width="18" height="18" rx="3"/>
-      <path d="M3 15l5-5 4 4 3-3 6 6"/>
-      <circle cx="8.5" cy="8.5" r="1.5"/>
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()">
+    <div class="drop-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <path d="M3 15l5-5 4 4 3-3 6 6"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+      </svg>
+    </div>
+    <div class="drop-label">Glissez une image ici ou cliquez pour parcourir</div>
+    <div class="drop-hint">JPG · PNG · WEBP · GIF</div>
+  </div>
+
+  <div class="preview-strip" id="preview-strip">
+    <img id="preview-thumb" class="preview-thumb" alt="">
+    <div class="preview-meta">
+      <div class="preview-name" id="preview-name">—</div>
+      <div class="preview-size" id="preview-size">—</div>
+    </div>
+    <button class="change-btn" onclick="clearImage()">Changer</button>
+  </div>
+
+  <input type="file" id="file-in" accept="image/*" style="display:none">
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-label">Formats de sortie</span>
+      <button class="add-btn" onclick="addFormat()">+ Ajouter</button>
+    </div>
+    <table class="formats-table" id="formats-table">
+      <colgroup>
+        <col style="width:34%">
+        <col style="width:70px">
+        <col style="width:70px">
+        <col>
+        <col style="width:32px">
+        <col style="width:30px">
+      </colgroup>
+      <thead><tr>
+        <th class="th">Nom</th>
+        <th class="th center">Largeur</th>
+        <th class="th center">Hauteur</th>
+        <th class="th">Débordement</th>
+        <th class="th center" title="Recadrage">⊡</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="formats-body"></tbody>
+    </table>
+  </div>
+
+  <div class="export-bar">
+    <div class="export-group">
+      <label>Format</label>
+      <select id="out-format" onchange="updateQuality()">
+        <option value="image/png">PNG</option>
+        <option value="image/jpeg">JPEG</option>
+        <option value="image/webp">WebP</option>
+      </select>
+    </div>
+    <div class="quality-wrap" id="quality-wrap" style="display:none">
+      <div class="export-group"><label>Qualité</label></div>
+      <input type="range" id="quality" min="10" max="100" step="5" value="85"
+        style="width:100px"
+        oninput="document.getElementById('q-val').textContent=this.value+'%'">
+      <span class="quality-val" id="q-val">85%</span>
+    </div>
+  </div>
+
+  <div class="text-toggle" onclick="toggleText()">
+    <div class="toggle-track" id="txt-track"><div class="toggle-thumb"></div></div>
+    <span class="toggle-label">Texte sur l'image</span>
+  </div>
+
+  <div class="txt-panel" id="txt-panel" style="display:none">
+    <div class="txt-grid">
+      <div class="field full">
+        <label>Contenu</label>
+        <textarea id="txt-content" placeholder="Votre texte ici…"></textarea>
+      </div>
+      <div class="field">
+        <label>Position</label>
+        <select id="txt-pos">
+          <option value="below">Sous l'image (bande)</option>
+          <option value="bottom">Bas superposé</option>
+          <option value="top">Haut superposé</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Alignement</label>
+        <select id="txt-align">
+          <option value="center">Centré</option>
+          <option value="left">Gauche</option>
+          <option value="right">Droite</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Taille</label>
+        <select id="txt-size">
+          <option value="small">Petit</option>
+          <option value="medium" selected>Moyen</option>
+          <option value="large">Grand</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Couleur texte</label>
+        <div class="color-row">
+          <input type="color" id="txt-color" value="#ffffff" class="color-swatch"
+            oninput="document.getElementById('txt-color-val').textContent=this.value">
+          <span class="color-hex" id="txt-color-val">#ffffff</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Fond du bandeau</label>
+        <div class="color-row">
+          <input type="color" id="txt-bg" value="#000000" class="color-swatch"
+            oninput="document.getElementById('txt-bg-val').textContent=this.value">
+          <span class="color-hex" id="txt-bg-val">#000000</span>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Opacité fond</label>
+        <div class="range-row">
+          <input type="range" id="txt-opacity" min="0" max="100" step="5" value="75"
+            oninput="document.getElementById('opacity-val').textContent=this.value+'%'">
+          <span class="range-val" id="opacity-val">75%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="gen-btn" onclick="generate()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M5 12h14M12 5l7 7-7 7"/>
     </svg>
+    Générer les déclinaisons
+  </button>
+
+  <div class="results-header" id="results-header">
+    <span class="section-label">Résultats</span>
   </div>
-  <div class="drop-label">Glissez une image ici ou cliquez pour parcourir</div>
-  <div class="drop-hint">JPG · PNG · WebP · GIF</div>
-</div>
+  <div class="results" id="results"></div>
 
-<div class="preview-strip" id="preview-strip">
-  <img id="preview-thumb" class="preview-thumb" alt="">
-  <div class="preview-meta">
-    <div class="preview-name" id="preview-name">—</div>
-    <div class="preview-size" id="preview-size">—</div>
-  </div>
-  <button class="change-btn" onclick="clearImage()">Changer</button>
-</div>
-
-<input type="file" id="file-in" accept="image/*" style="display:none">
-
-<div class="section">
-  <div class="section-header">
-    <span class="section-label">Formats de sortie</span>
-    <button class="add-btn" onclick="addFormat()">+ Ajouter</button>
-  </div>
-  <table class="formats-table" id="formats-table">
-    <colgroup>
-      <col style="width:35%">
-      <col style="width:72px">
-      <col style="width:72px">
-      <col>
-      <col style="width:32px">
-      <col style="width:28px">
-    </colgroup>
-    <thead><tr>
-      <th class="th">Nom</th>
-      <th class="th center">Largeur</th>
-      <th class="th center">Hauteur</th>
-      <th class="th">Débordement</th>
-      <th class="th center" title="Recadrage">⊡</th>
-      <th></th>
-    </tr></thead>
-    <tbody id="formats-body"></tbody>
-  </table>
-</div>
-
-<div class="export-bar">
-  <div class="export-group">
-    <label>Format</label>
-    <select id="out-format" onchange="updateQuality()">
-      <option value="image/png">PNG</option>
-      <option value="image/jpeg">JPEG</option>
-      <option value="image/webp">WebP</option>
-    </select>
-  </div>
-  <div class="quality-wrap" id="quality-wrap" style="display:none">
-    <div class="export-group"><label>Qualité</label></div>
-    <input type="range" id="quality" min="10" max="100" step="5" value="85"
-      style="width:100px"
-      oninput="document.getElementById('q-val').textContent=this.value+'%'">
-    <span class="quality-val" id="q-val">85%</span>
-  </div>
-</div>
-
-<div class="text-toggle" onclick="toggleText()">
-  <div class="toggle-track" id="txt-track"><div class="toggle-thumb"></div></div>
-  <span class="toggle-label">Texte sur l'image</span>
-</div>
-
-<div class="txt-panel" id="txt-panel" style="display:none">
-  <div class="txt-grid">
-    <div class="field full">
-      <label>Contenu</label>
-      <textarea id="txt-content" placeholder="Votre texte ici…"></textarea>
-    </div>
-    <div class="field">
-      <label>Position</label>
-      <select id="txt-pos">
-        <option value="below">Sous l'image (bande)</option>
-        <option value="bottom">Bas superposé</option>
-        <option value="top">Haut superposé</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Alignement</label>
-      <select id="txt-align">
-        <option value="center">Centré</option>
-        <option value="left">Gauche</option>
-        <option value="right">Droite</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Taille</label>
-      <select id="txt-size">
-        <option value="small">Petit</option>
-        <option value="medium" selected>Moyen</option>
-        <option value="large">Grand</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Couleur texte</label>
-      <div class="color-row">
-        <input type="color" id="txt-color" value="#ffffff" class="color-swatch"
-          oninput="document.getElementById('txt-color-val').textContent=this.value">
-        <span style="font-size:12px;color:var(--text-2)" id="txt-color-val">#ffffff</span>
+  <!-- Modal recadrage -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-title" id="modal-title">Zone de recadrage</div>
+      <div class="modal-sub" id="modal-sub"></div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="crop-canvas"></canvas>
+        <div class="crop-box" id="crop-box">
+          <div class="crop-handle tl" data-h="tl"></div>
+          <div class="crop-handle tc" data-h="tc"></div>
+          <div class="crop-handle tr" data-h="tr"></div>
+          <div class="crop-handle ml" data-h="ml"></div>
+          <div class="crop-handle mr" data-h="mr"></div>
+          <div class="crop-handle bl" data-h="bl"></div>
+          <div class="crop-handle bc" data-h="bc"></div>
+          <div class="crop-handle br" data-h="br"></div>
+        </div>
       </div>
-    </div>
-    <div class="field">
-      <label>Fond du bandeau</label>
-      <div class="color-row">
-        <input type="color" id="txt-bg" value="#000000" class="color-swatch"
-          oninput="document.getElementById('txt-bg-val').textContent=this.value">
-        <span style="font-size:12px;color:var(--text-2)" id="txt-bg-val">#000000</span>
-      </div>
-    </div>
-    <div class="field full">
-      <label>Opacité fond</label>
-      <div class="range-row">
-        <input type="range" id="txt-opacity" min="0" max="100" step="5" value="75"
-          oninput="document.getElementById('opacity-val').textContent=this.value+'%'">
-        <span class="range-val" id="opacity-val">75%</span>
+      <div class="modal-footer">
+        <span class="crop-dims" id="crop-dims"></span>
+        <div class="modal-actions">
+          <button class="reset" onclick="resetCrop()">Réinitialiser</button>
+          <button onclick="document.getElementById('modal-overlay').style.display='none'">Annuler</button>
+          <button class="confirm" onclick="confirmCrop()">Appliquer</button>
+        </div>
       </div>
     </div>
   </div>
+
 </div>
-
-<button class="gen-btn" onclick="generate()">
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-    <rect x="2" y="2" width="20" height="20" rx="4"/>
-    <path d="M2 15l5-5 4 4 4-5 7 5"/>
-  </svg>
-  Générer les déclinaisons
-</button>
-
-<div class="results" id="results"></div>
-
-<!-- Modal recadrage -->
-<div class="modal-overlay" id="modal-overlay">
-  <div class="modal">
-    <div class="modal-title" id="modal-title">Zone de recadrage</div>
-    <div class="modal-sub" id="modal-sub"></div>
-    <div class="canvas-wrap" id="canvas-wrap">
-      <canvas id="crop-canvas"></canvas>
-      <div class="crop-box" id="crop-box">
-        <div class="crop-handle tl" data-h="tl"></div>
-        <div class="crop-handle tc" data-h="tc"></div>
-        <div class="crop-handle tr" data-h="tr"></div>
-        <div class="crop-handle ml" data-h="ml"></div>
-        <div class="crop-handle mr" data-h="mr"></div>
-        <div class="crop-handle bl" data-h="bl"></div>
-        <div class="crop-handle bc" data-h="bc"></div>
-        <div class="crop-handle br" data-h="br"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <span class="crop-dims" id="crop-dims"></span>
-      <div class="modal-actions">
-        <button class="reset" onclick="resetCrop()">Réinitialiser</button>
-        <button onclick="document.getElementById('modal-overlay').style.display='none'">Annuler</button>
-        <button class="confirm" onclick="confirmCrop()">Appliquer</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-</div><!-- /container -->
 
 <script>
 var srcImg = null, srcFile = null;
@@ -672,7 +783,7 @@ function setOverflow(i, v) {
   renderFormats();
 }
 function addFormat() {
-  formats.push({ name: 'Nouveau', w: 800, h: 600, overflow: 'crop', bands: 'black', crop: null });
+  formats.push({ name: 'Nouveau format', w: 800, h: 600, overflow: 'crop', bands: 'black', crop: null });
   renderFormats();
 }
 
@@ -683,7 +794,6 @@ function clearImage() {
   document.getElementById('file-in').value = '';
 }
 
-/* Drop zone */
 var dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('over'); });
 dz.addEventListener('dragleave', function() { dz.classList.remove('over'); });
@@ -711,26 +821,23 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
-/* Export */
 function updateQuality() {
   var f = document.getElementById('out-format').value;
   document.getElementById('quality-wrap').style.display = (f === 'image/png') ? 'none' : 'flex';
 }
 
-/* Text toggle */
 function toggleText() {
   txtEnabled = !txtEnabled;
   document.getElementById('txt-track').className = 'toggle-track' + (txtEnabled ? ' on' : '');
   document.getElementById('txt-panel').style.display = txtEnabled ? 'block' : 'none';
 }
 
-/* Modal */
 function openModal(i) {
   if (!srcImg) { alert('Importez d\'abord une image.'); return; }
   modalIdx = i;
   var f = formats[i];
   var isBands = f.overflow === 'bands';
-  document.getElementById('modal-title').textContent = 'Zone de recadrage — ' + f.name;
+  document.getElementById('modal-title').textContent = 'Recadrage — ' + f.name;
   document.getElementById('modal-sub').textContent = isBands
     ? 'Sélectionnez la zone à utiliser. Le ratio est libre.'
     : 'Le cadre est verrouillé sur le ratio ' + f.w + ' : ' + f.h + '.';
@@ -778,8 +885,13 @@ function confirmCrop() {
 
 function clampBox(b) {
   var mn = 20;
-  if (modalRatio) { if (b.w < mn) { b.w = mn; b.h = b.w / modalRatio; } if (b.h < mn) { b.h = mn; b.w = b.h * modalRatio; } }
-  else { if (b.w < mn) b.w = mn; if (b.h < mn) b.h = mn; }
+  if (modalRatio) {
+    if (b.w < mn) { b.w = mn; b.h = b.w / modalRatio; }
+    if (b.h < mn) { b.h = mn; b.w = b.h * modalRatio; }
+  } else {
+    if (b.w < mn) b.w = mn;
+    if (b.h < mn) b.h = mn;
+  }
   if (b.x < 0) b.x = 0; if (b.y < 0) b.y = 0;
   if (b.x + b.w > canvasW) { b.w = canvasW - b.x; if (modalRatio) b.h = b.w / modalRatio; }
   if (b.y + b.h > canvasH) { b.h = canvasH - b.y; if (modalRatio) b.w = b.h * modalRatio; }
@@ -824,12 +936,10 @@ document.addEventListener('mouseup', onUp);
 document.addEventListener('touchmove', onMove, { passive: false });
 document.addEventListener('touchend', onUp);
 
-/* Close modal on overlay click */
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
   if (e.target === this) this.style.display = 'none';
 });
 
-/* Render */
 function hexToRgba(hex, a) {
   var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
   return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
@@ -895,7 +1005,9 @@ function renderFormat(f) {
 
 function generate() {
   if (!srcImg) { alert('Importez d\'abord une image.'); return; }
-  var res = document.getElementById('results'); res.innerHTML = '';
+  var res = document.getElementById('results');
+  res.innerHTML = '';
+  document.getElementById('results-header').style.display = 'block';
   for (var i = 0; i < formats.length; i++) {
     var r = renderFormat(formats[i]);
     var card = document.createElement('div'); card.className = 'rcard';
@@ -904,7 +1016,13 @@ function generate() {
     var nm = document.createElement('div'); nm.className = 'rcard-name'; nm.textContent = r.name;
     var dm = document.createElement('div'); dm.className = 'rcard-dim'; dm.textContent = r.w + ' × ' + r.h + ' px';
     var btn = document.createElement('button'); btn.className = 'dl-btn'; btn.textContent = 'Télécharger';
-    (function(url, name) { btn.onclick = function() { var a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); setTimeout(function() { document.body.removeChild(a); }, 100); }; })(r.url, r.name);
+    (function(url, name) {
+      btn.onclick = function() {
+        var a = document.createElement('a'); a.href = url; a.download = name;
+        document.body.appendChild(a); a.click();
+        setTimeout(function() { document.body.removeChild(a); }, 100);
+      };
+    })(r.url, r.name);
     body.append(nm, dm, btn); card.append(img, body); res.appendChild(card);
   }
 }
