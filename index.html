@@ -773,7 +773,7 @@ function renderFormats() {
     html += '<td><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value"></td>';
     html += '<td><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value"></td>';
     html += '<td><select onchange="setOverflow(' + i + ',this.value)">';
-    html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Redimensionner</option>';
+    html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Ajuster</option>';
     html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
     html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
     html += '<option value="bands_transparent"' + (ofVal === 'bands_transparent' ? ' selected' : '') + '>Bandes transp.</option>';
