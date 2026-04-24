@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convertisseur d'images</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f4f1;
+  --surface: #ffffff;
+  --surface-2: #f0efe9;
+  --border: rgba(0,0,0,0.1);
+  --border-md: rgba(0,0,0,0.18);
+  --text: #1a1a18;
+  --text-2: #6b6b65;
+  --text-3: #9e9e97;
+  --info: #3b5bdb;
+  --info-bg: #edf2ff;
+  --info-border: #bac8ff;
+  --danger: #c92a2a;
+  --danger-bg: #fff5f5;
+  --danger-border: #ffc9c9;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141413;
+    --surface: #1e1e1c;
+    --surface-2: #262624;
+    --border: rgba(255,255,255,0.08);
+    --border-md: rgba(255,255,255,0.14);
+    --text: #f0efe9;
+    --text-2: #9e9e97;
+    --text-3: #6b6b65;
+    --info: #748ffc;
+    --info-bg: #1c2360;
+    --info-border: #3451b2;
+    --danger: #ff6b6b;
+    --danger-bg: #3b1a1a;
+    --danger-border: #c92a2a;
+  }
+}
+
+body {
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap');
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.75rem;
+  color: var(--text);
+}
+
+/* Drop zone */
+.drop-zone {
+  border: 1.5px dashed var(--border-md);
+  border-radius: var(--radius-lg);
+  padding: 2.25rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  background: var(--surface);
+}
+.drop-zone:hover { background: var(--surface-2); }
+.drop-zone.over { background: var(--info-bg); border-color: var(--info-border); }
+.drop-icon {
+  width: 40px; height: 40px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+}
+.drop-label { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.drop-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+/* Preview strip */
+.preview-strip {
+  display: none;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.preview-thumb {
+  width: 56px; height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border);
+  display: none;
+}
+.preview-meta { flex: 1; min-width: 0; }
+.preview-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview-size { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.change-btn {
+  font-size: 12px; padding: 5px 12px;
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .12s;
+  white-space: nowrap;
+}
+.change-btn:hover { background: var(--surface); }
+
+/* Section */
+.section { margin-top: 1.75rem; }
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.section-label {
+  font-size: 11px; font-weight: 500;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.add-btn {
+  font-size: 12px;
+  color: var(--info);
+  background: none;
+  border: 0.5px solid var(--info-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.add-btn:hover { background: var(--info-bg); }
+
+/* Formats table */
+.formats-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+.th {
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 0 8px 2px;
+  font-weight: 400;
+  text-align: left;
+}
+.th.center { text-align: center; }
+.frow td {
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  padding: 6px 4px;
+  vertical-align: middle;
+}
+.frow td:first-child {
+  border-left: 0.5px solid var(--border);
+  border-radius: var(--radius) 0 0 var(--radius);
+  padding-left: 10px;
+}
+.frow td:last-child {
+  border-right: 0.5px solid var(--border);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding-right: 8px;
+}
+.frow input[type=text] {
+  width: 100%; height: 30px;
+  font-size: 13px; padding: 0 8px;
+  border: 0.5px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  transition: border-color .12s, background .12s;
+  font-family: inherit;
+}
+.frow input[type=text]:hover,
+.frow input[type=text]:focus {
+  border-color: var(--border-md);
+  background: var(--surface-2);
+  outline: none;
+}
+.frow input[type=number] {
+  width: 100%; height: 30px;
+  font-size: 13px; padding: 0 6px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: center;
+  font-family: inherit;
+}
+.frow input[type=number]:focus { outline: none; border-color: var(--border-md); }
+.frow select {
+  width: 100%; height: 30px;
+  font-size: 12px; padding: 0 6px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+}
+.icon-btn {
+  width: 30px; height: 30px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s;
+  margin: auto;
+}
+.icon-btn.del:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+.icon-btn.crop:hover { background: var(--info-bg); color: var(--info); border-color: var(--info-border); }
+.icon-btn.has-crop { border-color: var(--info-border); color: var(--info); background: var(--info-bg); }
+
+/* Export bar */
+.export-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-top: 1.75rem;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow);
+}
+.export-group { display: flex; align-items: center; gap: 8px; }
+.export-group label { font-size: 12px; color: var(--text-2); }
+.export-group select {
+  height: 30px; font-size: 13px;
+  padding: 0 8px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+}
+.quality-wrap { display: flex; align-items: center; gap: 8px; }
+.quality-val { font-size: 12px; color: var(--text-2); min-width: 32px; }
+
+/* Toggle */
+.text-toggle {
+  display: flex; align-items: center;
+  gap: 10px; margin-top: 1.75rem; cursor: pointer;
+}
+.toggle-track {
+  width: 36px; height: 20px;
+  background: var(--border-md);
+  border-radius: 10px;
+  position: relative; flex-shrink: 0;
+  transition: background .15s;
+}
+.toggle-track.on { background: var(--info); }
+.toggle-thumb {
+  position: absolute;
+  width: 14px; height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: transform .15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-track.on .toggle-thumb { transform: translateX(16px); }
+.toggle-label { font-size: 13px; font-weight: 500; }
+
+/* Text panel */
+.txt-panel {
+  margin-top: 1rem;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+}
+.txt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field label {
+  font-size: 11px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .05em;
+  display: block; margin-bottom: 5px;
+}
+.field input, .field select, .field textarea {
+  width: 100%; font-size: 13px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+}
+.field textarea { resize: none; height: 54px; }
+.field.full { grid-column: 1 / -1; }
+.color-row { display: flex; align-items: center; gap: 8px; }
+.color-swatch {
+  width: 30px; height: 30px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border);
+  padding: 2px; cursor: pointer;
+  background: var(--surface-2);
+}
+.range-row { display: flex; align-items: center; gap: 8px; }
+.range-row input[type=range] { flex: 1; }
+.range-val { font-size: 12px; color: var(--text-2); min-width: 32px; }
+
+/* Generate button */
+.gen-btn {
+  width: 100%; height: 44px;
+  margin-top: 1.75rem;
+  background: var(--surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg);
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; color: var(--text);
+  font-family: inherit;
+  transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: var(--shadow);
+}
+.gen-btn:hover { background: var(--surface-2); box-shadow: var(--shadow-md); }
+.gen-btn:active { transform: scale(0.99); }
+
+/* Results */
+.results {
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.rcard {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.rcard-thumb {
+  width: 100%; height: 100px;
+  object-fit: contain;
+  background: var(--surface-2);
+  display: block;
+}
+.rcard-body { padding: 10px 12px; }
+.rcard-name {
+  font-size: 12px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rcard-dim { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.dl-btn {
+  width: 100%; margin-top: 8px;
+  padding: 6px 0; font-size: 12px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer; color: var(--text);
+  font-family: inherit;
+  transition: background .12s;
+}
+.dl-btn:hover { background: var(--surface); }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  background: var(--surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  width: 500px; max-width: 94vw;
+  box-shadow: var(--shadow-md);
+}
+.modal-title { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+.modal-sub { font-size: 12px; color: var(--text-2); margin-bottom: 1rem; }
+.canvas-wrap {
+  position: relative;
+  cursor: crosshair;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #1a1a18;
+  user-select: none;
+}
+#crop-canvas { display: block; width: 100%; height: auto; }
+.crop-box {
+  position: absolute;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.42);
+  cursor: move;
+}
+.crop-handle {
+  position: absolute;
+  width: 9px; height: 9px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.25);
+  border-radius: 2px;
+}
+.crop-handle.tl { top: -5px; left: -5px; cursor: nw-resize; }
+.crop-handle.tr { top: -5px; right: -5px; cursor: ne-resize; }
+.crop-handle.bl { bottom: -5px; left: -5px; cursor: sw-resize; }
+.crop-handle.br { bottom: -5px; right: -5px; cursor: se-resize; }
+.crop-handle.tc { top: -5px; left: calc(50% - 4px); cursor: n-resize; }
+.crop-handle.bc { bottom: -5px; left: calc(50% - 4px); cursor: s-resize; }
+.crop-handle.ml { top: calc(50% - 4px); left: -5px; cursor: w-resize; }
+.crop-handle.mr { top: calc(50% - 4px); right: -5px; cursor: e-resize; }
+.modal-footer {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-top: 1rem;
+}
+.crop-dims { font-size: 11px; color: var(--text-2); }
+.modal-actions { display: flex; gap: 8px; }
+.modal-actions button {
+  height: 30px; padding: 0 14px;
+  font-size: 12px; border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  transition: background .12s;
+}
+.modal-actions button:hover { background: var(--surface); }
+.modal-actions .confirm {
+  background: var(--info-bg);
+  color: var(--info);
+  border-color: var(--info-border);
+}
+.modal-actions .confirm:hover { opacity: 0.85; }
+.modal-actions .reset { color: var(--text-2); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Convertisseur d'images</h1>
+
+<div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()">
+  <div class="drop-icon">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <path d="M3 15l5-5 4 4 3-3 6 6"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+    </svg>
+  </div>
+  <div class="drop-label">Glissez une image ici ou cliquez pour parcourir</div>
+  <div class="drop-hint">JPG · PNG · WebP · GIF</div>
+</div>
+
+<div class="preview-strip" id="preview-strip">
+  <img id="preview-thumb" class="preview-thumb" alt="">
+  <div class="preview-meta">
+    <div class="preview-name" id="preview-name">—</div>
+    <div class="preview-size" id="preview-size">—</div>
+  </div>
+  <button class="change-btn" onclick="clearImage()">Changer</button>
+</div>
+
+<input type="file" id="file-in" accept="image/*" style="display:none">
+
+<div class="section">
+  <div class="section-header">
+    <span class="section-label">Formats de sortie</span>
+    <button class="add-btn" onclick="addFormat()">+ Ajouter</button>
+  </div>
+  <table class="formats-table" id="formats-table">
+    <colgroup>
+      <col style="width:35%">
+      <col style="width:72px">
+      <col style="width:72px">
+      <col>
+      <col style="width:32px">
+      <col style="width:28px">
+    </colgroup>
+    <thead><tr>
+      <th class="th">Nom</th>
+      <th class="th center">Largeur</th>
+      <th class="th center">Hauteur</th>
+      <th class="th">Débordement</th>
+      <th class="th center" title="Recadrage">⊡</th>
+      <th></th>
+    </tr></thead>
+    <tbody id="formats-body"></tbody>
+  </table>
+</div>
+
+<div class="export-bar">
+  <div class="export-group">
+    <label>Format</label>
+    <select id="out-format" onchange="updateQuality()">
+      <option value="image/png">PNG</option>
+      <option value="image/jpeg">JPEG</option>
+      <option value="image/webp">WebP</option>
+    </select>
+  </div>
+  <div class="quality-wrap" id="quality-wrap" style="display:none">
+    <div class="export-group"><label>Qualité</label></div>
+    <input type="range" id="quality" min="10" max="100" step="5" value="85"
+      style="width:100px"
+      oninput="document.getElementById('q-val').textContent=this.value+'%'">
+    <span class="quality-val" id="q-val">85%</span>
+  </div>
+</div>
+
+<div class="text-toggle" onclick="toggleText()">
+  <div class="toggle-track" id="txt-track"><div class="toggle-thumb"></div></div>
+  <span class="toggle-label">Texte sur l'image</span>
+</div>
+
+<div class="txt-panel" id="txt-panel" style="display:none">
+  <div class="txt-grid">
+    <div class="field full">
+      <label>Contenu</label>
+      <textarea id="txt-content" placeholder="Votre texte ici…"></textarea>
+    </div>
+    <div class="field">
+      <label>Position</label>
+      <select id="txt-pos">
+        <option value="below">Sous l'image (bande)</option>
+        <option value="bottom">Bas superposé</option>
+        <option value="top">Haut superposé</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Alignement</label>
+      <select id="txt-align">
+        <option value="center">Centré</option>
+        <option value="left">Gauche</option>
+        <option value="right">Droite</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Taille</label>
+      <select id="txt-size">
+        <option value="small">Petit</option>
+        <option value="medium" selected>Moyen</option>
+        <option value="large">Grand</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Couleur texte</label>
+      <div class="color-row">
+        <input type="color" id="txt-color" value="#ffffff" class="color-swatch"
+          oninput="document.getElementById('txt-color-val').textContent=this.value">
+        <span style="font-size:12px;color:var(--text-2)" id="txt-color-val">#ffffff</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Fond du bandeau</label>
+      <div class="color-row">
+        <input type="color" id="txt-bg" value="#000000" class="color-swatch"
+          oninput="document.getElementById('txt-bg-val').textContent=this.value">
+        <span style="font-size:12px;color:var(--text-2)" id="txt-bg-val">#000000</span>
+      </div>
+    </div>
+    <div class="field full">
+      <label>Opacité fond</label>
+      <div class="range-row">
+        <input type="range" id="txt-opacity" min="0" max="100" step="5" value="75"
+          oninput="document.getElementById('opacity-val').textContent=this.value+'%'">
+        <span class="range-val" id="opacity-val">75%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="gen-btn" onclick="generate()">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+    <rect x="2" y="2" width="20" height="20" rx="4"/>
+    <path d="M2 15l5-5 4 4 4-5 7 5"/>
+  </svg>
+  Générer les déclinaisons
+</button>
+
+<div class="results" id="results"></div>
+
+<!-- Modal recadrage -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Zone de recadrage</div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="crop-canvas"></canvas>
+      <div class="crop-box" id="crop-box">
+        <div class="crop-handle tl" data-h="tl"></div>
+        <div class="crop-handle tc" data-h="tc"></div>
+        <div class="crop-handle tr" data-h="tr"></div>
+        <div class="crop-handle ml" data-h="ml"></div>
+        <div class="crop-handle mr" data-h="mr"></div>
+        <div class="crop-handle bl" data-h="bl"></div>
+        <div class="crop-handle bc" data-h="bc"></div>
+        <div class="crop-handle br" data-h="br"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span class="crop-dims" id="crop-dims"></span>
+      <div class="modal-actions">
+        <button class="reset" onclick="resetCrop()">Réinitialiser</button>
+        <button onclick="document.getElementById('modal-overlay').style.display='none'">Annuler</button>
+        <button class="confirm" onclick="confirmCrop()">Appliquer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+var srcImg = null, srcFile = null;
+var formats = [
+  { name: 'Miniature Portail', w: 300, h: 300, overflow: 'crop', bands: 'black', crop: null },
+  { name: 'Diaporama Portail', w: 1200, h: 800, overflow: 'crop', bands: 'black', crop: null },
+  { name: 'Newsletter', w: 800, h: 800, overflow: 'crop', bands: 'black', crop: null }
+];
+var modalIdx = null, cBox = { x: 0, y: 0, w: 100, h: 100 }, drag = null;
+var canvasW = 0, canvasH = 0, modalRatio = null;
+var txtEnabled = false;
+
+function esc(s) { return s.replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+function renderFormats() {
+  var tb = document.getElementById('formats-body');
+  var html = '';
+  for (var i = 0; i < formats.length; i++) {
+    var f = formats[i], hasCrop = f.crop !== null;
+    var ofVal = f.overflow === 'crop' ? 'crop' : 'bands_' + f.bands;
+    html += '<tr class="frow">';
+    html += '<td><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value"></td>';
+    html += '<td><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value"></td>';
+    html += '<td><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value"></td>';
+    html += '<td><select onchange="setOverflow(' + i + ',this.value)">';
+    html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Redimensionner</option>';
+    html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
+    html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
+    html += '<option value="bands_transparent"' + (ofVal === 'bands_transparent' ? ' selected' : '') + '>Bandes transp.</option>';
+    html += '</select></td>';
+    html += '<td><button class="icon-btn crop' + (hasCrop ? ' has-crop' : '') + '" onclick="openModal(' + i + ')" title="Recadrer">⊡</button></td>';
+    html += '<td><button class="icon-btn del" onclick="delFormat(' + i + ')" title="Supprimer">×</button></td>';
+    html += '</tr>';
+  }
+  tb.innerHTML = html;
+}
+
+function delFormat(i) { formats.splice(i, 1); renderFormats(); }
+function setOverflow(i, v) {
+  if (v === 'crop') { formats[i].overflow = 'crop'; }
+  else { formats[i].overflow = 'bands'; formats[i].bands = v.split('_')[1]; }
+  renderFormats();
+}
+function addFormat() {
+  formats.push({ name: 'Nouveau', w: 800, h: 600, overflow: 'crop', bands: 'black', crop: null });
+  renderFormats();
+}
+
+function clearImage() {
+  srcImg = null; srcFile = null;
+  document.getElementById('preview-strip').style.display = 'none';
+  document.getElementById('drop-zone').style.display = '';
+  document.getElementById('file-in').value = '';
+}
+
+/* Drop zone */
+var dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', function() { dz.classList.remove('over'); });
+dz.addEventListener('drop', function(e) { e.preventDefault(); dz.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
+document.getElementById('file-in').onchange = function(e) { loadFile(e.target.files[0]); };
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  srcFile = file;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      srcImg = img;
+      formats.forEach(function(f) { f.crop = null; });
+      var pt = document.getElementById('preview-thumb');
+      pt.src = ev.target.result; pt.style.display = 'block';
+      document.getElementById('preview-name').textContent = file.name;
+      document.getElementById('preview-size').textContent = img.width + ' × ' + img.height + ' px · ' + Math.round(file.size / 1024) + ' Ko';
+      document.getElementById('preview-strip').style.display = 'flex';
+      document.getElementById('drop-zone').style.display = 'none';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* Export */
+function updateQuality() {
+  var f = document.getElementById('out-format').value;
+  document.getElementById('quality-wrap').style.display = (f === 'image/png') ? 'none' : 'flex';
+}
+
+/* Text toggle */
+function toggleText() {
+  txtEnabled = !txtEnabled;
+  document.getElementById('txt-track').className = 'toggle-track' + (txtEnabled ? ' on' : '');
+  document.getElementById('txt-panel').style.display = txtEnabled ? 'block' : 'none';
+}
+
+/* Modal */
+function openModal(i) {
+  if (!srcImg) { alert('Importez d\'abord une image.'); return; }
+  modalIdx = i;
+  var f = formats[i];
+  var isBands = f.overflow === 'bands';
+  document.getElementById('modal-title').textContent = 'Zone de recadrage — ' + f.name;
+  document.getElementById('modal-sub').textContent = isBands
+    ? 'Sélectionnez la zone à utiliser. Le ratio est libre.'
+    : 'Le cadre est verrouillé sur le ratio ' + f.w + ' : ' + f.h + '.';
+  modalRatio = isBands ? null : (f.w / f.h);
+  var cv = document.getElementById('crop-canvas');
+  var maxW = 456, maxH = 300;
+  var ir = srcImg.width / srcImg.height, cw, ch;
+  if (ir > maxW / maxH) { cw = maxW; ch = Math.round(maxW / ir); }
+  else { ch = maxH; cw = Math.round(maxH * ir); }
+  cv.width = cw; cv.height = ch; canvasW = cw; canvasH = ch;
+  cv.getContext('2d').drawImage(srcImg, 0, 0, cw, ch);
+  if (f.crop) { cBox = { x: f.crop.x * cw, y: f.crop.y * ch, w: f.crop.w * cw, h: f.crop.h * ch }; }
+  else { resetCropBox(); }
+  updateCropBox();
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+
+function resetCropBox() {
+  if (modalRatio) {
+    var bw, bh;
+    if (canvasW / canvasH > modalRatio) { bh = canvasH; bw = bh * modalRatio; }
+    else { bw = canvasW; bh = bw / modalRatio; }
+    cBox = { x: (canvasW - bw) / 2, y: (canvasH - bh) / 2, w: bw, h: bh };
+  } else { cBox = { x: 0, y: 0, w: canvasW, h: canvasH }; }
+}
+
+function resetCrop() { resetCropBox(); updateCropBox(); }
+
+function updateCropBox() {
+  var b = document.getElementById('crop-box');
+  b.style.left = Math.round(cBox.x) + 'px'; b.style.top = Math.round(cBox.y) + 'px';
+  b.style.width = Math.round(cBox.w) + 'px'; b.style.height = Math.round(cBox.h) + 'px';
+  if (srcImg) {
+    var rw = Math.round(cBox.w * (srcImg.width / canvasW));
+    var rh = Math.round(cBox.h * (srcImg.height / canvasH));
+    document.getElementById('crop-dims').textContent = rw + ' × ' + rh + ' px';
+  }
+}
+
+function confirmCrop() {
+  formats[modalIdx].crop = { x: cBox.x / canvasW, y: cBox.y / canvasH, w: cBox.w / canvasW, h: cBox.h / canvasH };
+  document.getElementById('modal-overlay').style.display = 'none';
+  renderFormats();
+}
+
+function clampBox(b) {
+  var mn = 20;
+  if (modalRatio) { if (b.w < mn) { b.w = mn; b.h = b.w / modalRatio; } if (b.h < mn) { b.h = mn; b.w = b.h * modalRatio; } }
+  else { if (b.w < mn) b.w = mn; if (b.h < mn) b.h = mn; }
+  if (b.x < 0) b.x = 0; if (b.y < 0) b.y = 0;
+  if (b.x + b.w > canvasW) { b.w = canvasW - b.x; if (modalRatio) b.h = b.w / modalRatio; }
+  if (b.y + b.h > canvasH) { b.h = canvasH - b.y; if (modalRatio) b.w = b.h * modalRatio; }
+  if (b.x + b.w > canvasW) b.x = canvasW - b.w;
+  if (b.y + b.h > canvasH) b.y = canvasH - b.h;
+  return b;
+}
+
+function getPos(e) {
+  var cv = document.getElementById('crop-canvas'), rect = cv.getBoundingClientRect();
+  var sx = canvasW / rect.width, sy = canvasH / rect.height;
+  var src = e.touches ? e.touches[0] : e;
+  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
+}
+
+function onDown(e, h) { e.preventDefault(); var p = getPos(e); drag = { h: h, sx: p.x, sy: p.y, ob: { x: cBox.x, y: cBox.y, w: cBox.w, h: cBox.h } }; }
+
+var cb = document.getElementById('crop-box');
+cb.addEventListener('mousedown', function(e) { if (e.target === cb) onDown(e, 'move'); });
+cb.addEventListener('touchstart', function(e) { if (e.target === cb) onDown(e, 'move'); }, { passive: false });
+cb.querySelectorAll('.crop-handle').forEach(function(h) {
+  h.addEventListener('mousedown', function(e) { e.stopPropagation(); onDown(e, h.dataset.h); });
+  h.addEventListener('touchstart', function(e) { e.stopPropagation(); onDown(e, h.dataset.h); }, { passive: false });
+});
+
+function onMove(e) {
+  if (!drag) return; e.preventDefault();
+  var p = getPos(e), dx = p.x - drag.sx, dy = p.y - drag.sy, o = drag.ob;
+  var b = { x: o.x, y: o.y, w: o.w, h: o.h }, H = drag.h, R = modalRatio;
+  if (H === 'move') { b.x = o.x + dx; b.y = o.y + dy; }
+  else if (H === 'br' || H === 'mr') { b.w = Math.max(20, o.w + dx); if (R) b.h = b.w / R; }
+  else if (H === 'tr') { b.w = Math.max(20, o.w + dx); if (R) { b.h = b.w / R; b.y = o.y + o.h - b.h; } else { b.h = Math.max(20, o.h - dy); b.y = o.y + o.h - b.h; } }
+  else if (H === 'bl' || H === 'ml') { b.w = Math.max(20, o.w - dx); b.x = o.x + o.w - b.w; if (R) b.h = b.w / R; }
+  else if (H === 'tl') { b.w = Math.max(20, o.w - dx); b.x = o.x + o.w - b.w; if (R) { b.h = b.w / R; b.y = o.y + o.h - b.h; } else { b.h = Math.max(20, o.h - dy); b.y = o.y + o.h - b.h; } }
+  else if (H === 'bc') { if (R) { b.h = Math.max(20, o.h + dy); b.w = b.h * R; b.x = o.x + (o.w - b.w) / 2; } else b.h = Math.max(20, o.h + dy); }
+  else if (H === 'tc') { if (R) { b.h = Math.max(20, o.h - dy); b.w = b.h * R; b.x = o.x + (o.w - b.w) / 2; b.y = o.y + o.h - b.h; } else { b.h = Math.max(20, o.h - dy); b.y = o.y + o.h - b.h; } }
+  cBox = clampBox(b); updateCropBox();
+}
+function onUp() { drag = null; }
+document.addEventListener('mousemove', onMove);
+document.addEventListener('mouseup', onUp);
+document.addEventListener('touchmove', onMove, { passive: false });
+document.addEventListener('touchend', onUp);
+
+/* Close modal on overlay click */
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+/* Render */
+function hexToRgba(hex, a) {
+  var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+
+function renderFormat(f) {
+  var outFmt = document.getElementById('out-format').value;
+  var quality = parseInt(document.getElementById('quality').value) / 100;
+  var txtC = document.getElementById('txt-content').value;
+  var txtPos = document.getElementById('txt-pos').value;
+  var txtAlign = document.getElementById('txt-align').value;
+  var txtSize = document.getElementById('txt-size').value;
+  var txtColor = document.getElementById('txt-color').value;
+  var txtBg = document.getElementById('txt-bg').value;
+  var txtOpa = parseInt(document.getElementById('txt-opacity').value) / 100;
+  var W = f.w, H = f.h;
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  var ctx = cv.getContext('2d');
+  var bandH = 0;
+  if (txtEnabled && txtC && txtPos === 'below') {
+    var base = Math.min(W, H);
+    var sz2 = txtSize === 'small' ? base * 0.04 : txtSize === 'large' ? base * 0.07 : base * 0.055;
+    bandH = Math.round(sz2 * 1.8 + 12);
+  }
+  var imgH = H - bandH;
+  var sx, sy, sw, sh;
+  if (f.crop) { sx = f.crop.x * srcImg.width; sy = f.crop.y * srcImg.height; sw = f.crop.w * srcImg.width; sh = f.crop.h * srcImg.height; }
+  else { sx = 0; sy = 0; sw = srcImg.width; sh = srcImg.height; }
+  if (f.overflow === 'crop') {
+    var dr = W / imgH, sr = sw / sh, fsx, fsy, fsw, fsh;
+    if (sr > dr) { fsh = sh; fsw = sh * dr; fsx = sx + (sw - fsw) / 2; fsy = sy; }
+    else { fsw = sw; fsh = sw / dr; fsy = sy + (sh - fsh) / 2; fsx = sx; }
+    ctx.drawImage(srcImg, fsx, fsy, fsw, fsh, 0, 0, W, imgH);
+  } else {
+    if (f.bands === 'transparent') ctx.clearRect(0, 0, W, imgH);
+    else { ctx.fillStyle = f.bands === 'white' ? '#fff' : '#000'; ctx.fillRect(0, 0, W, imgH); }
+    var scale = Math.min(W / sw, imgH / sh), dw = sw * scale, dh = sh * scale;
+    ctx.drawImage(srcImg, sx, sy, sw, sh, (W - dw) / 2, (imgH - dh) / 2, dw, dh);
+  }
+  if (txtEnabled && txtC) {
+    var base3 = Math.min(W, H);
+    var fontSize = txtSize === 'small' ? base3 * 0.04 : txtSize === 'large' ? base3 * 0.07 : base3 * 0.055;
+    ctx.font = fontSize + 'px sans-serif';
+    var pad = fontSize * 0.4, lh = fontSize * 1.4;
+    var words = txtC.split(' '), lines = [], line = '', mw = W - pad * 2;
+    for (var wi = 0; wi < words.length; wi++) {
+      var t = line ? line + ' ' + words[wi] : words[wi];
+      if (ctx.measureText(t).width > mw && line) { lines.push(line); line = words[wi]; } else line = t;
+    }
+    if (line) lines.push(line);
+    var totalH = lines.length * lh + pad * 2;
+    var by = txtPos === 'below' ? imgH : txtPos === 'top' ? 0 : H - totalH;
+    ctx.fillStyle = hexToRgba(txtBg, txtOpa); ctx.fillRect(0, by, W, bandH || totalH);
+    ctx.fillStyle = txtColor; ctx.textBaseline = 'top';
+    for (var li = 0; li < lines.length; li++) {
+      var tx = txtAlign === 'left' ? pad : txtAlign === 'right' ? W - ctx.measureText(lines[li]).width - pad : (W - ctx.measureText(lines[li]).width) / 2;
+      ctx.fillText(lines[li], tx, by + pad + li * lh);
+    }
+  }
+  var ext = outFmt === 'image/png' ? 'png' : outFmt === 'image/jpeg' ? 'jpg' : 'webp';
+  return { url: cv.toDataURL(outFmt, outFmt === 'image/png' ? undefined : quality), name: f.name + '.' + ext, w: W, h: H };
+}
+
+function generate() {
+  if (!srcImg) { alert('Importez d\'abord une image.'); return; }
+  var res = document.getElementById('results'); res.innerHTML = '';
+  for (var i = 0; i < formats.length; i++) {
+    var r = renderFormat(formats[i]);
+    var card = document.createElement('div'); card.className = 'rcard';
+    var img = document.createElement('img'); img.src = r.url; img.className = 'rcard-thumb'; img.alt = r.name;
+    var body = document.createElement('div'); body.className = 'rcard-body';
+    var nm = document.createElement('div'); nm.className = 'rcard-name'; nm.textContent = r.name;
+    var dm = document.createElement('div'); dm.className = 'rcard-dim'; dm.textContent = r.w + ' × ' + r.h + ' px';
+    var btn = document.createElement('button'); btn.className = 'dl-btn'; btn.textContent = 'Télécharger';
+    (function(url, name) { btn.onclick = function() { var a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); setTimeout(function() { document.body.removeChild(a); }, 100); }; })(r.url, r.name);
+    body.append(nm, dm, btn); card.append(img, body); res.appendChild(card);
+  }
+}
+
+renderFormats();
+updateQuality();
+</script>
+</body>
+</html>
