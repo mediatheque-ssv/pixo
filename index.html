@@ -1022,7 +1022,7 @@ function renderFormat(f) {
   } else {
     if (f.bands === 'transparent') ctx.clearRect(0, 0, W, imgH);
     else { ctx.fillStyle = f.bands === 'white' ? '#fff' : '#000'; ctx.fillRect(0, 0, W, imgH); }
-    var scale = Math.min(W / sw, imgH / sh), dw = sw * scale, dh = sh * scale;
+    var scale = Math.min(W / sw, imgH / sh, 1), dw = sw * scale, dh = sh * scale;
     ctx.drawImage(srcImg, sx, sy, sw, sh, (W - dw) / 2, (imgH - dh) / 2, dw, dh);
   }
   if (txtEnabled && txtC) {
