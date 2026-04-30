@@ -786,7 +786,7 @@ input[type=range]::-webkit-slider-thumb {
         </button>
       </div>
       <div class="alt-footer">
-        <span class="alt-hint" id="alt-char-hint">0 / 125 caractères recommandés</span>
+        <span class="alt-hint" id="alt-char-hint">0 / 150 caractères recommandés</span>
         <span class="alt-error" id="alt-error"></span>
       </div>
     </div>
@@ -1040,8 +1040,8 @@ function updateAltHint() {
   var val = document.getElementById('alt-text').value;
   var len = val.length;
   var hint = document.getElementById('alt-char-hint');
-  hint.textContent = len + ' / 125 caractères recommandés';
-  hint.style.color = len > 125 ? 'var(--danger)' : 'var(--text-3)';
+  hint.textContent = len + ' / 150 caractères recommandés';
+  hint.style.color = len > 150 ? 'var(--danger)' : 'var(--text-3)';
 }
 
 document.getElementById('alt-text').addEventListener('input', updateAltHint);
@@ -1089,7 +1089,7 @@ async function generateAlt() {
               },
               {
                 type: "text",
-                text: "Tu es expert en accessibilité web. Génère un texte alternatif (attribut alt HTML) en français pour cette image.\n\nObjectif : ce texte sera lu par un lecteur d'écran à destination de personnes non-voyantes ou malvoyantes. Il doit leur permettre de comprendre ce que montre l'image comme si elles la voyaient elles-mêmes.\n\nContexte : cette image est destinée à la communication d'une médiathèque (événements culturels, ateliers, fonds documentaires, animations, expositions, vie du lieu…). Tiens compte de ce contexte pour interpréter les éléments visuels.\n\nRègles strictes :\n- Commence directement par le sujet principal (jamais par 'Image de', 'Photo de', 'Illustration de')\n- Décris ce qui est montré : sujet, action, contexte, éléments visuels importants\n- Si l'image contient du texte lisible, résume-le\n- Ton factuel et précis, sans jugement ni interprétation\n- Maximum 125 caractères (espaces compris)\n- Sans ponctuation finale\n- Une seule phrase, pas de liste\n\nRéponds uniquement avec le texte alternatif, rien d'autre."
+                text: "Tu es expert en accessibilité web. Génère un texte alternatif (attribut alt HTML) en français pour cette image.\n\nContexte : cette image est destinée à la communication d'une médiathèque (événements culturels, ateliers, fonds documentaires, animations jeunesse, expositions, vie du lieu…).\n\nObjectif : fournir une description utile à une personne malvoyante, en transmettant uniquement les informations pertinentes pour comprendre le contenu ou la fonction de l'image.\n\nRègles :\n- Maximum 150 caractères sauf nécessité\n- Ne pas commencer par 'image de', 'photo de'\n- Aller à l'essentiel, sans détails inutiles\n- Décrire le contenu et le contexte, pas juste l'apparence\n- Ne pas faire d'interprétation incertaine\n- Si du texte est présent dans l'image, le résumer\n- Adapter la description au type d'image\n\nCas spécifiques :\n1. Couverture de livre, de dvd ou affiche de film : indiquer le titre, l'auteur, et éventuellement le genre ou un élément visuel marquant\n2. Affiche d'événement : indiquer le type d'événement, le lieu, la date si visible\n3. Photo d'événement : décrire l'activité, le public, l'ambiance si pertinente\n\nRéponds uniquement avec le texte alternatif, rien d'autre."
               }
             ]
           }]
