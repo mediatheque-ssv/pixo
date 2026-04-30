@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pixo</title>
-<!-- Favicons -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -47,7 +46,6 @@ body {
   line-height: 1.5;
 }
 
-/* Subtle grain overlay */
 body::before {
   content: '';
   position: fixed;
@@ -65,7 +63,6 @@ body::before {
   z-index: 1;
 }
 
-/* Header */
 .header {
   display: flex;
   align-items: center;
@@ -99,7 +96,6 @@ body::before {
   letter-spacing: 0.03em;
 }
 
-/* Drop zone */
 .drop-zone {
   border: 1px dashed var(--border-md);
   border-radius: var(--radius-xl);
@@ -135,7 +131,6 @@ body::before {
   letter-spacing: 0.04em;
 }
 
-/* Preview strip */
 .preview-strip {
   display: none;
   align-items: center;
@@ -176,7 +171,127 @@ body::before {
 }
 .change-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
-/* Section */
+/* ─── ALT TEXT SECTION ─── */
+.alt-section {
+  display: none;
+  margin-top: 1.5rem;
+  background: var(--surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.alt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+.alt-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.alt-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.alt-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent-border);
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.alt-body { padding: 12px 14px; }
+.alt-textarea-wrap { position: relative; }
+.alt-textarea {
+  width: 100%;
+  font-size: 13px;
+  font-family: 'Syne', sans-serif;
+  line-height: 1.55;
+  padding: 9px 38px 9px 11px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  resize: none;
+  height: 72px;
+  transition: border-color .15s;
+}
+.alt-textarea:focus { outline: none; border-color: var(--border-hi); }
+.alt-textarea::placeholder { color: var(--text-3); }
+.alt-copy-btn {
+  position: absolute;
+  top: 7px; right: 7px;
+  width: 26px; height: 26px;
+  border: 0.5px solid var(--border-md);
+  background: var(--surface-3);
+  color: var(--text-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  font-size: 12px;
+}
+.alt-copy-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.alt-copy-btn.copied { border-color: var(--accent-border); color: var(--accent); background: var(--accent-dim); }
+.alt-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+}
+.alt-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.03em;
+}
+.alt-gen-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: all .15s;
+  letter-spacing: 0.02em;
+}
+.alt-gen-btn:hover { background: rgba(212,255,78,0.18); }
+.alt-gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.alt-spinner {
+  width: 11px; height: 11px;
+  border: 1.5px solid rgba(212,255,78,0.3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.alt-gen-btn.loading .alt-spinner { display: block; }
+.alt-gen-btn.loading .alt-gen-icon { display: none; }
+.alt-error {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--danger);
+  margin-top: 6px;
+  display: none;
+}
+/* ─── END ALT TEXT ─── */
+
 .section { margin-top: 2rem; }
 .section-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -203,7 +318,6 @@ body::before {
 }
 .add-btn:hover { background: rgba(212,255,78,0.18); }
 
-/* Formats table */
 .formats-table {
   width: 100%;
   border-collapse: separate;
@@ -292,7 +406,6 @@ body::before {
 .icon-btn.crop:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-border); }
 .icon-btn.has-crop { border-color: var(--accent-border); color: var(--accent); background: var(--accent-dim); }
 
-/* Export bar */
 .export-bar {
   display: flex;
   align-items: center;
@@ -340,7 +453,6 @@ input[type=range]::-webkit-slider-thumb {
   cursor: pointer;
 }
 
-/* Toggle */
 .text-toggle {
   display: flex; align-items: center;
   gap: 10px; margin-top: 2rem; cursor: pointer;
@@ -367,7 +479,6 @@ input[type=range]::-webkit-slider-thumb {
 .toggle-track.on .toggle-thumb { transform: translateX(16px); }
 .toggle-label { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
 
-/* Text panel */
 .txt-panel {
   margin-top: 1rem;
   background: var(--surface);
@@ -416,7 +527,6 @@ input[type=range]::-webkit-slider-thumb {
   font-size: 11px; color: var(--text-2);
 }
 
-/* Generate button */
 .gen-btn {
   width: 100%; height: 48px;
   margin-top: 2rem;
@@ -438,7 +548,6 @@ input[type=range]::-webkit-slider-thumb {
 }
 .gen-btn:active { transform: scale(0.99) translateY(0); }
 
-/* Results */
 .results-header {
   display: none;
   margin-top: 2rem;
@@ -473,6 +582,37 @@ input[type=range]::-webkit-slider-thumb {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px; color: var(--text-3); margin-top: 3px;
 }
+.rcard-alt {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 6px;
+  padding: 5px 7px;
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+  position: relative;
+}
+.rcard-alt:hover { border-color: var(--border-md); color: var(--text-2); }
+.rcard-alt-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+.rcard-alt-label .a11y-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
 .dl-btn {
   width: 100%; margin-top: 9px;
   padding: 6px 0; font-size: 12px;
@@ -488,7 +628,6 @@ input[type=range]::-webkit-slider-thumb {
 }
 .dl-btn:hover { background: rgba(212,255,78,0.2); }
 
-/* Modal */
 .modal-overlay {
   display: none;
   position: fixed; inset: 0;
@@ -592,10 +731,9 @@ input[type=range]::-webkit-slider-thumb {
     <a href="">
       <img src="logo.png" alt="Pixo" class="logo">
     </a>
-
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.0</span>
+      <span class="header-tag">v2.1</span>
     </div>
   </div>
 
@@ -621,6 +759,39 @@ input[type=range]::-webkit-slider-thumb {
   </div>
 
   <input type="file" id="file-in" accept="image/*" style="display:none">
+
+  <!-- ALT TEXT SECTION -->
+  <div class="alt-section" id="alt-section">
+    <div class="alt-header">
+      <div class="alt-header-left">
+        <span class="alt-label">Texte alternatif</span>
+        <span class="alt-badge">accessibilité</span>
+      </div>
+      <button class="alt-gen-btn" id="alt-gen-btn" onclick="generateAlt()">
+        <svg class="alt-gen-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+        <div class="alt-spinner"></div>
+        Générer avec l'IA
+      </button>
+    </div>
+    <div class="alt-body">
+      <div class="alt-textarea-wrap">
+        <textarea class="alt-textarea" id="alt-text" placeholder="Le texte alternatif décrit l'image pour les lecteurs d'écran et les moteurs de recherche…" rows="3"></textarea>
+        <button class="alt-copy-btn" id="alt-copy-btn" onclick="copyAlt()" title="Copier">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>
+      <div class="alt-footer">
+        <span class="alt-hint" id="alt-char-hint">0 / 125 caractères recommandés</span>
+        <span class="alt-error" id="alt-error"></span>
+      </div>
+    </div>
+  </div>
+  <!-- END ALT TEXT -->
 
   <div class="section">
     <div class="section-header">
@@ -772,7 +943,7 @@ input[type=range]::-webkit-slider-thumb {
 </div>
 
 <script>
-var srcImg = null, srcFile = null;
+var srcImg = null, srcFile = null, srcDataUrl = null;
 var formats = [
   { name: 'Article portail (intro)', w: 300, h: 300, overflow: 'crop', bands: 'black', crop: null },
   { name: 'Event portail (intro+miniature)', w: 500, h: 300, overflow: 'crop', bands: 'black', crop: null },
@@ -820,10 +991,13 @@ function addFormat() {
 }
 
 function clearImage() {
-  srcImg = null; srcFile = null;
+  srcImg = null; srcFile = null; srcDataUrl = null;
   document.getElementById('preview-strip').style.display = 'none';
   document.getElementById('drop-zone').style.display = '';
   document.getElementById('file-in').value = '';
+  document.getElementById('alt-section').style.display = 'none';
+  document.getElementById('alt-text').value = '';
+  updateAltHint();
 }
 
 var dz = document.getElementById('drop-zone');
@@ -837,6 +1011,7 @@ function loadFile(file) {
   srcFile = file;
   var reader = new FileReader();
   reader.onload = function(ev) {
+    srcDataUrl = ev.target.result;
     var img = new Image();
     img.onload = function() {
       srcImg = img;
@@ -847,10 +1022,113 @@ function loadFile(file) {
       document.getElementById('preview-size').textContent = img.width + ' × ' + img.height + ' px · ' + Math.round(file.size / 1024) + ' Ko';
       document.getElementById('preview-strip').style.display = 'flex';
       document.getElementById('drop-zone').style.display = 'none';
+      document.getElementById('alt-section').style.display = 'block';
+      document.getElementById('alt-text').value = '';
+      document.getElementById('alt-error').style.display = 'none';
+      updateAltHint();
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function getApiKey() {
+  return "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";
+}
+
+function updateAltHint() {
+  var val = document.getElementById('alt-text').value;
+  var len = val.length;
+  var hint = document.getElementById('alt-char-hint');
+  hint.textContent = len + ' / 125 caractères recommandés';
+  hint.style.color = len > 125 ? 'var(--danger)' : 'var(--text-3)';
+}
+
+document.getElementById('alt-text').addEventListener('input', updateAltHint);
+
+function copyAlt() {
+  var ta = document.getElementById('alt-text');
+  if (!ta.value.trim()) return;
+  navigator.clipboard.writeText(ta.value).then(function() {
+    var btn = document.getElementById('alt-copy-btn');
+    btn.classList.add('copied');
+    setTimeout(function() { btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+async function generateAlt() {
+  if (!srcDataUrl) return;
+
+  var btn = document.getElementById('alt-gen-btn');
+  var err = document.getElementById('alt-error');
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  err.style.display = 'none';
+
+  try {
+    var base64 = await getResizedBase64(srcImg, 1024, 'image/jpeg');
+
+    var resp = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + getApiKey()
+        },
+        body: JSON.stringify({
+          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          max_tokens: 100,
+          messages: [{
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: "data:image/jpeg;base64," + base64 }
+              },
+              {
+                type: "text",
+                text: "Tu es expert en accessibilité web. Génère un texte alternatif (attribut alt HTML) en français pour cette image.\n\nContexte : cette image est destinée à la communication d'une médiathèque (événements culturels, ateliers, fonds documentaires, animations jeunesse, expositions, vie du lieu…). Tiens compte de ce contexte pour interpréter les éléments visuels.\n\nRègles strictes :\n- Commence directement par le sujet principal (jamais par 'Image de', 'Photo de', 'Illustration de')\n- Décris ce qui est montré : sujet, action, contexte, éléments visuels importants\n- Si l'image contient du texte lisible, inclus-le\n- Ton factuel et précis, sans jugement ni interprétation\n- Maximum 125 caractères (espaces compris)\n- Sans ponctuation finale\n- Une seule phrase, pas de liste\n\nRéponds uniquement avec le texte alternatif, rien d'autre."
+              }
+            ]
+          }]
+        })
+      }
+    );
+
+    if (!resp.ok) {
+      var errData = await resp.json();
+      throw new Error(errData?.error?.message || "Erreur " + resp.status);
+    }
+
+    var data = await resp.json();
+    var altTxt = data?.choices?.[0]?.message?.content?.trim();
+    if (!altTxt) throw new Error("Réponse vide.");
+
+    altTxt = altTxt.replace(/^["']|["']$/g, "").replace(/\.$/, "").trim();
+    document.getElementById('alt-text').value = altTxt;
+    updateAltHint();
+
+  } catch (e) {
+    err.textContent = e.message || "Erreur lors de la génération.";
+    err.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('loading');
+}
+
+function getResizedBase64(img, maxW, mimeType) {
+  return new Promise(function(resolve) {
+    var w = img.width, h = img.height;
+    if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+    var cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(img, 0, 0, w, h);
+    var dataUrl = cv.toDataURL(mimeType === 'image/png' ? 'image/png' : 'image/jpeg', 0.85);
+    resolve(dataUrl.split(',')[1]);
+  });
 }
 
 function updateQuality() {
@@ -879,12 +1157,9 @@ function openModal(i) {
   var ir = srcImg.width / srcImg.height, cw, ch;
   if (ir > maxW / maxH) { cw = maxW; ch = Math.round(maxW / ir); }
   else { ch = maxH; cw = Math.round(maxH * ir); }
-  cv.width = cw;
-  cv.height = ch;
-  cv.style.width = cw + 'px';
-  cv.style.height = ch + 'px';
-  canvasW = cw;
-  canvasH = ch;
+  cv.width = cw; cv.height = ch;
+  cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+  canvasW = cw; canvasH = ch;
   var ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cw, ch);
   ctx.drawImage(srcImg, 0, 0, cw, ch);
@@ -942,16 +1217,9 @@ function clampBox(b) {
 function getPos(e) {
   var wrap = document.getElementById('canvas-wrap');
   var rect = wrap.getBoundingClientRect();
-
-  var sx = canvasW / rect.width;
-  var sy = canvasH / rect.height;
-
+  var sx = canvasW / rect.width, sy = canvasH / rect.height;
   var src = e.touches ? e.touches[0] : e;
-
-  return {
-    x: (src.clientX - rect.left) * sx,
-    y: (src.clientY - rect.top) * sy
-  };
+  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
 }
 
 function onDown(e, h) { e.preventDefault(); var p = getPos(e); drag = { h: h, sx: p.x, sy: p.y, ob: { x: cBox.x, y: cBox.y, w: cBox.w, h: cBox.h } }; }
@@ -1052,16 +1320,43 @@ function renderFormat(f) {
 
 function generate() {
   if (!srcImg) { alert('Importez d\'abord une image.'); return; }
+  var altText = document.getElementById('alt-text').value.trim();
   var res = document.getElementById('results');
   res.innerHTML = '';
   document.getElementById('results-header').style.display = 'block';
   for (var i = 0; i < formats.length; i++) {
     var r = renderFormat(formats[i]);
     var card = document.createElement('div'); card.className = 'rcard';
-    var img = document.createElement('img'); img.src = r.url; img.className = 'rcard-thumb'; img.alt = r.name;
+    var img = document.createElement('img');
+    img.src = r.url; img.className = 'rcard-thumb';
+    img.alt = altText || r.name;
     var body = document.createElement('div'); body.className = 'rcard-body';
     var nm = document.createElement('div'); nm.className = 'rcard-name'; nm.textContent = r.name;
     var dm = document.createElement('div'); dm.className = 'rcard-dim'; dm.textContent = r.w + ' × ' + r.h + ' px';
+
+    var altDiv = null;
+    if (altText) {
+      altDiv = document.createElement('div');
+      altDiv.className = 'rcard-alt';
+      altDiv.title = 'Cliquer pour copier';
+      var altLbl = document.createElement('div');
+      altLbl.className = 'rcard-alt-label';
+      altLbl.innerHTML = '<span class="a11y-dot"></span>alt';
+      var altVal = document.createElement('div');
+      altVal.textContent = altText;
+      altDiv.appendChild(altLbl);
+      altDiv.appendChild(altVal);
+      (function(txt, el) {
+        el.onclick = function() {
+          navigator.clipboard.writeText(txt).then(function() {
+            el.style.borderColor = 'var(--accent-border)';
+            el.style.color = 'var(--accent)';
+            setTimeout(function() { el.style.borderColor = ''; el.style.color = ''; }, 1200);
+          });
+        };
+      })(altText, altDiv);
+    }
+
     var btn = document.createElement('button'); btn.className = 'dl-btn'; btn.textContent = 'Télécharger';
     (function(url, name) {
       btn.onclick = function() {
@@ -1070,7 +1365,12 @@ function generate() {
         setTimeout(function() { document.body.removeChild(a); }, 100);
       };
     })(r.url, r.name);
-    body.append(nm, dm, btn); card.append(img, body); res.appendChild(card);
+
+    body.append(nm, dm);
+    if (altDiv) body.appendChild(altDiv);
+    body.appendChild(btn);
+    card.append(img, body);
+    res.appendChild(card);
   }
 }
 
