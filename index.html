@@ -1026,6 +1026,7 @@ function loadFile(file) {
       document.getElementById('alt-text').value = '';
       document.getElementById('alt-error').style.display = 'none';
       updateAltHint();
+      generateAlt();
     };
     img.src = ev.target.result;
   };
