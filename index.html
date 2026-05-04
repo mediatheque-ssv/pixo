@@ -1328,28 +1328,6 @@ function generate() {
     var nm = document.createElement('div'); nm.className = 'rcard-name'; nm.textContent = r.name;
     var dm = document.createElement('div'); dm.className = 'rcard-dim'; dm.textContent = r.w + ' × ' + r.h + ' px';
 
-    var altDiv = null;
-    if (altText) {
-      altDiv = document.createElement('div');
-      altDiv.className = 'rcard-alt';
-      altDiv.title = 'Cliquer pour copier';
-      var altLbl = document.createElement('div');
-      altLbl.className = 'rcard-alt-label';
-      altLbl.innerHTML = '<span class="a11y-dot"></span>alt';
-      var altVal = document.createElement('div');
-      altVal.textContent = altText;
-      altDiv.appendChild(altLbl);
-      altDiv.appendChild(altVal);
-      (function(txt, el) {
-        el.onclick = function() {
-          navigator.clipboard.writeText(txt).then(function() {
-            el.style.borderColor = 'var(--accent-border)';
-            el.style.color = 'var(--accent)';
-            setTimeout(function() { el.style.borderColor = ''; el.style.color = ''; }, 1200);
-          });
-        };
-      })(altText, altDiv);
-    }
 
     var btn = document.createElement('button'); btn.className = 'dl-btn'; btn.textContent = 'Télécharger';
     (function(url, name) {
@@ -1361,7 +1339,7 @@ function generate() {
     })(r.url, r.name);
 
     body.append(nm, dm);
-    if (altDiv) body.appendChild(altDiv);
+ 
     body.appendChild(btn);
     card.append(img, body);
     res.appendChild(card);
