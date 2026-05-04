@@ -1031,11 +1031,6 @@ function loadFile(file) {
   };
   reader.readAsDataURL(file);
 }
-
-function getApiKey() {
-  return "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";
-}
-
 function updateAltHint() {
   var val = document.getElementById('alt-text').value;
   var len = val.length;
@@ -1070,12 +1065,11 @@ async function generateAlt() {
     var base64 = await getResizedBase64(srcImg, 1024, 'image/jpeg');
 
     var resp = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
+      "/api/groq",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + getApiKey()
         },
         body: JSON.stringify({
           model: "meta-llama/llama-4-scout-17b-16e-instruct",
