@@ -790,7 +790,7 @@ input[type=range]::-webkit-slider-thumb {
     </a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.2</span>
+      <span class="header-tag">v2.1</span>
     </div>
   </div>
 
@@ -815,17 +815,6 @@ input[type=range]::-webkit-slider-thumb {
       </div>
       <button class="change-btn" onclick="clearImage()">Changer</button>
     </div>
-    <div class="preview-filename-row">
-      <label for="custom-filename">Nom du fichier</label>
-      <input
-        type="text"
-        id="custom-filename"
-        class="filename-input"
-        placeholder="nom-du-fichier"
-        oninput="updateFilenamePreview()"
-      >
-    </div>
-    <div class="filename-preview" id="filename-preview"></div>
   </div>
 
   <input type="file" id="file-in" accept="image/*" style="display:none">
@@ -976,7 +965,21 @@ input[type=range]::-webkit-slider-thumb {
   </button>
 
   <div class="results-header" id="results-header">
-    <span class="section-label">Résultats</span>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+      <span class="section-label">Résultats</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label for="custom-filename" style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; white-space:nowrap;">Nom du fichier</label>
+        <input
+          type="text"
+          id="custom-filename"
+          class="filename-input"
+          placeholder="nom-du-fichier"
+          oninput="updateFilenamePreview()"
+          style="width:220px;"
+        >
+      </div>
+    </div>
+    <div class="filename-preview" id="filename-preview" style="margin-top:6px;"></div>
   </div>
   <div class="results" id="results"></div>
 
@@ -1108,6 +1111,8 @@ function clearImage() {
   document.getElementById('alt-text').value = '';
   document.getElementById('custom-filename').value = '';
   document.getElementById('filename-preview').innerHTML = '';
+  document.getElementById('results-header').style.display = 'none';
+  document.getElementById('results').innerHTML = '';
   updateAltHint();
 }
 
@@ -1133,10 +1138,6 @@ function loadFile(file) {
       document.getElementById('preview-size').textContent = img.width + ' × ' + img.height + ' px · ' + Math.round(file.size / 1024) + ' Ko';
       document.getElementById('preview-strip').style.display = 'flex';
       document.getElementById('drop-zone').style.display = 'none';
-      // Pre-fill filename with original name (without extension)
-      var nameWithoutExt = file.name.replace(/\.[^.]+$/, '');
-      document.getElementById('custom-filename').value = nameWithoutExt;
-      updateFilenamePreview();
       document.getElementById('alt-section').style.display = 'block';
       document.getElementById('alt-text').value = '';
       document.getElementById('alt-error').style.display = 'none';
@@ -1438,6 +1439,12 @@ function renderFormat(f) {
 
 function generate() {
   if (!srcImg) { alert('Importez d\'abord une image.'); return; }
+  // Pre-fill filename from source if field is empty
+  var fnInput = document.getElementById('custom-filename');
+  if (!fnInput.value.trim() && srcFile) {
+    fnInput.value = srcFile.name.replace(/\.[^.]+$/, '');
+  }
+  updateFilenamePreview();
   var altText = document.getElementById('alt-text').value.trim();
   var res = document.getElementById('results');
   res.innerHTML = '';
