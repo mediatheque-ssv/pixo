@@ -814,6 +814,127 @@ input[type=range]::-webkit-slider-thumb {
 .toast.error { border-color: var(--danger-border); color: var(--danger); }
 /* ─── END TOAST ─── */
 
+/* ─── MOBILE CARD FORMATS ─── */
+.frow-mobile-summary {
+  display: none;
+}
+.frow-mobile-details {
+  display: none;
+}
+
+/* Mobile compact card styles (always defined, activated via media query) */
+.frow-mobile-summary {
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  gap: 10px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.frow-mobile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.frow-mobile-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+.frow-mobile-dim {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-3);
+}
+.frow-mobile-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.frow-crop-dot {
+  font-size: 13px;
+  color: var(--accent);
+}
+.frow-mobile-chevron {
+  font-size: 18px;
+  color: var(--text-3);
+  line-height: 1;
+  transition: transform .2s;
+  display: inline-block;
+}
+.frow-mobile.expanded .frow-mobile-chevron {
+  transform: rotate(90deg);
+}
+.frow-mobile-details {
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px;
+  border-top: 0.5px solid var(--border);
+}
+.frow-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.frow-detail-field label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.frow-detail-field input[type=text],
+.frow-detail-field input[type=number],
+.frow-detail-field select {
+  width: 100%;
+  height: 34px;
+  font-size: 13px;
+  font-family: 'Syne', sans-serif;
+  padding: 0 10px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.frow-detail-field input[type=number] {
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+}
+.frow-detail-field input:focus,
+.frow-detail-field select:focus { outline: none; border-color: var(--border-hi); }
+.frow-detail-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.frow-detail-btns {
+  display: flex;
+  gap: 8px;
+  padding-top: 2px;
+}
+.frow-detail-btns .icon-btn {
+  flex: 1;
+  width: auto;
+  height: 34px;
+  font-size: 12px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  padding: 0 12px;
+  gap: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* ─── END MOBILE CARD FORMATS ─── */
+
 /* ─── MOBILE ─── */
 @media (max-width: 600px) {
   body { padding: 1.5rem 0.75rem 3rem; }
@@ -830,30 +951,22 @@ input[type=range]::-webkit-slider-thumb {
   .export-bar .quality-wrap { flex-wrap: wrap; }
   .export-bar input[type=range] { width: 80px; }
 
-  /* Formats table → cards */
+  /* Formats table → compact cards */
   .formats-table thead { display: none; }
   .formats-table, .formats-table tbody { display: block; width: 100%; }
-  .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 10px; margin-bottom: 6px; }
-  .frow td { background: transparent !important; border: none !important; border-radius: 0 !important; padding: 0 !important; }
-  /* Nom : full width */
-  .frow td:nth-child(1) { grid-column: 1 / -1; }
-  /* Largeur + Hauteur : côte à côte */
-  .frow td:nth-child(2),
-  .frow td:nth-child(3) { grid-column: span 1; }
-  /* Débordement : full width */
-  .frow td:nth-child(4) { grid-column: 1 / -1; }
-  /* Crop + Delete : côte à côte, alignés à droite */
-  .frow td:nth-child(5),
-  .frow td:nth-child(6) { grid-column: span 1; }
-  /* Petits labels au-dessus de chaque champ */
-  .frow td:nth-child(1)::before { content: 'Nom'; display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
-  .frow td:nth-child(2)::before { content: 'Largeur'; display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
-  .frow td:nth-child(3)::before { content: 'Hauteur'; display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
-  .frow td:nth-child(4)::before { content: 'Débordement'; display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
-  .frow input[type=text] { border: 0.5px solid var(--border); background: var(--surface-2); border-radius: var(--radius-sm); height: 34px; font-size: 13px; }
-  .frow input[type=number] { height: 34px; }
-  .frow select { height: 34px; }
-  .icon-btn { width: 34px; height: 34px; margin: 0; }
+  .frow-mobile {
+    display: block;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: border-color .15s;
+  }
+  .frow-mobile.expanded { border-color: var(--border-md); }
+  .frow-mobile > td { display: block; padding: 0 !important; border: none !important; background: transparent !important; }
+  .frow-mobile-summary { display: flex; }
+  .frow-mobile.expanded .frow-mobile-details { display: flex; }
 
   /* Results rename row */
   #results-header > div { flex-direction: column; align-items: flex-start; }
@@ -1178,25 +1291,70 @@ function updateFilenamePreview() {
 
 function renderFormats() {
   var tb = document.getElementById('formats-body');
+  var isMobile = window.innerWidth <= 600;
   var html = '';
   for (var i = 0; i < formats.length; i++) {
     var f = formats[i], hasCrop = f.crop !== null;
     var ofVal = f.overflow === 'crop' ? 'crop' : 'bands_' + f.bands;
-    html += '<tr class="frow">';
-    html += '<td><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview()"></td>';
-    html += '<td><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></td>';
-    html += '<td><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></td>';
-    html += '<td><select onchange="setOverflow(' + i + ',this.value)">';
-    html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Ajuster</option>';
-    html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
-    html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
-    html += '<option value="bands_transparent"' + (ofVal === 'bands_transparent' ? ' selected' : '') + '>Bandes transp.</option>';
-    html += '</select></td>';
-    html += '<td><button class="icon-btn crop' + (hasCrop ? ' has-crop' : '') + '" onclick="openModal(' + i + ')" title="Recadrer" aria-label="Recadrer : ' + esc(f.name) + '">⊡</button></td>';
-    html += '<td><button class="icon-btn del" onclick="delFormat(' + i + ')" title="Supprimer" aria-label="Supprimer : ' + esc(f.name) + '">×</button></td>';
-    html += '</tr>';
+    if (isMobile) {
+      // Compact card: summary row + expandable details
+      html += '<tr class="frow frow-mobile" data-idx="' + i + '">';
+      // Summary (always visible): tap to expand
+      html += '<td colspan="6" style="padding:0;border:none;background:transparent">';
+      html += '<div class="frow-mobile-summary">';
+      html += '<div class="frow-mobile-info">';
+      html += '<span class="frow-mobile-name">' + esc(f.name) + '</span>';
+      html += '<span class="frow-mobile-dim">' + f.w + ' × ' + f.h + '</span>';
+      html += '</div>';
+      html += '<div class="frow-mobile-actions">';
+      if (hasCrop) html += '<span class="frow-crop-dot" title="Recadrage actif">⊡</span>';
+      html += '<span class="frow-mobile-chevron">›</span>';
+      html += '</div>';
+      html += '</div>';
+      // Expandable details
+      html += '<div class="frow-mobile-details">';
+      html += '<div class="frow-detail-field"><label>Nom</label><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview();renderFormats()"></div>';
+      html += '<div class="frow-detail-row">';
+      html += '<div class="frow-detail-field"><label>Largeur</label><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></div>';
+      html += '<div class="frow-detail-field"><label>Hauteur</label><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></div>';
+      html += '</div>';
+      html += '<div class="frow-detail-field"><label>Débordement</label><select onchange="setOverflow(' + i + ',this.value)">';
+      html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Ajuster</option>';
+      html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
+      html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
+      html += '<option value="bands_transparent"' + (ofVal === 'bands_transparent' ? ' selected' : '') + '>Bandes transp.</option>';
+      html += '</select></div>';
+      html += '<div class="frow-detail-btns">';
+      html += '<button class="icon-btn crop' + (hasCrop ? ' has-crop' : '') + '" onclick="openModal(' + i + ')" title="Recadrer">⊡ Recadrer</button>';
+      html += '<button class="icon-btn del" onclick="delFormat(' + i + ')" title="Supprimer">× Supprimer</button>';
+      html += '</div>';
+      html += '</div>'; // frow-mobile-details
+      html += '</td>';
+      html += '</tr>';
+    } else {
+      html += '<tr class="frow">';
+      html += '<td><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview()"></td>';
+      html += '<td><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></td>';
+      html += '<td><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></td>';
+      html += '<td><select onchange="setOverflow(' + i + ',this.value)">';
+      html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Ajuster</option>';
+      html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
+      html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
+      html += '<option value="bands_transparent"' + (ofVal === 'bands_transparent' ? ' selected' : '') + '>Bandes transp.</option>';
+      html += '</select></td>';
+      html += '<td><button class="icon-btn crop' + (hasCrop ? ' has-crop' : '') + '" onclick="openModal(' + i + ')" title="Recadrer" aria-label="Recadrer : ' + esc(f.name) + '">⊡</button></td>';
+      html += '<td><button class="icon-btn del" onclick="delFormat(' + i + ')" title="Supprimer" aria-label="Supprimer : ' + esc(f.name) + '">×</button></td>';
+      html += '</tr>';
+    }
   }
   tb.innerHTML = html;
+
+  // Mobile expand/collapse
+  tb.querySelectorAll('.frow-mobile-summary').forEach(function(summary) {
+    summary.addEventListener('click', function() {
+      summary.closest('.frow-mobile').classList.toggle('expanded');
+    });
+  });
 }
 
 function delFormat(i) { formats.splice(i, 1); renderFormats(); updateFilenamePreview(); }
