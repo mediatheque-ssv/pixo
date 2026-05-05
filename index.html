@@ -1003,7 +1003,13 @@ input[type=range]::-webkit-slider-thumb {
 
   <div class="results-header" id="results-header">
     <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-      <span class="section-label" style="line-height:30px;">Résultats</span>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="section-label" style="line-height:30px;">Résultats</span>
+        <button id="dl-all-btn" onclick="downloadAll()" class="add-btn" style="display:flex; align-items:center; gap:6px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+          Tout télécharger
+        </button>
+      </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
         <div style="display:flex; align-items:center; gap:8px;">
           <label for="custom-filename" style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; white-space:nowrap;">Nom du fichier</label>
@@ -1512,6 +1518,26 @@ function renderFormat(f) {
 }
 
 var generatedResults = [];
+
+function downloadAll() {
+  if (!generatedResults.length) return;
+  var btn = document.getElementById('dl-all-btn');
+  btn.disabled = true;
+  var i = 0;
+  function next() {
+    if (i >= generatedResults.length) {
+      btn.disabled = false;
+      showToast(generatedResults.length + ' fichiers téléchargés.');
+      return;
+    }
+    var r = generatedResults[i++];
+    var a = document.createElement('a');
+    a.href = r.url; a.download = r.name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function() { document.body.removeChild(a); next(); }, 300);
+  }
+  next();
+}
 
 function renderResults(results) {
   var altText = document.getElementById('alt-text').value.trim();
