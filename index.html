@@ -133,12 +133,18 @@ body::before {
 
 .preview-strip {
   display: none;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
+  flex-direction: column;
+  gap: 0;
   background: var(--surface);
   border: 0.5px solid var(--border-md);
   border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.preview-strip-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
 }
 .preview-thumb {
   width: 52px; height: 52px;
@@ -170,6 +176,57 @@ body::before {
   white-space: nowrap;
 }
 .change-btn:hover { border-color: var(--border-hi); color: var(--text); }
+
+/* ─── FILENAME FIELD ─── */
+.preview-filename-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 12px;
+  border-top: 0.5px solid var(--border);
+}
+.preview-filename-row label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.filename-input-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.filename-input {
+  width: 100%;
+  height: 30px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 0 8px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  transition: border-color .15s;
+}
+.filename-input:focus { outline: none; border-color: var(--border-hi); }
+.filename-preview {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 14px 10px;
+}
+.filename-preview span {
+  color: var(--accent);
+}
+/* ─── END FILENAME FIELD ─── */
 
 /* ─── ALT TEXT SECTION ─── */
 .alt-section {
@@ -733,7 +790,7 @@ input[type=range]::-webkit-slider-thumb {
     </a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.1</span>
+      <span class="header-tag">v2.2</span>
     </div>
   </div>
 
@@ -750,12 +807,25 @@ input[type=range]::-webkit-slider-thumb {
   </div>
 
   <div class="preview-strip" id="preview-strip">
-    <img id="preview-thumb" class="preview-thumb" alt="">
-    <div class="preview-meta">
-      <div class="preview-name" id="preview-name">—</div>
-      <div class="preview-size" id="preview-size">—</div>
+    <div class="preview-strip-top">
+      <img id="preview-thumb" class="preview-thumb" alt="">
+      <div class="preview-meta">
+        <div class="preview-name" id="preview-name">—</div>
+        <div class="preview-size" id="preview-size">—</div>
+      </div>
+      <button class="change-btn" onclick="clearImage()">Changer</button>
     </div>
-    <button class="change-btn" onclick="clearImage()">Changer</button>
+    <div class="preview-filename-row">
+      <label for="custom-filename">Nom du fichier</label>
+      <input
+        type="text"
+        id="custom-filename"
+        class="filename-input"
+        placeholder="nom-du-fichier"
+        oninput="updateFilenamePreview()"
+      >
+    </div>
+    <div class="filename-preview" id="filename-preview"></div>
   </div>
 
   <input type="file" id="file-in" accept="image/*" style="display:none">
@@ -955,6 +1025,45 @@ var txtEnabled = false;
 
 function esc(s) { return s.replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
+// ─── FILENAME HELPERS ───
+function slugify(str) {
+  return str
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function getBaseFilename() {
+  var custom = document.getElementById('custom-filename').value.trim();
+  if (custom) return slugify(custom);
+  if (srcFile) return slugify(srcFile.name.replace(/\.[^.]+$/, ''));
+  return 'image';
+}
+
+function buildFilename(format, ext) {
+  var base = getBaseFilename();
+  var formatSlug = slugify(format.name);
+  return base + '_' + formatSlug + '_' + format.w + 'x' + format.h + '.' + ext;
+}
+
+function updateFilenamePreview() {
+  var preview = document.getElementById('filename-preview');
+  if (!srcFile && !document.getElementById('custom-filename').value.trim()) {
+    preview.innerHTML = '';
+    return;
+  }
+  var ext = 'webp';
+  var outFmt = document.getElementById('out-format').value;
+  if (outFmt === 'image/png') ext = 'png';
+  else if (outFmt === 'image/jpeg') ext = 'jpg';
+  var example = formats.length > 0 ? buildFilename(formats[0], ext) : '';
+  preview.innerHTML = example
+    ? 'Ex : <span>' + example + '</span>'
+    : '';
+}
+// ─── END FILENAME HELPERS ───
+
 function renderFormats() {
   var tb = document.getElementById('formats-body');
   var html = '';
@@ -962,9 +1071,9 @@ function renderFormats() {
     var f = formats[i], hasCrop = f.crop !== null;
     var ofVal = f.overflow === 'crop' ? 'crop' : 'bands_' + f.bands;
     html += '<tr class="frow">';
-    html += '<td><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value"></td>';
-    html += '<td><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value"></td>';
-    html += '<td><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value"></td>';
+    html += '<td><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview()"></td>';
+    html += '<td><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></td>';
+    html += '<td><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></td>';
     html += '<td><select onchange="setOverflow(' + i + ',this.value)">';
     html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Ajuster</option>';
     html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
@@ -978,7 +1087,7 @@ function renderFormats() {
   tb.innerHTML = html;
 }
 
-function delFormat(i) { formats.splice(i, 1); renderFormats(); }
+function delFormat(i) { formats.splice(i, 1); renderFormats(); updateFilenamePreview(); }
 function setOverflow(i, v) {
   if (v === 'crop') { formats[i].overflow = 'crop'; }
   else { formats[i].overflow = 'bands'; formats[i].bands = v.split('_')[1]; }
@@ -987,6 +1096,7 @@ function setOverflow(i, v) {
 function addFormat() {
   formats.push({ name: 'Nouveau format', w: 800, h: 600, overflow: 'crop', bands: 'black', crop: null });
   renderFormats();
+  updateFilenamePreview();
 }
 
 function clearImage() {
@@ -996,6 +1106,8 @@ function clearImage() {
   document.getElementById('file-in').value = '';
   document.getElementById('alt-section').style.display = 'none';
   document.getElementById('alt-text').value = '';
+  document.getElementById('custom-filename').value = '';
+  document.getElementById('filename-preview').innerHTML = '';
   updateAltHint();
 }
 
@@ -1021,6 +1133,10 @@ function loadFile(file) {
       document.getElementById('preview-size').textContent = img.width + ' × ' + img.height + ' px · ' + Math.round(file.size / 1024) + ' Ko';
       document.getElementById('preview-strip').style.display = 'flex';
       document.getElementById('drop-zone').style.display = 'none';
+      // Pre-fill filename with original name (without extension)
+      var nameWithoutExt = file.name.replace(/\.[^.]+$/, '');
+      document.getElementById('custom-filename').value = nameWithoutExt;
+      updateFilenamePreview();
       document.getElementById('alt-section').style.display = 'block';
       document.getElementById('alt-text').value = '';
       document.getElementById('alt-error').style.display = 'none';
@@ -1031,6 +1147,7 @@ function loadFile(file) {
   };
   reader.readAsDataURL(file);
 }
+
 function updateAltHint() {
   var val = document.getElementById('alt-text').value;
   var len = val.length;
@@ -1040,6 +1157,12 @@ function updateAltHint() {
 }
 
 document.getElementById('alt-text').addEventListener('input', updateAltHint);
+
+// Update preview when format changes
+document.getElementById('out-format').addEventListener('change', function() {
+  updateQuality();
+  updateFilenamePreview();
+});
 
 function copyAlt() {
   var ta = document.getElementById('alt-text');
@@ -1083,7 +1206,7 @@ async function generateAlt() {
               },
               {
                 type: "text",
-                text: "Génère un texte alternatif (attribut alt HTML) en français pour une image de médiathèque (événements, livres, affiches, animations).\n\nObjectif : décrire uniquement les informations utiles pour comprendre l’image.\n\nContraintes :\n- 150 caractères maximum sauf nécessité\n- Pas de 'image de' ou 'photo de'\n- Aller à l’essentiel\n- Pas de supposition incertaine\n- La description doit être compréhensible sans voir l’image\n- Si l’image contient du texte important, le résumer\n\nCas :\n- Livre/BD : titre + auteurs/illustrateurs visibles + éventuellement genre\n- Film/DVD : titre + réalisateurs/acteurs visibles + éventuellement genre\n- Affiche événement : type, lieu, date si visibles\n- Photo : activité + public + contexte\n\nRéponds uniquement avec le texte alternatif."
+                text: "Génère un texte alternatif (attribut alt HTML) en français pour une image de médiathèque (événements, livres, affiches, animations).\n\nObjectif : décrire uniquement les informations utiles pour comprendre l'image.\n\nContraintes :\n- 150 caractères maximum sauf nécessité\n- Pas de 'image de' ou 'photo de'\n- Aller à l'essentiel\n- Pas de supposition incertaine\n- La description doit être compréhensible sans voir l'image\n- Si l'image contient du texte important, le résumer\n\nCas :\n- Livre/BD : titre + auteurs/illustrateurs visibles + éventuellement genre\n- Film/DVD : titre + réalisateurs/acteurs visibles + éventuellement genre\n- Affiche événement : type, lieu, date si visibles\n- Photo : activité + public + contexte\n\nRéponds uniquement avec le texte alternatif."
               }
             ]
           }]
@@ -1309,7 +1432,8 @@ function renderFormat(f) {
     }
   }
   var ext = outFmt === 'image/png' ? 'png' : outFmt === 'image/jpeg' ? 'jpg' : 'webp';
-  return { url: cv.toDataURL(outFmt, outFmt === 'image/png' ? undefined : quality), name: f.name + '.' + ext, w: W, h: H };
+  var filename = buildFilename(f, ext);
+  return { url: cv.toDataURL(outFmt, outFmt === 'image/png' ? undefined : quality), name: filename, w: W, h: H };
 }
 
 function generate() {
@@ -1328,7 +1452,6 @@ function generate() {
     var nm = document.createElement('div'); nm.className = 'rcard-name'; nm.textContent = r.name;
     var dm = document.createElement('div'); dm.className = 'rcard-dim'; dm.textContent = r.w + ' × ' + r.h + ' px';
 
-
     var btn = document.createElement('button'); btn.className = 'dl-btn'; btn.textContent = 'Télécharger';
     (function(url, name) {
       btn.onclick = function() {
@@ -1339,7 +1462,6 @@ function generate() {
     })(r.url, r.name);
 
     body.append(nm, dm);
- 
     body.appendChild(btn);
     card.append(img, body);
     res.appendChild(card);
