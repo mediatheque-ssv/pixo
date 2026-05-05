@@ -965,21 +965,24 @@ input[type=range]::-webkit-slider-thumb {
   </button>
 
   <div class="results-header" id="results-header">
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-      <span class="section-label">Résultats</span>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <label for="custom-filename" style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; white-space:nowrap;">Nom du fichier</label>
-        <input
-          type="text"
-          id="custom-filename"
-          class="filename-input"
-          placeholder="nom-du-fichier"
-          oninput="updateFilenamePreview()"
-          style="width:220px;"
-        >
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+      <span class="section-label" style="line-height:30px;">Résultats</span>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label for="custom-filename" style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; white-space:nowrap;">Nom du fichier</label>
+          <input
+            type="text"
+            id="custom-filename"
+            class="filename-input"
+            placeholder="nom-du-fichier"
+            oninput="updateFilenamePreview()"
+            style="width:200px;"
+          >
+          <button id="rename-btn" onclick="applyRename()" style="height:30px; padding:0 14px; font-size:12px; font-family:'Syne',sans-serif; font-weight:600; border-radius:var(--radius-sm); cursor:pointer; border:0.5px solid var(--border-md); background:var(--surface-2); color:var(--text-2); transition:all .15s; white-space:nowrap;" onmouseover="this.style.borderColor='var(--border-hi)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='';this.style.color=''">Renommer</button>
+        </div>
+        <div class="filename-preview" id="filename-preview"></div>
       </div>
     </div>
-    <div class="filename-preview" id="filename-preview" style="margin-top:6px;"></div>
   </div>
   <div class="results" id="results"></div>
 
@@ -1060,7 +1063,7 @@ function updateFilenamePreview() {
   var outFmt = document.getElementById('out-format').value;
   if (outFmt === 'image/png') ext = 'png';
   else if (outFmt === 'image/jpeg') ext = 'jpg';
-  var example = formats.length > 0 ? buildFilename(formats[0], ext) : '';
+  var example = formats.length > 0 ? buildFilename(formats[formats.length - 1], ext) : '';
   preview.innerHTML = example
     ? 'Ex : <span>' + example + '</span>'
     : '';
@@ -1437,20 +1440,14 @@ function renderFormat(f) {
   return { url: cv.toDataURL(outFmt, outFmt === 'image/png' ? undefined : quality), name: filename, w: W, h: H };
 }
 
-function generate() {
-  if (!srcImg) { alert('Importez d\'abord une image.'); return; }
-  // Pre-fill filename from source if field is empty
-  var fnInput = document.getElementById('custom-filename');
-  if (!fnInput.value.trim() && srcFile) {
-    fnInput.value = srcFile.name.replace(/\.[^.]+$/, '');
-  }
-  updateFilenamePreview();
+var generatedResults = [];
+
+function renderResults(results) {
   var altText = document.getElementById('alt-text').value.trim();
   var res = document.getElementById('results');
   res.innerHTML = '';
-  document.getElementById('results-header').style.display = 'block';
-  for (var i = 0; i < formats.length; i++) {
-    var r = renderFormat(formats[i]);
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
     var card = document.createElement('div'); card.className = 'rcard';
     var img = document.createElement('img');
     img.src = r.url; img.className = 'rcard-thumb';
@@ -1458,21 +1455,54 @@ function generate() {
     var body = document.createElement('div'); body.className = 'rcard-body';
     var nm = document.createElement('div'); nm.className = 'rcard-name'; nm.textContent = r.name;
     var dm = document.createElement('div'); dm.className = 'rcard-dim'; dm.textContent = r.w + ' × ' + r.h + ' px';
-
     var btn = document.createElement('button'); btn.className = 'dl-btn'; btn.textContent = 'Télécharger';
-    (function(url, name) {
-      btn.onclick = function() {
-        var a = document.createElement('a'); a.href = url; a.download = name;
-        document.body.appendChild(a); a.click();
-        setTimeout(function() { document.body.removeChild(a); }, 100);
-      };
-    })(r.url, r.name);
-
-    body.append(nm, dm);
-    body.appendChild(btn);
+    btn.dataset.url = r.url;
+    btn.dataset.name = r.name;
+    btn.onclick = function() {
+      var a = document.createElement('a'); a.href = this.dataset.url; a.download = this.dataset.name;
+      document.body.appendChild(a); a.click();
+      setTimeout(function() { document.body.removeChild(a); }, 100);
+    };
+    body.append(nm, dm, btn);
     card.append(img, body);
     res.appendChild(card);
   }
+}
+
+function applyRename() {
+  if (!generatedResults.length) return;
+  var ext = generatedResults[0].name.split('.').pop();
+  for (var i = 0; i < generatedResults.length; i++) {
+    generatedResults[i].name = buildFilename(formats[i], ext);
+  }
+  updateFilenamePreview();
+  renderResults(generatedResults);
+  var btn = document.getElementById('rename-btn');
+  btn.textContent = '\u2713 Renomm\u00e9';
+  btn.style.background = 'var(--accent)';
+  btn.style.color = '#0c0c0b';
+  btn.style.borderColor = 'var(--accent)';
+  setTimeout(function() {
+    btn.textContent = 'Renommer';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }, 1500);
+}
+
+function generate() {
+  if (!srcImg) { alert('Importez d\'abord une image.'); return; }
+  var fnInput = document.getElementById('custom-filename');
+  if (!fnInput.value.trim() && srcFile) {
+    fnInput.value = srcFile.name.replace(/\.[^.]+$/, '');
+  }
+  updateFilenamePreview();
+  generatedResults = [];
+  for (var i = 0; i < formats.length; i++) {
+    generatedResults.push(renderFormat(formats[i]));
+  }
+  document.getElementById('results-header').style.display = 'block';
+  renderResults(generatedResults);
 }
 
 renderFormats();
