@@ -21,9 +21,9 @@
   --border: rgba(255,255,255,0.07);
   --border-md: rgba(255,255,255,0.13);
   --border-hi: rgba(255,255,255,0.22);
-  --text: #e8e6de;
-  --text-2: #8a887e;
-  --text-3: #555450;
+  --text: #eceae2;
+  --text-2: #a8a69c;
+  --text-3: #706e6a;
   --accent: #d4ff4e;
   --accent-dim: rgba(212,255,78,0.12);
   --accent-border: rgba(212,255,78,0.35);
@@ -604,6 +604,17 @@ input[type=range]::-webkit-slider-thumb {
   transform: translateY(-1px);
 }
 .gen-btn:active { transform: scale(0.99) translateY(0); }
+.gen-btn .gen-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(12,12,11,0.3);
+  border-top-color: #0c0c0b;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+  flex-shrink: 0;
+}
+.gen-btn.loading .gen-spinner { display: block; }
+.gen-btn.loading .gen-arrow { display: none; }
 
 .results-header {
   display: none;
@@ -982,10 +993,11 @@ input[type=range]::-webkit-slider-thumb {
     </div>
   </div>
 
-  <button class="gen-btn" onclick="generate()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+  <button class="gen-btn" id="gen-btn" onclick="generate()">
+    <svg class="gen-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
       <path d="M5 12h14M12 5l7 7-7 7"/>
     </svg>
+    <div class="gen-spinner"></div>
     Générer les déclinaisons
   </button>
 
@@ -1113,8 +1125,8 @@ function renderFormats() {
     html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
     html += '<option value="bands_transparent"' + (ofVal === 'bands_transparent' ? ' selected' : '') + '>Bandes transp.</option>';
     html += '</select></td>';
-    html += '<td><button class="icon-btn crop' + (hasCrop ? ' has-crop' : '') + '" onclick="openModal(' + i + ')" title="Recadrer">⊡</button></td>';
-    html += '<td><button class="icon-btn del" onclick="delFormat(' + i + ')" title="Supprimer">×</button></td>';
+    html += '<td><button class="icon-btn crop' + (hasCrop ? ' has-crop' : '') + '" onclick="openModal(' + i + ')" title="Recadrer" aria-label="Recadrer : ' + esc(f.name) + '">⊡</button></td>';
+    html += '<td><button class="icon-btn del" onclick="delFormat(' + i + ')" title="Supprimer" aria-label="Supprimer : ' + esc(f.name) + '">×</button></td>';
     html += '</tr>';
   }
   tb.innerHTML = html;
@@ -1556,12 +1568,26 @@ function generate() {
     fnInput.value = srcFile.name.replace(/\.[^.]+$/, '');
   }
   updateFilenamePreview();
-  generatedResults = [];
-  for (var i = 0; i < formats.length; i++) {
-    generatedResults.push(renderFormat(formats[i]));
-  }
-  document.getElementById('results-header').style.display = 'block';
-  renderResults(generatedResults);
+
+  var btn = document.getElementById('gen-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  setTimeout(function() {
+    generatedResults = [];
+    for (var i = 0; i < formats.length; i++) {
+      generatedResults.push(renderFormat(formats[i]));
+    }
+    document.getElementById('results-header').style.display = 'block';
+    renderResults(generatedResults);
+
+    btn.classList.remove('loading');
+    btn.disabled = false;
+
+    setTimeout(function() {
+      document.getElementById('results-header').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, 30);
 }
 
 renderFormats();
