@@ -779,6 +779,29 @@ input[type=range]::-webkit-slider-thumb {
   border-color: var(--accent);
 }
 .modal-actions .confirm:hover { background: #dcff6a; }
+
+/* ─── TOAST ─── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--surface-3);
+  border: 0.5px solid var(--border-md);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  opacity: 0;
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: var(--danger-border); color: var(--danger); }
+/* ─── END TOAST ─── */
 </style>
 </head>
 <body>
@@ -794,7 +817,9 @@ input[type=range]::-webkit-slider-thumb {
     </div>
   </div>
 
-  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()">
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()"
+       role="button" tabindex="0" aria-label="Importer une image — cliquez ou glissez un fichier ici"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('file-in').click()}">
     <div class="drop-icon">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
         <rect x="3" y="3" width="18" height="18" rx="3"/>
@@ -813,7 +838,7 @@ input[type=range]::-webkit-slider-thumb {
         <div class="preview-name" id="preview-name">—</div>
         <div class="preview-size" id="preview-size">—</div>
       </div>
-      <button class="change-btn" onclick="clearImage()">Changer</button>
+      <button class="change-btn" onclick="clearImage()" aria-label="Changer l'image importée">Changer</button>
     </div>
   </div>
 
@@ -987,7 +1012,7 @@ input[type=range]::-webkit-slider-thumb {
   <div class="results" id="results"></div>
 
   <!-- Modal recadrage -->
-  <div class="modal-overlay" id="modal-overlay">
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal">
       <div class="modal-title" id="modal-title">Zone de recadrage</div>
       <div class="modal-sub" id="modal-sub"></div>
@@ -1008,7 +1033,7 @@ input[type=range]::-webkit-slider-thumb {
         <span class="crop-dims" id="crop-dims"></span>
         <div class="modal-actions">
           <button class="reset" onclick="resetCrop()">Réinitialiser</button>
-          <button onclick="document.getElementById('modal-overlay').style.display='none'">Annuler</button>
+          <button onclick="closeModal()">Annuler</button>
           <button class="confirm" onclick="confirmCrop()">Appliquer</button>
         </div>
       </div>
@@ -1016,6 +1041,8 @@ input[type=range]::-webkit-slider-thumb {
   </div>
 
 </div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
 var srcImg = null, srcFile = null, srcDataUrl = null;
@@ -1263,8 +1290,18 @@ function toggleText() {
   document.getElementById('txt-panel').style.display = txtEnabled ? 'block' : 'none';
 }
 
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function() { t.className = 'toast'; }, 2500);
+}
+
+var _modalTrigger = null;
+
 function openModal(i) {
-  if (!srcImg) { alert('Importez d\'abord une image.'); return; }
+  if (!srcImg) { showToast('Importez d\'abord une image.', 'error'); return; }
   modalIdx = i;
   var f = formats[i];
   var isBands = f.overflow === 'bands';
@@ -1288,6 +1325,11 @@ function openModal(i) {
   else { resetCropBox(); }
   updateCropBox();
   document.getElementById('modal-overlay').style.display = 'flex';
+  _modalTrigger = document.activeElement;
+  setTimeout(function() {
+    var firstBtn = document.querySelector('#modal-overlay button');
+    if (firstBtn) firstBtn.focus();
+  }, 50);
 }
 
 function resetCropBox() {
@@ -1314,8 +1356,13 @@ function updateCropBox() {
 
 function confirmCrop() {
   formats[modalIdx].crop = { x: cBox.x / canvasW, y: cBox.y / canvasH, w: cBox.w / canvasW, h: cBox.h / canvasH };
-  document.getElementById('modal-overlay').style.display = 'none';
+  closeModal();
   renderFormats();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').style.display = 'none';
+  if (_modalTrigger) { _modalTrigger.focus(); _modalTrigger = null; }
 }
 
 function clampBox(b) {
@@ -1372,8 +1419,20 @@ document.addEventListener('mouseup', onUp);
 document.addEventListener('touchmove', onMove, { passive: false });
 document.addEventListener('touchend', onUp);
 
+document.addEventListener('keydown', function(e) {
+  var overlay = document.getElementById('modal-overlay');
+  if (overlay.style.display !== 'flex') return;
+  if (e.key === 'Escape') { closeModal(); return; }
+  if (e.key === 'Tab') {
+    var focusable = overlay.querySelectorAll('button:not([disabled])');
+    var first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+    else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+  }
+});
+
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
-  if (e.target === this) this.style.display = 'none';
+  if (e.target === this) closeModal();
 });
 
 function hexToRgba(hex, a) {
@@ -1491,7 +1550,7 @@ function applyRename() {
 }
 
 function generate() {
-  if (!srcImg) { alert('Importez d\'abord une image.'); return; }
+  if (!srcImg) { showToast('Importez d\'abord une image.', 'error'); return; }
   var fnInput = document.getElementById('custom-filename');
   if (!fnInput.value.trim() && srcFile) {
     fnInput.value = srcFile.name.replace(/\.[^.]+$/, '');
