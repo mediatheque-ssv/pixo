@@ -799,7 +799,6 @@ input[type=range]::-webkit-slider-thumb {
 }
 .dl-action-btn {
   flex: 1;
-  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -814,6 +813,7 @@ input[type=range]::-webkit-slider-thumb {
   background: var(--accent-dim);
   color: var(--accent);
   border: 0.5px solid var(--accent-border);
+  padding: 6px 0;
 }
 .dl-action-btn:hover {
   background: rgba(212,255,78,0.18);
@@ -834,9 +834,6 @@ input[type=range]::-webkit-slider-thumb {
 @media (max-width: 540px) {
   .dl-actions {
     flex-direction: column;
-  }
-  .dl-action-btn {
-    height: 36px;
   }
 }
 /* ─── END DOWNLOAD ACTIONS ─── */
