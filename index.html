@@ -1475,7 +1475,9 @@ function clearImage() {
   document.getElementById('custom-filename').value = '';
   document.getElementById('filename-preview').innerHTML = '';
   document.getElementById('results-header').style.display = 'none';
+  document.getElementById('dl-actions').style.display = 'none';
   document.getElementById('results').innerHTML = '';
+  generatedResults = [];
   updateAltHint();
 }
 
