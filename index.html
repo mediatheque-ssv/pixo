@@ -1461,6 +1461,7 @@ function loadFile(file) {
           f.bands = 'transparent';
         }
       });
+      renderFormats();
       var pt = document.getElementById('preview-thumb');
       pt.src = ev.target.result; pt.style.display = 'block';
       document.getElementById('preview-name').textContent = file.name;
@@ -1688,6 +1689,14 @@ function clampBox(b) {
   if (b.y + b.h > canvasH) { b.h = canvasH - b.y; if (modalRatio) b.w = b.h * modalRatio; }
   if (b.x + b.w > canvasW) b.x = canvasW - b.w;
   if (b.y + b.h > canvasH) b.y = canvasH - b.h;
+  // Re-enforce minimum after border clamping
+  if (modalRatio) {
+    if (b.w < mn.w) { b.w = mn.w; b.h = b.w / modalRatio; }
+    if (b.h < mn.h) { b.h = mn.h; b.w = b.h * modalRatio; }
+  } else {
+    if (b.w < mn.w) b.w = mn.w;
+    if (b.h < mn.h) b.h = mn.h;
+  }
   return b;
 }
 
