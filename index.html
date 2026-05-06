@@ -544,6 +544,26 @@ input[type=range]::-webkit-slider-thumb {
   border-radius: var(--radius-lg);
   padding: 1.25rem;
 }
+.txt-formats-dropdown {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--border-md);
+  border-radius: var(--radius); cursor: pointer; user-select: none;
+  transition: border-color .15s;
+}
+.txt-formats-dropdown:hover { border-color: var(--border-hi); }
+.txt-formats-label { font-size: 13px; color: var(--text); flex: 1; }
+.txt-formats-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 100;
+  background: var(--surface-2); border: 1px solid var(--border-md);
+  border-radius: var(--radius); padding: 6px 0; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.txt-formats-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.txt-formats-item {
+  display: flex; align-items: center; gap: 10px; padding: 7px 14px;
+  cursor: pointer; font-size: 13px; color: var(--text-2); transition: background .1s, color .1s;
+}
+.txt-formats-item:hover { background: var(--surface-3); color: var(--text); }
+.txt-formats-item input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
 .txt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field label {
   font-family: 'JetBrains Mono', monospace;
@@ -650,6 +670,7 @@ input[type=range]::-webkit-slider-thumb {
 .rcard-dim {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px; color: var(--text-3); margin-top: 3px;
+  display: flex; justify-content: space-between; align-items: center;
 }
 .rcard-alt {
   font-size: 11px;
@@ -1162,6 +1183,21 @@ input[type=range]::-webkit-slider-thumb {
   <div class="txt-panel" id="txt-panel" style="display:none">
     <div class="txt-grid">
       <div class="field full">
+        <label>Appliquer à</label>
+        <div class="txt-formats-dropdown" id="txt-formats-dropdown" onclick="toggleTxtDropdown(event)">
+          <span class="txt-formats-label" id="txt-formats-label">Tous les formats</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;transition:transform .2s" id="txt-formats-chevron"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div class="txt-formats-menu" id="txt-formats-menu" style="display:none" onclick="event.stopPropagation()">
+            <label class="txt-formats-item" id="txt-formats-all">
+              <input type="checkbox" checked onchange="onTxtAllChange(this)">
+              <span>Tous les formats</span>
+            </label>
+            <div class="txt-formats-sep"></div>
+            <div id="txt-formats-list"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field full">
         <label>Contenu</label>
         <textarea id="txt-content" placeholder="Votre texte ici…"></textarea>
       </div>
@@ -1295,10 +1331,10 @@ input[type=range]::-webkit-slider-thumb {
 <script>
 var srcImg = null, srcFile = null, srcDataUrl = null;
 var formats = [
-  { name: 'Article portail (intro)', w: 300, h: 300, overflow: 'crop', bands: 'black', crop: null },
-  { name: 'Event portail (intro+miniature)', w: 500, h: 300, overflow: 'crop', bands: 'black', crop: null },
-  { name: 'Diaporama Portail', w: 1200, h: 800, overflow: 'crop', bands: 'black', crop: null },
-  { name: 'Newsletter', w: 800, h: 800, overflow: 'crop', bands: 'black', crop: null },
+  { name: 'Article portail (intro)', w: 300, h: 300, overflow: 'crop', bands: 'black', crop: null, text: true },
+  { name: 'Event portail (intro+miniature)', w: 500, h: 300, overflow: 'crop', bands: 'black', crop: null, text: true },
+  { name: 'Diaporama Portail', w: 1200, h: 800, overflow: 'crop', bands: 'black', crop: null, text: true },
+  { name: 'Newsletter', w: 800, h: 800, overflow: 'crop', bands: 'black', crop: null, text: true },
 ];
 var modalIdx = null, cBox = { x: 0, y: 0, w: 100, h: 100 }, drag = null;
 var canvasW = 0, canvasH = 0, modalRatio = null;
@@ -1415,16 +1451,17 @@ function renderFormats() {
   });
 }
 
-function delFormat(i) { formats.splice(i, 1); renderFormats(); updateFilenamePreview(); }
+function delFormat(i) { formats.splice(i, 1); renderFormats(); updateFilenamePreview(); if (txtEnabled) renderTxtFormatsList(); }
 function setOverflow(i, v) {
   if (v === 'crop') { formats[i].overflow = 'crop'; }
   else { formats[i].overflow = 'bands'; formats[i].bands = v.split('_')[1]; }
   renderFormats();
 }
 function addFormat() {
-  formats.push({ name: 'Nouveau format', w: 800, h: 600, overflow: 'crop', bands: 'black', crop: null });
+  formats.push({ name: 'Nouveau format', w: 800, h: 600, overflow: 'crop', bands: 'black', crop: null, text: true });
   renderFormats();
   updateFilenamePreview();
+  if (txtEnabled) renderTxtFormatsList();
 }
 
 function clearImage() {
@@ -1586,10 +1623,58 @@ function updateQuality() {
   document.getElementById('quality-wrap').style.display = (f === 'image/png') ? 'none' : 'flex';
 }
 
+function toggleTxtDropdown(e) {
+  var menu = document.getElementById('txt-formats-menu');
+  var chevron = document.getElementById('txt-formats-chevron');
+  var open = menu.style.display !== 'none';
+  menu.style.display = open ? 'none' : 'block';
+  chevron.style.transform = open ? '' : 'rotate(180deg)';
+  if (!open) {
+    setTimeout(function() {
+      document.addEventListener('click', closeTxtDropdown, { once: true });
+    }, 0);
+  }
+}
+function closeTxtDropdown() {
+  document.getElementById('txt-formats-menu').style.display = 'none';
+  document.getElementById('txt-formats-chevron').style.transform = '';
+}
+function onTxtAllChange(cb) {
+  formats.forEach(function(f) { f.text = cb.checked; });
+  renderTxtFormatsList();
+  updateTxtLabel();
+}
+function onTxtFormatChange(idx, cb) {
+  formats[idx].text = cb.checked;
+  var allCb = document.querySelector('#txt-formats-all input');
+  allCb.checked = formats.every(function(f) { return f.text; });
+  updateTxtLabel();
+}
+function updateTxtLabel() {
+  var count = formats.filter(function(f) { return f.text; }).length;
+  var label = document.getElementById('txt-formats-label');
+  if (count === 0) label.textContent = 'Aucun format';
+  else if (count === formats.length) label.textContent = 'Tous les formats';
+  else label.textContent = count + ' format' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
+}
+function renderTxtFormatsList() {
+  var list = document.getElementById('txt-formats-list');
+  list.innerHTML = '';
+  formats.forEach(function(f, i) {
+    var label = document.createElement('label');
+    label.className = 'txt-formats-item';
+    label.innerHTML = '<input type="checkbox"' + (f.text ? ' checked' : '') + ' onchange="onTxtFormatChange(' + i + ',this)"><span>' + esc(f.name) + ' <span style="color:var(--text-3);font-size:11px">(' + f.w + '×' + f.h + ')</span></span>';
+    list.appendChild(label);
+  });
+  var allCb = document.querySelector('#txt-formats-all input');
+  if (allCb) allCb.checked = formats.every(function(f) { return f.text; });
+  updateTxtLabel();
+}
 function toggleText(checked) {
   txtEnabled = checked;
   document.getElementById('txt-track').className = 'toggle-track' + (txtEnabled ? ' on' : '');
   document.getElementById('txt-panel').style.display = txtEnabled ? 'block' : 'none';
+  if (txtEnabled) renderTxtFormatsList();
 }
 
 function showToast(msg, type) {
@@ -1821,7 +1906,7 @@ function renderFormat(f) {
   var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   var ctx = cv.getContext('2d');
   var bandH = 0;
-  if (txtEnabled && txtC && txtPos === 'below') {
+  if (txtEnabled && f.text && txtC && txtPos === 'below') {
     var base = Math.min(W, H);
     var sz2 = txtSize === 'small' ? base * 0.04 : txtSize === 'large' ? base * 0.07 : base * 0.055;
     bandH = Math.round(sz2 * 1.8 + 12);
@@ -1841,7 +1926,7 @@ function renderFormat(f) {
     var scale = Math.min(W / sw, imgH / sh, 1), dw = sw * scale, dh = sh * scale;
     ctx.drawImage(srcImg, sx, sy, sw, sh, (W - dw) / 2, (imgH - dh) / 2, dw, dh);
   }
-  if (txtEnabled && txtC) {
+  if (txtEnabled && f.text && txtC) {
     var base3 = Math.min(W, H);
     var fontSize = txtSize === 'small' ? base3 * 0.04 : txtSize === 'large' ? base3 * 0.07 : base3 * 0.055;
     ctx.font = '600 ' + fontSize + 'px Syne, sans-serif';
@@ -1938,7 +2023,11 @@ function renderResults(results) {
     img.alt = altText || r.name;
     var body = document.createElement('div'); body.className = 'rcard-body';
     var nm = document.createElement('div'); nm.className = 'rcard-name'; nm.textContent = r.name;
-    var dm = document.createElement('div'); dm.className = 'rcard-dim'; dm.textContent = r.w + ' × ' + r.h + ' px';
+    var dm = document.createElement('div'); dm.className = 'rcard-dim';
+    var b64 = r.url.split(',')[1] || '';
+    var bytes = Math.round(b64.length * 0.75);
+    var sizeStr = bytes < 1024 * 1024 ? Math.round(bytes / 1024) + ' Ko' : (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
+    dm.innerHTML = '<span>' + r.w + ' × ' + r.h + ' px</span><span>' + sizeStr + '</span>';
     var btn = document.createElement('button'); btn.className = 'dl-btn'; btn.textContent = 'Télécharger';
     btn.dataset.url = r.url;
     btn.dataset.name = r.name;
