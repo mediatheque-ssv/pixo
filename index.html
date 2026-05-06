@@ -514,6 +514,7 @@ input[type=range]::-webkit-slider-thumb {
   display: flex; align-items: center;
   gap: 10px; margin-top: 2rem; cursor: pointer;
   width: fit-content;
+  user-select: none;
 }
 .toggle-track {
   width: 36px; height: 20px;
@@ -1151,10 +1152,12 @@ input[type=range]::-webkit-slider-thumb {
     </div>
   </div>
 
-  <div class="text-toggle" onclick="toggleText()">
+  <label class="text-toggle" for="txt-toggle-cb">
+    <input type="checkbox" id="txt-toggle-cb" onchange="toggleText(this.checked)"
+      style="position:absolute;opacity:0;width:0;height:0;pointer-events:none">
     <div class="toggle-track" id="txt-track"><div class="toggle-thumb"></div></div>
     <span class="toggle-label">Ajouter du texte à l'image</span>
-  </div>
+  </label>
 
   <div class="txt-panel" id="txt-panel" style="display:none">
     <div class="txt-grid">
@@ -1574,8 +1577,8 @@ function updateQuality() {
   document.getElementById('quality-wrap').style.display = (f === 'image/png') ? 'none' : 'flex';
 }
 
-function toggleText() {
-  txtEnabled = !txtEnabled;
+function toggleText(checked) {
+  txtEnabled = checked;
   document.getElementById('txt-track').className = 'toggle-track' + (txtEnabled ? ' on' : '');
   document.getElementById('txt-panel').style.display = txtEnabled ? 'block' : 'none';
 }
@@ -1767,7 +1770,7 @@ function renderFormat(f) {
   if (txtEnabled && txtC) {
     var base3 = Math.min(W, H);
     var fontSize = txtSize === 'small' ? base3 * 0.04 : txtSize === 'large' ? base3 * 0.07 : base3 * 0.055;
-    ctx.font = fontSize + 'px sans-serif';
+    ctx.font = '600 ' + fontSize + 'px Syne, sans-serif';
     var pad = fontSize * 0.4, lh = fontSize * 1.4;
     var words = txtC.split(' '), lines = [], line = '', mw = W - pad * 2;
     for (var wi = 0; wi < words.length; wi++) {
@@ -1909,22 +1912,27 @@ function generate() {
   btn.classList.add('loading');
   btn.disabled = true;
 
-  setTimeout(function() {
-    generatedResults = [];
-    for (var i = 0; i < formats.length; i++) {
-      generatedResults.push(renderFormat(formats[i]));
+  generatedResults = [];
+  var i = 0;
+
+  function processNext() {
+    if (i >= formats.length) {
+      document.getElementById('results-header').style.display = 'block';
+      document.getElementById('dl-actions').style.display = 'flex';
+      renderResults(generatedResults);
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      setTimeout(function() {
+        document.getElementById('results-header').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+      return;
     }
-    document.getElementById('results-header').style.display = 'block';
-    document.getElementById('dl-actions').style.display = 'flex';
-    renderResults(generatedResults);
+    generatedResults.push(renderFormat(formats[i]));
+    i++;
+    requestAnimationFrame(processNext);
+  }
 
-    btn.classList.remove('loading');
-    btn.disabled = false;
-
-    setTimeout(function() {
-      document.getElementById('results-header').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
-  }, 30);
+  requestAnimationFrame(processNext);
 }
 
 renderFormats();
