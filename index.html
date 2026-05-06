@@ -1729,13 +1729,50 @@ function onMove(e) {
   if (!drag) return; e.preventDefault();
   var p = getPos(e), dx = p.x - drag.sx, dy = p.y - drag.sy, o = drag.ob;
   var b = { x: o.x, y: o.y, w: o.w, h: o.h }, H = drag.h, R = modalRatio;
+  var mn = getMinCropSize();
+
+  function applyW(raw) {
+    var w = Math.max(mn.w, raw); var h = R ? w / R : Math.max(mn.h, b.h); return { w: w, h: h };
+  }
+  function applyH(raw) {
+    var h = Math.max(mn.h, raw); var w = R ? h * R : Math.max(mn.w, b.w); return { w: w, h: h };
+  }
+
   if (H === 'move') { b.x = o.x + dx; b.y = o.y + dy; }
-  else if (H === 'br' || H === 'mr') { b.w = Math.max(20, o.w + dx); if (R) b.h = b.w / R; }
-  else if (H === 'tr') { b.w = Math.max(20, o.w + dx); if (R) { b.h = b.w / R; b.y = o.y + o.h - b.h; } else { b.h = Math.max(20, o.h - dy); b.y = o.y + o.h - b.h; } }
-  else if (H === 'bl' || H === 'ml') { b.w = Math.max(20, o.w - dx); b.x = o.x + o.w - b.w; if (R) b.h = b.w / R; }
-  else if (H === 'tl') { b.w = Math.max(20, o.w - dx); b.x = o.x + o.w - b.w; if (R) { b.h = b.w / R; b.y = o.y + o.h - b.h; } else { b.h = Math.max(20, o.h - dy); b.y = o.y + o.h - b.h; } }
-  else if (H === 'bc') { if (R) { b.h = Math.max(20, o.h + dy); b.w = b.h * R; b.x = o.x + (o.w - b.w) / 2; } else b.h = Math.max(20, o.h + dy); }
-  else if (H === 'tc') { if (R) { b.h = Math.max(20, o.h - dy); b.w = b.h * R; b.x = o.x + (o.w - b.w) / 2; b.y = o.y + o.h - b.h; } else { b.h = Math.max(20, o.h - dy); b.y = o.y + o.h - b.h; } }
+  else if (H === 'br') { var s = applyW(o.w + dx); b.w = s.w; b.h = s.h; }
+  else if (H === 'mr') { var s = applyW(o.w + dx); b.w = s.w; if (R) b.h = s.h; }
+  else if (H === 'tr') {
+    var s = R ? applyW(o.w + dx) : { w: Math.max(mn.w, o.w + dx), h: Math.max(mn.h, o.h - dy) };
+    b.w = s.w; b.h = s.h;
+    b.y = o.y + o.h - b.h; // anchor bottom
+  }
+  else if (H === 'bl') {
+    var s = applyW(o.w - dx);
+    b.w = s.w; b.h = s.h;
+    b.x = o.x + o.w - b.w; // anchor right
+  }
+  else if (H === 'ml') {
+    var s = applyW(o.w - dx);
+    b.w = s.w; if (R) b.h = s.h;
+    b.x = o.x + o.w - b.w; // anchor right
+  }
+  else if (H === 'tl') {
+    var s = R ? applyW(o.w - dx) : { w: Math.max(mn.w, o.w - dx), h: Math.max(mn.h, o.h - dy) };
+    b.w = s.w; b.h = s.h;
+    b.x = o.x + o.w - b.w; // anchor right
+    b.y = o.y + o.h - b.h; // anchor bottom
+  }
+  else if (H === 'bc') {
+    var s = applyH(o.h + dy);
+    b.h = s.h; b.w = s.w;
+    if (R) b.x = o.x + (o.w - b.w) / 2;
+  }
+  else if (H === 'tc') {
+    var s = applyH(o.h - dy);
+    b.h = s.h; b.w = s.w;
+    if (R) b.x = o.x + (o.w - b.w) / 2;
+    b.y = o.y + o.h - b.h; // anchor bottom
+  }
   cBox = clampBox(b); updateCropBox();
 }
 function onUp() { drag = null; }
