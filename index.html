@@ -1454,7 +1454,13 @@ function loadFile(file) {
     var img = new Image();
     img.onload = function() {
       srcImg = img;
-      formats.forEach(function(f) { f.crop = null; });
+      formats.forEach(function(f) {
+        f.crop = null;
+        if (f.overflow === 'crop' && (img.width < f.w || img.height < f.h)) {
+          f.overflow = 'bands';
+          f.bands = 'transparent';
+        }
+      });
       var pt = document.getElementById('preview-thumb');
       pt.src = ev.target.result; pt.style.display = 'block';
       document.getElementById('preview-name').textContent = file.name;
