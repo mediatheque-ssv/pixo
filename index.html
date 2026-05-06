@@ -1739,7 +1739,7 @@ function onMove(e) {
   }
 
   if (H === 'move') { b.x = o.x + dx; b.y = o.y + dy; }
-  else if (H === 'br') { var s = applyW(o.w + dx); b.w = s.w; b.h = s.h; }
+  else if (H === 'br') { var s = applyW(o.w + dx); b.w = s.w; b.h = R ? s.h : Math.max(mn.h, o.h + dy); }
   else if (H === 'mr') { var s = applyW(o.w + dx); b.w = s.w; if (R) b.h = s.h; }
   else if (H === 'tr') {
     var s = R ? applyW(o.w + dx) : { w: Math.max(mn.w, o.w + dx), h: Math.max(mn.h, o.h - dy) };
@@ -1748,7 +1748,7 @@ function onMove(e) {
   }
   else if (H === 'bl') {
     var s = applyW(o.w - dx);
-    b.w = s.w; b.h = s.h;
+    b.w = s.w; b.h = R ? s.h : Math.max(mn.h, o.h + dy);
     b.x = o.x + o.w - b.w; // anchor right
   }
   else if (H === 'ml') {
