@@ -1115,7 +1115,7 @@ input[type=range]::-webkit-slider-thumb {
     <div class="alt-body">
       <div class="alt-textarea-wrap">
         <textarea class="alt-textarea" id="alt-text" placeholder="Le texte alternatif décrit l'image pour les lecteurs d'écran et les moteurs de recherche…" rows="3"></textarea>
-        <button class="alt-copy-btn" id="alt-copy-btn" onclick="copyAlt()" title="Copier">
+        <button class="alt-copy-btn" id="alt-copy-btn" onclick="copyAlt()" title="Copier le texte alternatif" aria-label="Copier le texte alternatif">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2"/>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1157,7 +1157,7 @@ input[type=range]::-webkit-slider-thumb {
 
   <div class="export-bar">
     <div class="export-group">
-      <label>Format</label>
+      <label for="out-format">Format</label>
       <select id="out-format" onchange="updateQuality()">
         <option value="image/webp">WebP</option>
         <option value="image/png">PNG</option>
@@ -1165,11 +1165,12 @@ input[type=range]::-webkit-slider-thumb {
       </select>
     </div>
     <div class="quality-wrap" id="quality-wrap" style="display:none">
-      <div class="export-group"><label>Qualité</label></div>
+      <div class="export-group"><label for="quality">Qualité</label></div>
       <input type="range" id="quality" min="10" max="100" step="5" value="85"
         style="width:100px"
-        oninput="document.getElementById('q-val').textContent=this.value+'%'">
-      <span class="quality-val" id="q-val">85%</span>
+        aria-valuetext="85%"
+        oninput="this.setAttribute('aria-valuetext',this.value+'%');document.getElementById('q-val').textContent=this.value+'%'">
+      <span class="quality-val" id="q-val" aria-live="polite">85%</span>
     </div>
   </div>
 
@@ -1409,8 +1410,8 @@ function renderFormats() {
       html += '<div class="frow-mobile-details">';
       html += '<div class="frow-detail-field"><label>Nom</label><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview();renderFormats()"></div>';
       html += '<div class="frow-detail-row">';
-      html += '<div class="frow-detail-field"><label>Largeur</label><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></div>';
-      html += '<div class="frow-detail-field"><label>Hauteur</label><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></div>';
+      html += '<div class="frow-detail-field"><label>Largeur</label><input type="number" value="' + f.w + '" min="1" aria-label="Largeur en pixels" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></div>';
+      html += '<div class="frow-detail-field"><label>Hauteur</label><input type="number" value="' + f.h + '" min="1" aria-label="Hauteur en pixels" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></div>';
       html += '</div>';
       html += '<div class="frow-detail-field"><label>Débordement</label><select onchange="setOverflow(' + i + ',this.value)">';
       html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + cropDisabled + '>Ajuster</option>';
@@ -1427,10 +1428,10 @@ function renderFormats() {
       html += '</tr>';
     } else {
       html += '<tr class="frow">';
-      html += '<td><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview()"></td>';
-      html += '<td><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></td>';
-      html += '<td><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></td>';
-      html += '<td><select onchange="setOverflow(' + i + ',this.value)">';
+      html += '<td><input type="text" value="' + esc(f.name) + '" aria-label="Nom du format" onchange="formats[' + i + '].name=this.value;updateFilenamePreview()"></td>';
+      html += '<td><input type="number" value="' + f.w + '" min="1" aria-label="Largeur en pixels" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></td>';
+      html += '<td><input type="number" value="' + f.h + '" min="1" aria-label="Hauteur en pixels" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></td>';
+      html += '<td><select aria-label="Gestion du débordement" onchange="setOverflow(' + i + ',this.value)">';
       html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + cropDisabled + '>Ajuster</option>';
       html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
       html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
@@ -1485,13 +1486,35 @@ dz.addEventListener('drop', function(e) { e.preventDefault(); dz.classList.remov
 document.getElementById('file-in').onchange = function(e) { loadFile(e.target.files[0]); };
 
 function loadFile(file) {
-  if (!file || !file.type.startsWith('image/')) return;
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('Format non supporté. Utilisez JPG, PNG, WEBP ou GIF.', 'error');
+    return;
+  }
+  var MAX_SIZE_MB = 50;
+  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+    showToast('Image trop lourde (max ' + MAX_SIZE_MB + ' Mo).', 'error');
+    return;
+  }
   srcFile = file;
   var reader = new FileReader();
+  reader.onerror = function() {
+    showToast('Impossible de lire le fichier.', 'error');
+    srcFile = null;
+  };
   reader.onload = function(ev) {
     srcDataUrl = ev.target.result;
     var img = new Image();
+    img.onerror = function() {
+      srcDataUrl = null; srcFile = null;
+      showToast('Image corrompue ou format non décodable.', 'error');
+    };
     img.onload = function() {
+      if (img.width === 0 || img.height === 0) {
+        srcDataUrl = null; srcFile = null;
+        showToast('Image invalide (dimensions nulles).', 'error');
+        return;
+      }
       srcImg = img;
       formats.forEach(function(f) {
         f.crop = null;
@@ -1681,6 +1704,7 @@ function showToast(msg, type) {
   var t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show' + (type ? ' ' + type : '');
+  t.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
   clearTimeout(t._timer);
   t._timer = setTimeout(function() { t.className = 'toast'; }, 2500);
 }
@@ -1903,8 +1927,10 @@ function renderFormat(f) {
   var txtBg = document.getElementById('txt-bg').value;
   var txtOpa = parseInt(document.getElementById('txt-opacity').value) / 100;
   var W = f.w, H = f.h;
+  if (!W || !H || W <= 0 || H <= 0) throw new Error('Dimensions invalides pour "' + f.name + '".');
   var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   var ctx = cv.getContext('2d');
+  if (!ctx) throw new Error('Impossible d\'initialiser le canvas pour "' + f.name + '".');
   var bandH = 0;
   if (txtEnabled && f.text && txtC && txtPos === 'below') {
     var base = Math.min(W, H);
@@ -2090,7 +2116,11 @@ function generate() {
       }, 50);
       return;
     }
-    generatedResults.push(renderFormat(formats[i]));
+    try {
+      generatedResults.push(renderFormat(formats[i]));
+    } catch (e) {
+      showToast('Erreur sur "' + formats[i].name + '" : ' + (e.message || 'inconnue.'), 'error');
+    }
     i++;
     requestAnimationFrame(processNext);
   }
