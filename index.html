@@ -1697,6 +1697,11 @@ function clampBox(b) {
     if (b.w < mn.w) b.w = mn.w;
     if (b.h < mn.h) b.h = mn.h;
   }
+  // Re-clamp position so the box never exits the canvas after size re-enforce
+  if (b.x < 0) b.x = 0;
+  if (b.y < 0) b.y = 0;
+  if (b.x + b.w > canvasW) b.x = canvasW - b.w;
+  if (b.y + b.h > canvasH) b.y = canvasH - b.h;
   return b;
 }
 
