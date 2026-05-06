@@ -1736,39 +1736,47 @@ function onMove(e) {
   }
 
   if (H === 'move') { b.x = o.x + dx; b.y = o.y + dy; }
-  else if (H === 'br') { var s = applyW(o.w + dx); b.w = s.w; b.h = R ? s.h : Math.max(mn.h, o.h + dy); }
-  else if (H === 'mr') { var s = applyW(o.w + dx); b.w = s.w; if (R) b.h = s.h; }
-  else if (H === 'tr') {
-    var s = R ? applyW(o.w + dx) : { w: Math.max(mn.w, o.w + dx), h: Math.max(mn.h, o.h - dy) };
-    b.w = s.w; b.h = s.h;
-    b.y = o.y + o.h - b.h; // anchor bottom
-  }
-  else if (H === 'bl') {
-    var s = applyW(o.w - dx);
-    b.w = s.w; b.h = R ? s.h : Math.max(mn.h, o.h + dy);
-    b.x = o.x + o.w - b.w; // anchor right
-  }
-  else if (H === 'ml') {
-    var s = applyW(o.w - dx);
-    b.w = s.w; if (R) b.h = s.h;
-    b.x = o.x + o.w - b.w; // anchor right
-  }
-  else if (H === 'tl') {
-    var s = R ? applyW(o.w - dx) : { w: Math.max(mn.w, o.w - dx), h: Math.max(mn.h, o.h - dy) };
-    b.w = s.w; b.h = s.h;
-    b.x = o.x + o.w - b.w; // anchor right
-    b.y = o.y + o.h - b.h; // anchor bottom
-  }
-  else if (H === 'bc') {
-    var s = applyH(o.h + dy);
-    b.h = s.h; b.w = s.w;
-    if (R) b.x = o.x + (o.w - b.w) / 2;
-  }
-  else if (H === 'tc') {
-    var s = applyH(o.h - dy);
-    b.h = s.h; b.w = s.w;
-    if (R) b.x = o.x + (o.w - b.w) / 2;
-    b.y = o.y + o.h - b.h; // anchor bottom
+  else {
+    // Clamp dx/dy so the box can never grow beyond the canvas edge
+    if (H === 'br' || H === 'mr' || H === 'tr') dx = Math.min(dx, canvasW - (o.x + o.w));
+    if (H === 'bl' || H === 'ml' || H === 'tl') dx = Math.max(dx, -o.x);
+    if (H === 'br' || H === 'bl' || H === 'bc') dy = Math.min(dy, canvasH - (o.y + o.h));
+    if (H === 'tr' || H === 'tl' || H === 'tc') dy = Math.max(dy, -o.y);
+
+    if (H === 'br') { var s = applyW(o.w + dx); b.w = s.w; b.h = R ? s.h : Math.max(mn.h, o.h + dy); }
+    else if (H === 'mr') { var s = applyW(o.w + dx); b.w = s.w; if (R) b.h = s.h; }
+    else if (H === 'tr') {
+      var s = R ? applyW(o.w + dx) : { w: Math.max(mn.w, o.w + dx), h: Math.max(mn.h, o.h - dy) };
+      b.w = s.w; b.h = s.h;
+      b.y = o.y + o.h - b.h;
+    }
+    else if (H === 'bl') {
+      var s = applyW(o.w - dx);
+      b.w = s.w; b.h = R ? s.h : Math.max(mn.h, o.h + dy);
+      b.x = o.x + o.w - b.w;
+    }
+    else if (H === 'ml') {
+      var s = applyW(o.w - dx);
+      b.w = s.w; if (R) b.h = s.h;
+      b.x = o.x + o.w - b.w;
+    }
+    else if (H === 'tl') {
+      var s = R ? applyW(o.w - dx) : { w: Math.max(mn.w, o.w - dx), h: Math.max(mn.h, o.h - dy) };
+      b.w = s.w; b.h = s.h;
+      b.x = o.x + o.w - b.w;
+      b.y = o.y + o.h - b.h;
+    }
+    else if (H === 'bc') {
+      var s = applyH(o.h + dy);
+      b.h = s.h; b.w = s.w;
+      if (R) b.x = o.x + (o.w - b.w) / 2;
+    }
+    else if (H === 'tc') {
+      var s = applyH(o.h - dy);
+      b.h = s.h; b.w = s.w;
+      if (R) b.x = o.x + (o.w - b.w) / 2;
+      b.y = o.y + o.h - b.h;
+    }
   }
   cBox = clampBox(b, H === 'move'); updateCropBox();
 }
