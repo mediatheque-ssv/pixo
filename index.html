@@ -1707,7 +1707,9 @@ function getPos(e) {
   var rect = wrap.getBoundingClientRect();
   var sx = canvasW / rect.width, sy = canvasH / rect.height;
   var src = e.touches ? e.touches[0] : e;
-  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
+  var x = Math.max(0, Math.min(canvasW, (src.clientX - rect.left) * sx));
+  var y = Math.max(0, Math.min(canvasH, (src.clientY - rect.top) * sy));
+  return { x: x, y: y };
 }
 
 function onDown(e, h) { e.preventDefault(); var p = getPos(e); drag = { h: h, sx: p.x, sy: p.y, ob: { x: cBox.x, y: cBox.y, w: cBox.w, h: cBox.h } }; }
