@@ -1677,33 +1677,33 @@ function getMinCropSize() {
   return { w: 20, h: 20 };
 }
 
-function clampBox(b) {
+function clampBox(b, isMove) {
   var mn = getMinCropSize();
-  if (modalRatio) {
-    if (b.w < mn.w) { b.w = mn.w; b.h = b.w / modalRatio; }
-    if (b.h < mn.h) { b.h = mn.h; b.w = b.h * modalRatio; }
-  } else {
-    if (b.w < mn.w) b.w = mn.w;
-    if (b.h < mn.h) b.h = mn.h;
+  if (!isMove) {
+    if (modalRatio) {
+      if (b.w < mn.w) { b.w = mn.w; b.h = b.w / modalRatio; }
+      if (b.h < mn.h) { b.h = mn.h; b.w = b.h * modalRatio; }
+    } else {
+      if (b.w < mn.w) b.w = mn.w;
+      if (b.h < mn.h) b.h = mn.h;
+    }
   }
   if (b.x < 0) b.x = 0; if (b.y < 0) b.y = 0;
-  if (b.x + b.w > canvasW) { b.w = canvasW - b.x; if (modalRatio) b.h = b.w / modalRatio; }
-  if (b.y + b.h > canvasH) { b.h = canvasH - b.y; if (modalRatio) b.w = b.h * modalRatio; }
   if (b.x + b.w > canvasW) b.x = canvasW - b.w;
   if (b.y + b.h > canvasH) b.y = canvasH - b.h;
-  // Re-enforce minimum after border clamping
-  if (modalRatio) {
-    if (b.w < mn.w) { b.w = mn.w; b.h = b.w / modalRatio; }
-    if (b.h < mn.h) { b.h = mn.h; b.w = b.h * modalRatio; }
-  } else {
-    if (b.w < mn.w) b.w = mn.w;
-    if (b.h < mn.h) b.h = mn.h;
-  }
-  // Re-clamp position so the box never exits the canvas after size re-enforce
   if (b.x < 0) b.x = 0;
   if (b.y < 0) b.y = 0;
-  if (b.x + b.w > canvasW) b.x = canvasW - b.w;
-  if (b.y + b.h > canvasH) b.y = canvasH - b.h;
+  if (!isMove) {
+    if (modalRatio) {
+      if (b.w < mn.w) { b.w = mn.w; b.h = b.w / modalRatio; }
+      if (b.h < mn.h) { b.h = mn.h; b.w = b.h * modalRatio; }
+    } else {
+      if (b.w < mn.w) b.w = mn.w;
+      if (b.h < mn.h) b.h = mn.h;
+    }
+    if (b.x + b.w > canvasW) b.x = canvasW - b.w;
+    if (b.y + b.h > canvasH) b.y = canvasH - b.h;
+  }
   return b;
 }
 
@@ -1773,7 +1773,7 @@ function onMove(e) {
     if (R) b.x = o.x + (o.w - b.w) / 2;
     b.y = o.y + o.h - b.h; // anchor bottom
   }
-  cBox = clampBox(b); updateCropBox();
+  cBox = clampBox(b, H === 'move'); updateCropBox();
 }
 function onUp() { drag = null; }
 document.addEventListener('mousemove', onMove);
