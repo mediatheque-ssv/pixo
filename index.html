@@ -1680,6 +1680,7 @@ function getMinCropSize() {
 function clampBox(b, isMove) {
   var mn = getMinCropSize();
   if (!isMove) {
+    // Enforce minimum size
     if (modalRatio) {
       if (b.w < mn.w) { b.w = mn.w; b.h = b.w / modalRatio; }
       if (b.h < mn.h) { b.h = mn.h; b.w = b.h * modalRatio; }
@@ -1687,23 +1688,17 @@ function clampBox(b, isMove) {
       if (b.w < mn.w) b.w = mn.w;
       if (b.h < mn.h) b.h = mn.h;
     }
+    // Cap size to canvas
+    if (b.w > canvasW) { b.w = canvasW; if (modalRatio) b.h = b.w / modalRatio; }
+    if (b.h > canvasH) { b.h = canvasH; if (modalRatio) b.w = b.h * modalRatio; }
   }
-  if (b.x < 0) b.x = 0; if (b.y < 0) b.y = 0;
+  // Clamp position
+  if (b.x < 0) b.x = 0;
+  if (b.y < 0) b.y = 0;
   if (b.x + b.w > canvasW) b.x = canvasW - b.w;
   if (b.y + b.h > canvasH) b.y = canvasH - b.h;
   if (b.x < 0) b.x = 0;
   if (b.y < 0) b.y = 0;
-  if (!isMove) {
-    if (modalRatio) {
-      if (b.w < mn.w) { b.w = mn.w; b.h = b.w / modalRatio; }
-      if (b.h < mn.h) { b.h = mn.h; b.w = b.h * modalRatio; }
-    } else {
-      if (b.w < mn.w) b.w = mn.w;
-      if (b.h < mn.h) b.h = mn.h;
-    }
-    if (b.x + b.w > canvasW) b.x = canvasW - b.w;
-    if (b.y + b.h > canvasH) b.y = canvasH - b.h;
-  }
   return b;
 }
 
