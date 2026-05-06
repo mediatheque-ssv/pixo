@@ -1352,6 +1352,8 @@ function renderFormats() {
   for (var i = 0; i < formats.length; i++) {
     var f = formats[i], hasCrop = f.crop !== null;
     var ofVal = f.overflow === 'crop' ? 'crop' : 'bands_' + f.bands;
+    var tooSmall = srcImg && (srcImg.width < f.w || srcImg.height < f.h);
+    var cropDisabled = tooSmall ? ' disabled title="Image trop petite pour ce format (' + (srcImg ? srcImg.width + '×' + srcImg.height : '') + ' < ' + f.w + '×' + f.h + ')"' : '';
     if (isMobile) {
       // Compact card: summary row + expandable details
       html += '<tr class="frow frow-mobile" data-idx="' + i + '">';
@@ -1375,7 +1377,7 @@ function renderFormats() {
       html += '<div class="frow-detail-field"><label>Hauteur</label><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></div>';
       html += '</div>';
       html += '<div class="frow-detail-field"><label>Débordement</label><select onchange="setOverflow(' + i + ',this.value)">';
-      html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Ajuster</option>';
+      html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + cropDisabled + '>Ajuster</option>';
       html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
       html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
       html += '<option value="bands_transparent"' + (ofVal === 'bands_transparent' ? ' selected' : '') + '>Bandes transp.</option>';
@@ -1393,7 +1395,7 @@ function renderFormats() {
       html += '<td><input type="number" value="' + f.w + '" min="1" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></td>';
       html += '<td><input type="number" value="' + f.h + '" min="1" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></td>';
       html += '<td><select onchange="setOverflow(' + i + ',this.value)">';
-      html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + '>Ajuster</option>';
+      html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + cropDisabled + '>Ajuster</option>';
       html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
       html += '<option value="bands_white"' + (ofVal === 'bands_white' ? ' selected' : '') + '>Bandes blanches</option>';
       html += '<option value="bands_transparent"' + (ofVal === 'bands_transparent' ? ' selected' : '') + '>Bandes transp.</option>';
