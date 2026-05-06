@@ -1046,7 +1046,7 @@ input[type=range]::-webkit-slider-thumb {
     </a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.1</span>
+      <span class="header-tag">v2.5</span>
     </div>
   </div>
 
@@ -1658,14 +1658,24 @@ function closeModal() {
   if (_modalTrigger) { _modalTrigger.focus(); _modalTrigger = null; }
 }
 
+function getMinCropSize() {
+  if (modalRatio && modalIdx !== null) {
+    var f = formats[modalIdx];
+    var scaleX = canvasW / srcImg.width;
+    var scaleY = canvasH / srcImg.height;
+    return { w: f.w * scaleX, h: f.h * scaleY };
+  }
+  return { w: 20, h: 20 };
+}
+
 function clampBox(b) {
-  var mn = 20;
+  var mn = getMinCropSize();
   if (modalRatio) {
-    if (b.w < mn) { b.w = mn; b.h = b.w / modalRatio; }
-    if (b.h < mn) { b.h = mn; b.w = b.h * modalRatio; }
+    if (b.w < mn.w) { b.w = mn.w; b.h = b.w / modalRatio; }
+    if (b.h < mn.h) { b.h = mn.h; b.w = b.h * modalRatio; }
   } else {
-    if (b.w < mn) b.w = mn;
-    if (b.h < mn) b.h = mn;
+    if (b.w < mn.w) b.w = mn.w;
+    if (b.h < mn.h) b.h = mn.h;
   }
   if (b.x < 0) b.x = 0; if (b.y < 0) b.y = 0;
   if (b.x + b.w > canvasW) { b.w = canvasW - b.x; if (modalRatio) b.h = b.w / modalRatio; }
