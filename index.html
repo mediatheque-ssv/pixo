@@ -1464,6 +1464,13 @@ function renderFormats() {
   });
 }
 
+function updateMobileSummaryName(input, i) {
+  var row = input.closest('.frow-mobile');
+  if (!row) return;
+  var nameEl = row.querySelector('.frow-mobile-name');
+  if (nameEl) nameEl.textContent = formats[i].name;
+}
+
 function delFormat(i) { formats.splice(i, 1); renderFormats(); updateFilenamePreview(); if (txtEnabled) renderTxtFormatsList(); }
 function setOverflow(i, v) {
   if (v === 'crop') { formats[i].overflow = 'crop'; }
@@ -1515,6 +1522,15 @@ function loadFile(file) {
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     showToast('Image trop lourde (max ' + MAX_SIZE_MB + ' Mo).', 'error');
     return;
+  }
+  // Réinitialiser les résultats précédents si une image était déjà chargée
+  if (srcImg) {
+    generatedResults = [];
+    document.getElementById('results').innerHTML = '';
+    document.getElementById('results-header').style.display = 'none';
+    document.getElementById('dl-actions').style.display = 'none';
+    document.getElementById('custom-filename').value = '';
+    document.getElementById('filename-preview').innerHTML = '';
   }
   srcFile = file;
   var reader = new FileReader();
