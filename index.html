@@ -19,6 +19,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 :root {
   --bg: #000000;
@@ -30,7 +32,7 @@
   --border-hi: rgba(255,255,255,0.22);
   --text: #eceae2;
   --text-2: #a8a69c;
-  --text-3: #706e6a;
+  --text-3: #8a8880;
   --accent: #d4ff4e;
   --accent-dim: rgba(212,255,78,0.12);
   --accent-border: rgba(212,255,78,0.35);
@@ -639,6 +641,13 @@ input[type=range]::-moz-range-thumb {
   transform: translateY(-1px);
 }
 .gen-btn:active { transform: scale(0.99) translateY(0); }
+.gen-btn--disabled, .gen-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
 .gen-btn .gen-spinner {
   width: 16px; height: 16px;
   border: 2px solid rgba(12,12,11,0.3);
@@ -1095,7 +1104,7 @@ input[type=range]::-moz-range-thumb {
 
   <div class="preview-strip" id="preview-strip">
     <div class="preview-strip-top">
-      <img id="preview-thumb" class="preview-thumb" alt="">
+      <img id="preview-thumb" class="preview-thumb" alt="Aperçu de l'image importée">
       <div class="preview-meta">
         <div class="preview-name" id="preview-name">—</div>
         <div class="preview-size" id="preview-size">—</div>
@@ -1264,7 +1273,7 @@ input[type=range]::-moz-range-thumb {
     </div>
   </div>
 
-  <button class="gen-btn" id="gen-btn" onclick="generate()" disabled style="opacity:0.45;cursor:not-allowed;transform:none;box-shadow:none">
+  <button class="gen-btn gen-btn--disabled" id="gen-btn" onclick="generate()" disabled>
     <svg class="gen-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
       <path d="M5 12h14M12 5l7 7-7 7"/>
     </svg>
@@ -1344,11 +1353,12 @@ input[type=range]::-moz-range-thumb {
 var srcImg = null, srcFile = null, srcDataUrl = null;
 var generatedResults = [];
 var formats = [
-  { name: 'Article portail (intro)', w: 300, h: 300, overflow: 'crop', bands: 'black', crop: null, text: true },
-  { name: 'Event portail (intro+miniature)', w: 500, h: 300, overflow: 'crop', bands: 'black', crop: null, text: true },
-  { name: 'Diaporama Portail', w: 1200, h: 800, overflow: 'crop', bands: 'black', crop: null, text: true },
-  { name: 'Newsletter', w: 800, h: 800, overflow: 'crop', bands: 'black', crop: null, text: true },
+  { id: 1, name: 'Article portail (intro)', w: 300, h: 300, overflow: 'crop', bands: 'black', crop: null, text: true },
+  { id: 2, name: 'Event portail (intro+miniature)', w: 500, h: 300, overflow: 'crop', bands: 'black', crop: null, text: true },
+  { id: 3, name: 'Diaporama Portail', w: 1200, h: 800, overflow: 'crop', bands: 'black', crop: null, text: true },
+  { id: 4, name: 'Newsletter', w: 800, h: 800, overflow: 'crop', bands: 'black', crop: null, text: true },
 ];
+var _nextFormatId = 5;
 var modalIdx = null, cBox = { x: 0, y: 0, w: 100, h: 100 }, drag = null;
 var canvasW = 0, canvasH = 0, modalRatio = null;
 var txtEnabled = false;
@@ -1422,8 +1432,8 @@ function renderFormats() {
       html += '<div class="frow-mobile-details">';
       html += '<div class="frow-detail-field"><label>Nom</label><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview();updateMobileSummaryName(this,' + i + ')"></div>';
       html += '<div class="frow-detail-row">';
-      html += '<div class="frow-detail-field"><label>Largeur</label><input type="number" value="' + f.w + '" min="1" aria-label="Largeur en pixels" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></div>';
-      html += '<div class="frow-detail-field"><label>Hauteur</label><input type="number" value="' + f.h + '" min="1" aria-label="Hauteur en pixels" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></div>';
+      html += '<div class="frow-detail-field"><label>Largeur</label><input type="number" value="' + f.w + '" min="1" inputmode="numeric" aria-label="Largeur en pixels" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></div>';
+      html += '<div class="frow-detail-field"><label>Hauteur</label><input type="number" value="' + f.h + '" min="1" inputmode="numeric" aria-label="Hauteur en pixels" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></div>';
       html += '</div>';
       html += '<div class="frow-detail-field"><label>Débordement</label><select onchange="setOverflow(' + i + ',this.value)">';
       html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + cropDisabled + '>Ajuster</option>';
@@ -1441,8 +1451,8 @@ function renderFormats() {
     } else {
       html += '<tr class="frow">';
       html += '<td><input type="text" value="' + esc(f.name) + '" aria-label="Nom du format" onchange="formats[' + i + '].name=this.value;updateFilenamePreview()"></td>';
-      html += '<td><input type="number" value="' + f.w + '" min="1" aria-label="Largeur en pixels" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></td>';
-      html += '<td><input type="number" value="' + f.h + '" min="1" aria-label="Hauteur en pixels" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></td>';
+      html += '<td><input type="number" value="' + f.w + '" min="1" inputmode="numeric" aria-label="Largeur en pixels" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></td>';
+      html += '<td><input type="number" value="' + f.h + '" min="1" inputmode="numeric" aria-label="Hauteur en pixels" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></td>';
       html += '<td><select aria-label="Gestion du débordement" onchange="setOverflow(' + i + ',this.value)">';
       html += '<option value="crop"' + (ofVal === 'crop' ? ' selected' : '') + cropDisabled + '>Ajuster</option>';
       html += '<option value="bands_black"' + (ofVal === 'bands_black' ? ' selected' : '') + '>Bandes noires</option>';
@@ -1478,7 +1488,7 @@ function setOverflow(i, v) {
   renderFormats();
 }
 function addFormat() {
-  formats.push({ name: 'Nouveau format', w: 800, h: 600, overflow: 'crop', bands: 'black', crop: null, text: true });
+  formats.push({ id: _nextFormatId++, name: 'Nouveau format', w: 800, h: 600, overflow: 'crop', bands: 'black', crop: null, text: true });
   renderFormats();
   updateFilenamePreview();
   if (txtEnabled) renderTxtFormatsList();
@@ -1488,10 +1498,7 @@ function clearImage() {
   srcImg = null; srcFile = null; srcDataUrl = null;
   var genBtn = document.getElementById('gen-btn');
   genBtn.disabled = true;
-  genBtn.style.opacity = '0.45';
-  genBtn.style.cursor = 'not-allowed';
-  genBtn.style.transform = 'none';
-  genBtn.style.boxShadow = 'none';
+  genBtn.classList.add('gen-btn--disabled');
   document.getElementById('preview-strip').style.display = 'none';
   document.getElementById('drop-zone').style.display = '';
   document.getElementById('file-in').value = '';
@@ -1554,10 +1561,7 @@ function loadFile(file) {
       srcImg = img;
       var genBtn = document.getElementById('gen-btn');
       genBtn.disabled = false;
-      genBtn.style.opacity = '';
-      genBtn.style.cursor = '';
-      genBtn.style.transform = '';
-      genBtn.style.boxShadow = '';
+      genBtn.classList.remove('gen-btn--disabled');
       formats.forEach(function(f) {
         f.crop = null;
         if (f.overflow === 'crop' && (img.width < f.w || img.height < f.h)) {
@@ -1567,7 +1571,7 @@ function loadFile(file) {
       });
       renderFormats();
       var pt = document.getElementById('preview-thumb');
-      pt.src = ev.target.result; pt.alt = file.name; pt.style.display = 'block';
+      pt.src = ev.target.result; pt.alt = 'Aperçu de l\'image importée'; pt.style.display = 'block';
       document.getElementById('preview-name').textContent = file.name;
       document.getElementById('preview-size').textContent = img.width + ' × ' + img.height + ' px · ' + Math.round(file.size / 1024) + ' Ko';
       document.getElementById('preview-strip').style.display = 'flex';
@@ -2024,25 +2028,34 @@ function renderFormat(f) {
   var filename = buildFilename(f, ext);
   // Pour PNG, on passe `undefined` comme qualité : PNG est sans perte et ne supporte
   // pas ce paramètre — toDataURL l'ignore silencieusement. La qualité ne s'applique qu'à JPEG et WebP.
-  return { url: cv.toDataURL(outFmt, outFmt === 'image/png' ? undefined : quality), name: filename, w: W, h: H };
+  return { url: cv.toDataURL(outFmt, outFmt === 'image/png' ? undefined : quality), name: filename, w: W, h: H, formatId: f.id };
 }
 
 function downloadAll() {
   if (!generatedResults.length) return;
+  // Les navigateurs modernes bloquent les téléchargements multiples simulés.
+  // On tente quand même pour les navigateurs permissifs, mais on informe l'utilisateur.
   var btn = document.getElementById('dl-all-btn');
   btn.disabled = true;
   var i = 0;
+  var blocked = false;
   function next() {
     if (i >= generatedResults.length) {
       btn.disabled = false;
-      showToast(generatedResults.length + ' fichiers téléchargés.');
+      if (!blocked) showToast(generatedResults.length + ' fichiers téléchargés.');
       return;
     }
     var r = generatedResults[i++];
     var a = document.createElement('a');
     a.href = r.url; a.download = r.name;
     document.body.appendChild(a); a.click();
-    setTimeout(function() { document.body.removeChild(a); next(); }, 300);
+    document.body.removeChild(a);
+    // Délai plus court, mais certains navigateurs bloqueront tout de même après le 1er fichier.
+    // En cas de blocage, suggérer le ZIP.
+    setTimeout(function() { next(); }, 200);
+  }
+  if (generatedResults.length > 1) {
+    showToast('Si les téléchargements sont bloqués, utilisez le bouton ZIP.');
   }
   next();
 }
@@ -2121,10 +2134,8 @@ function applyRename() {
   if (!generatedResults.length) return;
   var ext = generatedResults[0].name.split('.').pop();
   for (var i = 0; i < generatedResults.length; i++) {
-    // Chercher le format correspondant par dimensions pour éviter les décalages
-    // en cas d'erreur sur un format lors de la génération
     var r = generatedResults[i];
-    var fmt = formats.find(function(f) { return f.w === r.w && f.h === r.h; }) || formats[i];
+    var fmt = formats.find(function(f) { return f.id === r.formatId; });
     if (fmt) generatedResults[i].name = buildFilename(fmt, ext);
   }
   updateFilenamePreview();
@@ -2159,6 +2170,12 @@ function generate() {
 
   function processNext() {
     if (i >= formats.length) {
+      if (generatedResults.length === 0) {
+        showToast('Aucun format n\'a pu être généré.', 'error');
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        return;
+      }
       document.getElementById('results-header').style.display = 'block';
       document.getElementById('dl-actions').style.display = 'flex';
       renderResults(generatedResults);
@@ -2172,7 +2189,8 @@ function generate() {
     try {
       generatedResults.push(renderFormat(formats[i]));
     } catch (e) {
-      showToast('Erreur sur "' + formats[i].name + '" : ' + (e.message || 'inconnue.'), 'error');
+      showToast('Erreur sur "' + esc(formats[i].name) + '" : ' + (e.message || 'inconnue.'), 'error');
+      // On n'ajoute pas de résultat pour ce format — applyRename utilisera formatId pour matcher.
     }
     i++;
     requestAnimationFrame(processNext);
