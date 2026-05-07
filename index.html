@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pixo</title>
+<meta name="description" content="Pixo — Redimensionnez et exportez vos images en plusieurs formats en une seule étape, directement dans le navigateur.">
+<meta property="og:title" content="Pixo">
+<meta property="og:description" content="Redimensionnez et exportez vos images en plusieurs formats en une seule étape, directement dans le navigateur.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Pixo">
+<meta name="twitter:description" content="Redimensionnez et exportez vos images en plusieurs formats en une seule étape, directement dans le navigateur.">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -884,15 +891,9 @@ input[type=range]::-webkit-slider-thumb {
 /* ─── END TOAST ─── */
 
 /* ─── MOBILE CARD FORMATS ─── */
+/* Hidden by default; display activated via media query */
 .frow-mobile-summary {
   display: none;
-}
-.frow-mobile-details {
-  display: none;
-}
-
-/* Mobile compact card styles (always defined, activated via media query) */
-.frow-mobile-summary {
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
@@ -900,6 +901,9 @@ input[type=range]::-webkit-slider-thumb {
   gap: 10px;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+.frow-mobile-details {
+  display: none;
 }
 .frow-mobile-info {
   display: flex;
@@ -1970,6 +1974,8 @@ function renderFormat(f) {
   }
   var ext = outFmt === 'image/png' ? 'png' : outFmt === 'image/jpeg' ? 'jpg' : 'webp';
   var filename = buildFilename(f, ext);
+  // Pour PNG, on passe `undefined` comme qualité : PNG est sans perte et ne supporte
+  // pas ce paramètre — toDataURL l'ignore silencieusement. La qualité ne s'applique qu'à JPEG et WebP.
   return { url: cv.toDataURL(outFmt, outFmt === 'image/png' ? undefined : quality), name: filename, w: W, h: H };
 }
 
