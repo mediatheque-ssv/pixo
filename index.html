@@ -1144,13 +1144,6 @@ input[type=range]::-webkit-slider-thumb {
         <col style="width:32px">
         <col style="width:30px">
       </colgroup>
-      <thead><tr>
-        <th class="th">Nom</th>
-        <th class="th center">Largeur</th>
-        <th class="th center">Hauteur</th>
-        <th class="th">Débordement</th>
-        <th></th>
-      </tr></thead>
       <tbody id="formats-body"></tbody>
     </table>
   </div>
@@ -1408,7 +1401,7 @@ function renderFormats() {
       html += '</div>';
       // Expandable details
       html += '<div class="frow-mobile-details">';
-      html += '<div class="frow-detail-field"><label>Nom</label><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview();renderFormats()"></div>';
+      html += '<div class="frow-detail-field"><label>Nom</label><input type="text" value="' + esc(f.name) + '" onchange="formats[' + i + '].name=this.value;updateFilenamePreview();updateMobileSummaryName(this,' + i + ')"></div>';
       html += '<div class="frow-detail-row">';
       html += '<div class="frow-detail-field"><label>Largeur</label><input type="number" value="' + f.w + '" min="1" aria-label="Largeur en pixels" onchange="formats[' + i + '].w=+this.value;updateFilenamePreview()"></div>';
       html += '<div class="frow-detail-field"><label>Hauteur</label><input type="number" value="' + f.h + '" min="1" aria-label="Hauteur en pixels" onchange="formats[' + i + '].h=+this.value;updateFilenamePreview()"></div>';
@@ -1527,7 +1520,7 @@ function loadFile(file) {
       });
       renderFormats();
       var pt = document.getElementById('preview-thumb');
-      pt.src = ev.target.result; pt.style.display = 'block';
+      pt.src = ev.target.result; pt.alt = file.name; pt.style.display = 'block';
       document.getElementById('preview-name').textContent = file.name;
       document.getElementById('preview-size').textContent = img.width + ' × ' + img.height + ' px · ' + Math.round(file.size / 1024) + ' Ko';
       document.getElementById('preview-strip').style.display = 'flex';
@@ -1854,37 +1847,38 @@ function onMove(e) {
     if (H === 'br' || H === 'bl' || H === 'bc') dy = Math.min(dy, canvasH - (o.y + o.h));
     if (H === 'tr' || H === 'tl' || H === 'tc') dy = Math.max(dy, -o.y);
 
-    if (H === 'br') { var s = applyW(o.w + dx); b.w = s.w; b.h = R ? s.h : Math.max(mn.h, o.h + dy); }
-    else if (H === 'mr') { var s = applyW(o.w + dx); b.w = s.w; if (R) b.h = s.h; }
+    var sz;
+    if (H === 'br') { sz = applyW(o.w + dx); b.w = sz.w; b.h = R ? sz.h : Math.max(mn.h, o.h + dy); }
+    else if (H === 'mr') { sz = applyW(o.w + dx); b.w = sz.w; if (R) b.h = sz.h; }
     else if (H === 'tr') {
-      var s = R ? applyW(o.w + dx) : { w: Math.max(mn.w, o.w + dx), h: Math.max(mn.h, o.h - dy) };
-      b.w = s.w; b.h = s.h;
+      sz = R ? applyW(o.w + dx) : { w: Math.max(mn.w, o.w + dx), h: Math.max(mn.h, o.h - dy) };
+      b.w = sz.w; b.h = sz.h;
       b.y = o.y + o.h - b.h;
     }
     else if (H === 'bl') {
-      var s = applyW(o.w - dx);
-      b.w = s.w; b.h = R ? s.h : Math.max(mn.h, o.h + dy);
+      sz = applyW(o.w - dx);
+      b.w = sz.w; b.h = R ? sz.h : Math.max(mn.h, o.h + dy);
       b.x = o.x + o.w - b.w;
     }
     else if (H === 'ml') {
-      var s = applyW(o.w - dx);
-      b.w = s.w; if (R) b.h = s.h;
+      sz = applyW(o.w - dx);
+      b.w = sz.w; if (R) b.h = sz.h;
       b.x = o.x + o.w - b.w;
     }
     else if (H === 'tl') {
-      var s = R ? applyW(o.w - dx) : { w: Math.max(mn.w, o.w - dx), h: Math.max(mn.h, o.h - dy) };
-      b.w = s.w; b.h = s.h;
+      sz = R ? applyW(o.w - dx) : { w: Math.max(mn.w, o.w - dx), h: Math.max(mn.h, o.h - dy) };
+      b.w = sz.w; b.h = sz.h;
       b.x = o.x + o.w - b.w;
       b.y = o.y + o.h - b.h;
     }
     else if (H === 'bc') {
-      var s = applyH(o.h + dy);
-      b.h = s.h; b.w = s.w;
+      sz = applyH(o.h + dy);
+      b.h = sz.h; b.w = sz.w;
       if (R) b.x = o.x + (o.w - b.w) / 2;
     }
     else if (H === 'tc') {
-      var s = applyH(o.h - dy);
-      b.h = s.h; b.w = s.w;
+      sz = applyH(o.h - dy);
+      b.h = sz.h; b.w = sz.w;
       if (R) b.x = o.x + (o.w - b.w) / 2;
       b.y = o.y + o.h - b.h;
     }
@@ -2006,10 +2000,7 @@ function downloadZip() {
   var btn = document.getElementById('dl-zip-btn');
   btn.disabled = true;
 
-  // Load JSZip dynamically
-  var script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-  script.onload = function() {
+  function buildZip() {
     var zip = new JSZip();
     generatedResults.forEach(function(r) {
       var b64 = r.url.split(',')[1];
@@ -2026,15 +2017,18 @@ function downloadZip() {
       btn.disabled = false;
       showToast(generatedResults.length + ' fichiers exportés en .zip');
     });
-  };
-  script.onerror = function() {
-    btn.disabled = false;
-    showToast('Impossible de charger JSZip.', 'error');
-  };
-  // Avoid loading twice
+  }
+
   if (window.JSZip) {
-    script.onload();
+    buildZip();
   } else {
+    var script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    script.onload = buildZip;
+    script.onerror = function() {
+      btn.disabled = false;
+      showToast('Impossible de charger JSZip.', 'error');
+    };
     document.head.appendChild(script);
   }
 }
@@ -2052,8 +2046,8 @@ function renderResults(results) {
     var body = document.createElement('div'); body.className = 'rcard-body';
     var nm = document.createElement('div'); nm.className = 'rcard-name'; nm.textContent = r.name;
     var dm = document.createElement('div'); dm.className = 'rcard-dim';
-    var b64 = r.url.split(',')[1] || '';
-    var bytes = Math.round(b64.length * 0.75);
+    var b64 = r.url.indexOf(',') !== -1 ? r.url.split(',')[1] : r.url;
+    var bytes = Math.round(b64.length * 0.75) - (b64.slice(-2).split('=').length - 1);
     var sizeStr = bytes < 1024 * 1024 ? Math.round(bytes / 1024) + ' Ko' : (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
     dm.innerHTML = '<span>' + r.w + ' × ' + r.h + ' px</span><span>' + sizeStr + '</span>';
     var btn = document.createElement('button'); btn.className = 'dl-btn'; btn.textContent = 'Télécharger';
