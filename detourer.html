@@ -418,6 +418,75 @@ input[type=range].tol-slider::-moz-range-thumb {
   .actions { flex-direction: column; }
   .run-btn, .dl-btn { width: 100%; justify-content: center; }
 }
+
+.edit-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 2rem;
+}
+.edit-modal.visible { display:flex; }
+
+.edit-window{
+  width:min(1300px,100%);
+  height:min(850px,92vh);
+  background:var(--surface);
+  border:1px solid var(--border-md);
+  border-radius:18px;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:1fr 320px;
+}
+
+.edit-preview-wrap{
+  background:#0f0f0f;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.edit-preview-stage{
+  position:relative;
+  display:inline-flex;
+}
+
+#edit-canvas{
+  display:block;
+  max-width:calc(100vw - 420px);
+  max-height:86vh;
+}
+
+.edit-sidebar{
+  border-left:1px solid var(--border);
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+}
+
+.sidebar-label{
+  font-size:11px;
+  margin-bottom:8px;
+}
+
+.editor-slider{ width:100%; }
+
+.crop-info{
+  font-size:12px;
+}
+
+.edit-actions{
+  margin-top:auto;
+  display:flex;
+  gap:10px;
+}
+
 </style>
 </head>
 <body>
@@ -662,257 +731,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && editPanel.classList.contains('visible')) closeEditPanel();
 });
 
-// ─── Sliders (preview en temps réel dans le panneau) ───
-// On garde une copie "draft" pour pouvoir annuler
-let draftTol = 0, draftFeather = 0;
-
-tolSlider.addEventListener('input', () => {
-  tolValue.textContent = tolSlider.value;
-  draftTol = parseInt(tolSlider.value, 10);
-  schedulePreview();
-});
-featherSlider.addEventListener('input', () => {
-  featherValue.textContent = featherSlider.value;
-  draftFeather = parseInt(featherSlider.value, 10);
-  schedulePreview();
-});
-document.getElementById('reset-tol').addEventListener('click', () => {
-  tolSlider.value = 0; tolValue.textContent = '0'; draftTol = 0; schedulePreview();
-});
-document.getElementById('reset-feather').addEventListener('click', () => {
-  featherSlider.value = 0; featherValue.textContent = '0'; draftFeather = 0; schedulePreview();
-});
-
-let previewTimer = null;
-function schedulePreview() {
-  clearTimeout(previewTimer);
-  previewTimer = setTimeout(async () => {
-    if (!rawPixels) return;
-    const result = await buildPixelsWithCrop(draftTol, draftFeather, draftCrop);
-    const blob = await blobFromPixels(result.data, result.w, result.h);
-    const old = imgResult.src;
-    imgResult.src = URL.createObjectURL(blob);
-    if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
-  }, 180);
-}
-
-function openEditPanel() {
-  // Initialiser les drafts depuis les valeurs appliquées
-  draftTol     = appliedTol;
-  draftFeather = appliedFeather;
-  draftCrop    = appliedCrop ? { ...appliedCrop } : null;
-  tolSlider.value = appliedTol;
-  tolValue.textContent = appliedTol;
-  featherSlider.value = appliedFeather;
-  featherValue.textContent = appliedFeather;
-  // Fermer crop si ouvert
-  closeCrop();
-  editPanel.classList.add('visible');
-  editPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function closeEditPanel() {
-  // Annuler : remettre l'image comme elle était avant d'ouvrir
-  closeCrop();
-  editPanel.classList.remove('visible');
-  // Remettre l'aperçu à l'état appliqué
-  revertToApplied();
-}
-
-async function revertToApplied() {
-  if (!rawPixels) return;
-  const result = await buildPixelsWithCrop(appliedTol, appliedFeather, appliedCrop);
-  const blob = await blobFromPixels(result.data, result.w, result.h);
-  resultBlob = blob;
-  const old = imgResult.src;
-  imgResult.src = URL.createObjectURL(blob);
-  if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
-}
-
-async function confirmEdit() {
-  // Valider crop si ouvert
-  if (cropOpen && cBox && cropCanvasW) {
-    const cx = cBox.x / cropCanvasW, cy = cBox.y / cropCanvasH;
-    const cw = cBox.w / cropCanvasW, ch = cBox.h / cropCanvasH;
-    if (cx > 0.001 || cy > 0.001 || cw < 0.999 || ch < 0.999) {
-      if (appliedCrop) {
-        draftCrop = {
-          x: appliedCrop.x + cx * appliedCrop.w,
-          y: appliedCrop.y + cy * appliedCrop.h,
-          w: cw * appliedCrop.w,
-          h: ch * appliedCrop.h
-        };
-      } else {
-        draftCrop = { x: cx, y: cy, w: cw, h: ch };
-      }
-    } else {
-      draftCrop = appliedCrop;
-    }
-  }
-
-  appliedTol     = draftTol;
-  appliedFeather = draftFeather;
-  appliedCrop    = draftCrop;
-
-  const result = await buildPixelsWithCrop(appliedTol, appliedFeather, appliedCrop);
-  const blob = await blobFromPixels(result.data, result.w, result.h);
-  resultBlob = blob;
-  const old = imgResult.src;
-  imgResult.src = URL.createObjectURL(blob);
-  if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
-
-  document.getElementById('dl-btn').classList.add('visible');
-  closeCrop();
-  editPanel.classList.remove('visible');
-  showToast('Modifications appliquées ✓');
-}
-
-// ─── Crop ───
-let cropOpen = false;
-let draftCrop = null;
-let cropCanvas, cropCtx, cropCanvasW, cropCanvasH, cBox, drag;
-
-const cropToggleBtn  = document.getElementById('crop-toggle-btn');
-const cropCanvasWrap = document.getElementById('crop-canvas-wrap');
-const cropDimsRow    = document.getElementById('crop-dims-row');
-
-cropToggleBtn.addEventListener('click', () => {
-  if (!cropOpen) openCrop();
-  else closeCrop();
-});
-
-document.getElementById('crop-reset-btn').addEventListener('click', () => {
-  cBox = { x: 0, y: 0, w: cropCanvasW, h: cropCanvasH };
-  updateCropBox();
-});
-
-function openCrop() {
-  cropOpen = true;
-  cropToggleBtn.classList.add('active');
-  cropToggleBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Masquer le cadre`;
-  cropCanvasWrap.classList.add('visible');
-  cropDimsRow.style.display = '';
-  initCropCanvas();
-}
-
-function closeCrop() {
-  cropOpen = false;
-  drag = null;
-  cropToggleBtn.classList.remove('active');
-  cropToggleBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Afficher le cadre`;
-  cropCanvasWrap.classList.remove('visible');
-  cropDimsRow.style.display = 'none';
-}
-
-function initCropCanvas() {
-  cropCanvas = document.getElementById('inline-crop-canvas');
-  cropCtx    = cropCanvas.getContext('2d');
-  const maxW = cropCanvasWrap.offsetWidth || 600;
-  const maxH = 300;
-  const ir = rawW / rawH;
-  let cw, ch;
-  if (ir > maxW / maxH) { cw = maxW; ch = Math.round(maxW / ir); }
-  else { ch = maxH; cw = Math.round(maxH * ir); }
-  cropCanvas.width = cw; cropCanvas.height = ch;
-  cropCanvas.style.width = cw + 'px'; cropCanvas.style.height = ch + 'px';
-  cropCanvasW = cw; cropCanvasH = ch;
-
-  const tmpImg = new Image();
-  tmpImg.onload = () => {
-    cropCtx.clearRect(0, 0, cw, ch);
-    cropCtx.drawImage(tmpImg, 0, 0, cw, ch);
-    if (draftCrop) {
-      cBox = { x: draftCrop.x * cw, y: draftCrop.y * ch, w: draftCrop.w * cw, h: draftCrop.h * ch };
-    } else {
-      cBox = { x: 0, y: 0, w: cw, h: ch };
-    }
-    updateCropBox();
-  };
-  tmpImg.src = imgResult.src;
-}
-
-function updateCropBox() {
-  const b = document.getElementById('crop-box');
-  b.style.left   = Math.round(cBox.x) + 'px';
-  b.style.top    = Math.round(cBox.y) + 'px';
-  b.style.width  = Math.round(cBox.w) + 'px';
-  b.style.height = Math.round(cBox.h) + 'px';
-  const rw = Math.round(cBox.w * (rawW / cropCanvasW));
-  const rh = Math.round(cBox.h * (rawH / cropCanvasH));
-  document.getElementById('crop-dims').textContent = rw + ' × ' + rh + ' px';
-}
-
-function clampBox(b, isMove) {
-  if (!isMove) {
-    if (b.w < 20) b.w = 20;
-    if (b.h < 20) b.h = 20;
-    if (b.w > cropCanvasW) b.w = cropCanvasW;
-    if (b.h > cropCanvasH) b.h = cropCanvasH;
-  }
-  if (b.x < 0) b.x = 0;
-  if (b.y < 0) b.y = 0;
-  if (b.x + b.w > cropCanvasW) b.x = cropCanvasW - b.w;
-  if (b.y + b.h > cropCanvasH) b.y = cropCanvasH - b.h;
-  if (b.x < 0) b.x = 0;
-  if (b.y < 0) b.y = 0;
-  return b;
-}
-
-function getCropPos(e) {
-  const rect = cropCanvasWrap.getBoundingClientRect();
-  const sx = cropCanvasW / rect.width, sy = cropCanvasH / rect.height;
-  const src = e.touches ? e.touches[0] : e;
-  return {
-    x: Math.max(0, Math.min(cropCanvasW, (src.clientX - rect.left) * sx)),
-    y: Math.max(0, Math.min(cropCanvasH, (src.clientY - rect.top) * sy))
-  };
-}
-
-function onCropDown(e, h) {
-  if (!cropOpen) return;
-  e.preventDefault();
-  const p = getCropPos(e);
-  drag = { h, sx: p.x, sy: p.y, ob: { ...cBox } };
-}
-
-function onCropMove(e) {
-  if (!drag || !cropOpen) return;
-  e.preventDefault();
-  const p = getCropPos(e), dx = p.x - drag.sx, dy = p.y - drag.sy, o = drag.ob;
-  let b = { ...o }, H = drag.h;
-  if (H === 'move') { b.x = o.x + dx; b.y = o.y + dy; }
-  else {
-    let dx2 = dx, dy2 = dy;
-    if (H==='br'||H==='mr'||H==='tr') dx2 = Math.min(dx, cropCanvasW - (o.x + o.w));
-    if (H==='bl'||H==='ml'||H==='tl') dx2 = Math.max(dx, -o.x);
-    if (H==='br'||H==='bl'||H==='bc') dy2 = Math.min(dy, cropCanvasH - (o.y + o.h));
-    if (H==='tr'||H==='tl'||H==='tc') dy2 = Math.max(dy, -o.y);
-    if      (H==='br') { b.w=Math.max(20,o.w+dx2); b.h=Math.max(20,o.h+dy2); }
-    else if (H==='mr') { b.w=Math.max(20,o.w+dx2); }
-    else if (H==='tr') { b.w=Math.max(20,o.w+dx2); b.h=Math.max(20,o.h-dy2); b.y=o.y+o.h-b.h; }
-    else if (H==='bl') { b.w=Math.max(20,o.w-dx2); b.x=o.x+o.w-b.w; b.h=Math.max(20,o.h+dy2); }
-    else if (H==='ml') { b.w=Math.max(20,o.w-dx2); b.x=o.x+o.w-b.w; }
-    else if (H==='tl') { b.w=Math.max(20,o.w-dx2); b.x=o.x+o.w-b.w; b.h=Math.max(20,o.h-dy2); b.y=o.y+o.h-b.h; }
-    else if (H==='bc') { b.h=Math.max(20,o.h+dy2); }
-    else if (H==='tc') { b.h=Math.max(20,o.h-dy2); b.y=o.y+o.h-b.h; }
-  }
-  cBox = clampBox(b, H === 'move');
-  updateCropBox();
-}
-function onCropUp() { drag = null; }
-
-const cbEl = document.getElementById('crop-box');
-cbEl.addEventListener('mousedown',  e => { if (e.target === cbEl) onCropDown(e, 'move'); });
-cbEl.addEventListener('touchstart', e => { if (e.target === cbEl) onCropDown(e, 'move'); }, { passive: false });
-cbEl.querySelectorAll('.crop-handle').forEach(h => {
-  h.addEventListener('mousedown',  e => { e.stopPropagation(); onCropDown(e, h.dataset.h); });
-  h.addEventListener('touchstart', e => { e.stopPropagation(); onCropDown(e, h.dataset.h); }, { passive: false });
-});
-document.addEventListener('mousemove',  onCropMove);
-document.addEventListener('mouseup',    onCropUp);
-document.addEventListener('touchmove',  onCropMove, { passive: false });
-document.addEventListener('touchend',   onCropUp);
-
 // ─── Pixel processing ───
 function applySharpen(pixels, tolerance) {
   const data = new Uint8ClampedArray(pixels);
@@ -1098,9 +916,7 @@ function loadFile(file) {
     document.getElementById('actions').style.display = 'flex';
     document.getElementById('dl-btn').classList.remove('visible');
     editBtn.classList.remove('visible');
-    editPanel.classList.remove('visible');
-    closeCrop();
-    document.getElementById('drop-zone').style.display = 'none';
+        document.getElementById('drop-zone').style.display = 'none';
     setStatus(''); hideProgress();
   };
   reader.readAsDataURL(file);
@@ -1118,9 +934,7 @@ function resetAll() {
   imgResult.src = '';
   resultCol.style.display = 'none';
   editBtn.classList.remove('visible');
-  editPanel.classList.remove('visible');
-  closeCrop();
-  document.getElementById('file-in').value = '';
+    document.getElementById('file-in').value = '';
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
   btn.disabled = false; btn.classList.remove('loading');
@@ -1147,8 +961,103 @@ function showToast(msg, type) {
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
+
+const editModal = document.getElementById('edit-modal');
+const editCanvas = document.getElementById('edit-canvas');
+const editCtx = editCanvas.getContext('2d');
+
+editBtn.addEventListener('click', openEditor);
+
+document.getElementById('edit-cancel-btn').addEventListener('click', () => {
+  editModal.classList.remove('visible');
+});
+
+document.getElementById('edit-confirm-btn').addEventListener('click', () => {
+  editModal.classList.remove('visible');
+  showToast('Modifications appliquées ✓');
+});
+
+async function openEditor() {
+
+  editModal.classList.add('visible');
+
+  if (!imgResult.src) return;
+
+  const img = new Image();
+
+  img.onload = () => {
+
+    const maxW = window.innerWidth - 500;
+    const maxH = window.innerHeight - 140;
+
+    const ratio = Math.min(
+      maxW / img.width,
+      maxH / img.height,
+      1
+    );
+
+    editCanvas.width = Math.round(img.width * ratio);
+    editCanvas.height = Math.round(img.height * ratio);
+
+    editCtx.clearRect(0,0,editCanvas.width,editCanvas.height);
+    editCtx.drawImage(img,0,0,editCanvas.width,editCanvas.height);
+  };
+
+  img.src = imgResult.src;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    editModal.classList.remove('visible');
+  }
+});
+
+
 // Affichage initial correct du canvas-wrap (caché)
 canvasWrap.style.display = 'none';
 </script>
+
+<div class="edit-modal" id="edit-modal">
+  <div class="edit-window">
+
+    <div class="edit-preview-wrap">
+      <div class="edit-preview-stage">
+        <canvas id="edit-canvas"></canvas>
+
+        <div class="crop-box" id="crop-box">
+          <div class="crop-handle tl" data-h="tl"></div>
+          <div class="crop-handle tr" data-h="tr"></div>
+          <div class="crop-handle bl" data-h="bl"></div>
+          <div class="crop-handle br" data-h="br"></div>
+          <div class="crop-handle tc" data-h="tc"></div>
+          <div class="crop-handle bc" data-h="bc"></div>
+          <div class="crop-handle ml" data-h="ml"></div>
+          <div class="crop-handle mr" data-h="mr"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="edit-sidebar">
+      <div>
+        <div class="sidebar-label">Tolérance</div>
+        <input type="range" class="editor-slider" id="tol-slider" min="0" max="100" value="0">
+      </div>
+
+      <div>
+        <div class="sidebar-label">Lissage</div>
+        <input type="range" class="editor-slider" id="feather-slider" min="0" max="100" value="0">
+      </div>
+
+      <div class="crop-info" id="crop-info">— × — px</div>
+
+      <div class="edit-actions">
+        <button class="edit-cancel-btn" id="edit-cancel-btn">Annuler</button>
+        <button class="edit-confirm-btn" id="edit-confirm-btn">Valider</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>
