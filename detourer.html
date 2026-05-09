@@ -31,8 +31,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   --accent-dim: rgba(212,255,78,0.12);
   --accent-border: rgba(212,255,78,0.35);
   --danger: #ff6b6b;
-  --danger-bg: rgba(255,107,107,0.08);
-  --danger-border: rgba(255,107,107,0.3);
   --radius-sm: 5px;
   --radius: 8px;
   --radius-lg: 12px;
@@ -48,7 +46,6 @@ body {
   padding: 2.5rem 1rem 4rem;
   line-height: 1.5;
 }
-
 body::before {
   content: '';
   position: fixed;
@@ -59,526 +56,289 @@ body::before {
   opacity: 0.4;
 }
 
-.container {
-  max-width: 740px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 1;
-}
+.container { max-width: 740px; margin: 0 auto; position: relative; z-index: 1; }
 
 /* ─── HEADER ─── */
-.header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 2rem;
-}
-.logo {
-  width: 90px;
-  height: 90px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-.header-title {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-}
-.header h1 {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--text);
-}
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; }
+.logo { width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; }
+.header-title { display: flex; align-items: baseline; gap: 14px; }
+.header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); }
 .header-tag {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-3);
+  font-size: 11px; color: var(--text-3);
   border: 0.5px solid var(--border-md);
-  padding: 3px 8px;
-  border-radius: 4px;
-  letter-spacing: 0.03em;
+  padding: 3px 8px; border-radius: 4px; letter-spacing: 0.03em;
 }
 
 /* ─── NAV ─── */
 .nav {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 2rem;
-  background: var(--surface);
-  border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-lg);
-  padding: 4px;
+  display: flex; gap: 4px; margin-bottom: 2rem;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 4px;
 }
 .nav-btn {
-  flex: 1;
-  height: 34px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: 'Syne', sans-serif;
-  letter-spacing: -0.01em;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-3);
-  transition: all .15s;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: 1; height: 34px; font-size: 13px; font-weight: 600;
+  font-family: 'Syne', sans-serif; letter-spacing: -0.01em;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  background: transparent; color: var(--text-3); transition: all .15s;
+  text-decoration: none; display: flex; align-items: center; justify-content: center;
 }
 .nav-btn:hover { color: var(--text); }
-.nav-btn.active {
-  background: var(--surface-3);
-  color: var(--text);
-  border: 0.5px solid var(--border-md);
-}
+.nav-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
 
 /* ─── DROP ZONE ─── */
 .drop-zone {
-  border: 1px dashed var(--border-md);
-  border-radius: var(--radius-xl);
-  padding: 2.5rem 2rem;
-  text-align: center;
-  cursor: pointer;
+  border: 1px dashed var(--border-md); border-radius: var(--radius-xl);
+  padding: 2.5rem 2rem; text-align: center; cursor: pointer;
   transition: border-color .2s, background .2s;
-  background: var(--surface);
-  position: relative;
-  overflow: hidden;
+  background: var(--surface); position: relative; overflow: hidden;
 }
 .drop-zone::before {
-  content: '';
-  position: absolute;
-  inset: 0;
+  content: ''; position: absolute; inset: 0;
   background: radial-gradient(ellipse at 50% 0%, rgba(212,255,78,0.04) 0%, transparent 70%);
   pointer-events: none;
 }
 .drop-zone:hover { border-color: var(--border-hi); background: var(--surface-2); }
 .drop-zone.over { border-color: var(--accent-border); background: var(--accent-dim); }
 .drop-icon {
-  width: 44px; height: 44px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  border: 0.5px solid var(--border-md);
+  width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
+  background: var(--surface-2); border: 0.5px solid var(--border-md);
   display: flex; align-items: center; justify-content: center;
 }
 .drop-label { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
-.drop-hint {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; color: var(--text-3); margin-top: 5px;
-  letter-spacing: 0.04em;
-}
+.drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.04em; }
 
-/* ─── PREVIEW ─── */
+/* ─── CANVAS WRAP ─── */
 .canvas-wrap {
   display: none;
-  grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 1.5rem;
 }
-.canvas-col {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.canvas-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-}
-.preview-img {
-  width: 100%;
-  border-radius: var(--radius-lg);
-  border: 0.5px solid var(--border-md);
-  display: block;
-  object-fit: contain;
-  max-height: 320px;
-  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
-}
-.preview-img.original {
-  background: var(--surface-2);
-}
+/* 1 colonne tant que pas de résultat, 2 colonnes sinon */
+.canvas-wrap.single { grid-template-columns: 1fr; max-width: 360px; }
+.canvas-wrap.dual   { display: grid; grid-template-columns: 1fr 1fr; }
 
-/* ─── ACTIONS ─── */
-.actions {
-  display: none;
-  gap: 10px;
-  margin-top: 1.5rem;
-  flex-wrap: wrap;
-}
-.run-btn {
-  height: 48px;
-  padding: 0 20px;
-  background: var(--accent);
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  font-weight: 700;
-  font-family: 'Syne', sans-serif;
-  cursor: pointer;
-  color: #0c0c0b;
-  letter-spacing: -0.01em;
-  transition: all .2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: 0 0 0 0 rgba(212,255,78,0);
-}
-.run-btn:hover:not(:disabled) {
-  background: #dcff6a;
-  box-shadow: 0 0 24px rgba(212,255,78,0.25);
-  transform: translateY(-1px);
-}
-.run-btn:active:not(:disabled) { transform: scale(0.99) translateY(0); }
-.run-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
-.run-btn .spinner {
-  width: 16px; height: 16px;
-  border: 2px solid rgba(12,12,11,0.3);
-  border-top-color: #0c0c0b;
-  border-radius: 50%;
-  animation: spin .6s linear infinite;
-  display: none;
-  flex-shrink: 0;
-}
-.run-btn.loading .spinner { display: block; }
-.run-btn.loading .run-icon { display: none; }
+.canvas-col { display: flex; flex-direction: column; gap: 7px; }
 
-.dl-btn {
-  height: 48px;
-  padding: 0 20px;
-  background: var(--accent-dim);
-  border: 0.5px solid var(--accent-border);
-  border-radius: var(--radius-lg);
-  font-size: 13px;
-  font-weight: 700;
-  font-family: 'Syne', sans-serif;
-  cursor: pointer;
-  color: var(--accent);
-  transition: all .2s;
-  display: none;
-  align-items: center;
-  gap: 8px;
-}
-.dl-btn:hover { background: rgba(212,255,78,0.18); transform: translateY(-1px); }
-.dl-btn.visible { display: flex; }
-
-.change-btn {
-  height: 48px;
-  padding: 0 16px;
-  background: var(--surface-2);
-  border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-lg);
-  font-size: 13px;
-  font-weight: 500;
-  font-family: 'Syne', sans-serif;
-  cursor: pointer;
-  color: var(--text-2);
-  transition: all .15s;
-}
-.change-btn:hover { border-color: var(--border-hi); color: var(--text); }
-
-/* ─── STATUS ─── */
-.status {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-3);
-  margin-top: 12px;
-  min-height: 16px;
-  text-align: center;
-  transition: color .2s;
-}
-.status.error { color: var(--danger); }
-.status.success { color: var(--accent); }
-
-/* ─── PROGRESS BAR ─── */
-.progress-wrap {
-  display: none;
-  margin-top: 12px;
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  height: 4px;
-}
-.progress-bar {
-  height: 100%;
-  background: var(--accent);
-  width: 0%;
-  transition: width .3s ease;
-  border-radius: var(--radius-sm);
-}
-
-/* ─── TOLERANCE SLIDER ─── */
-.tolerance-wrap {
-  display: none;
-  margin-top: 1.2rem;
-  background: var(--surface);
-  border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-lg);
-  padding: 14px 16px 16px;
-  gap: 10px;
-  flex-direction: column;
-}
-.tolerance-wrap.visible { display: flex; }
-.tolerance-header {
+.canvas-label-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 20px;
 }
-.tolerance-label {
+.canvas-label {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--text-3);
+  font-size: 10px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .08em;
 }
-.tolerance-value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--accent);
-  min-width: 30px;
-  text-align: right;
-}
-.tolerance-track {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.tolerance-hint {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-3);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-input[type=range].tol-slider {
-  -webkit-appearance: none;
-  flex: 1;
-  height: 4px;
-  background: var(--surface-3);
-  border-radius: 2px;
-  outline: none;
-  cursor: pointer;
-}
-input[type=range].tol-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid #0c0c0b;
-  box-shadow: 0 0 6px rgba(212,255,78,0.35);
-  transition: box-shadow .15s;
-}
-input[type=range].tol-slider:hover::-webkit-slider-thumb {
-  box-shadow: 0 0 12px rgba(212,255,78,0.55);
-}
-input[type=range].tol-slider::-moz-range-thumb {
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid #0c0c0b;
-  cursor: pointer;
-}
-.reset-btn {
-  flex-shrink: 0;
-  width: 20px; height: 20px;
-  border-radius: 50%;
+
+/* Petit bouton Changer sur l'original */
+.change-img-btn {
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-sm);
   border: 0.5px solid var(--border-md);
   background: transparent;
   color: var(--text-3);
-  font-size: 9px;
+  font-family: 'Syne', sans-serif;
+  font-size: 10px; font-weight: 600;
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; gap: 5px;
   transition: border-color .15s, color .15s;
-  font-family: sans-serif;
 }
-.reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.change-img-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
-.result-wrap {
-  position: relative;
-  display: flex;
+.preview-img {
+  width: 100%; border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-md); display: block;
+  object-fit: contain; max-height: 320px;
+  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
 }
+.preview-img.original { background: var(--surface-2); }
+
+/* Bouton "Modifier" flottant sur le résultat */
+.result-wrap { position: relative; display: flex; }
 .edit-btn {
-  position: absolute;
-  top: 8px; right: 8px;
-  height: 28px;
-  padding: 0 10px;
+  position: absolute; top: 8px; right: 8px;
+  height: 28px; padding: 0 10px;
   border-radius: var(--radius-sm);
   border: 0.5px solid var(--border-md);
   background: rgba(20,20,19,0.82);
   backdrop-filter: blur(6px);
-  color: var(--text-2);
-  cursor: pointer;
-  display: flex; align-items: center; gap: 6px;
+  color: var(--text-2); cursor: pointer;
+  display: none; align-items: center; gap: 6px;
   font-family: 'Syne', sans-serif;
   font-size: 11px; font-weight: 600;
   transition: border-color .15s, color .15s;
 }
 .edit-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.edit-btn.visible { display: flex; }
 
-/* ─── EDIT MODAL ─── */
-.edit-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.92);
-  backdrop-filter: blur(10px);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  overflow-y: auto;
+/* ─── ACTIONS ─── */
+.actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
+.run-btn {
+  height: 48px; padding: 0 20px; background: var(--accent);
+  border: none; border-radius: var(--radius-lg);
+  font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif;
+  cursor: pointer; color: #0c0c0b; letter-spacing: -0.01em;
+  transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 0 0 0 rgba(212,255,78,0);
 }
-.edit-modal-inner {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  max-width: 900px;
-  width: 100%;
+.run-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
+.run-btn:active:not(:disabled) { transform: scale(0.99) translateY(0); }
+.run-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+.run-btn .spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(12,12,11,0.3); border-top-color: #0c0c0b;
+  border-radius: 50%; animation: spin .6s linear infinite;
+  display: none; flex-shrink: 0;
 }
-.edit-img-wrap {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.run-btn.loading .spinner { display: block; }
+.run-btn.loading .run-icon { display: none; }
+
+.dl-btn {
+  height: 48px; padding: 0 20px;
+  background: var(--accent-dim); border: 0.5px solid var(--accent-border);
+  border-radius: var(--radius-lg); font-size: 13px; font-weight: 700;
+  font-family: 'Syne', sans-serif; cursor: pointer; color: var(--accent);
+  transition: all .2s; display: none; align-items: center; gap: 8px;
 }
-#edit-img {
-  max-width: 100%;
-  max-height: 80vh;
-  border-radius: var(--radius-lg);
-  border: 0.5px solid var(--border-md);
-  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 20px 20px;
-  object-fit: contain;
-  display: block;
+.dl-btn:hover { background: rgba(212,255,78,0.18); transform: translateY(-1px); }
+.dl-btn.visible { display: flex; }
+
+/* ─── STATUS / PROGRESS ─── */
+.status {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-3); margin-top: 12px; min-height: 16px;
+  text-align: center; transition: color .2s;
 }
-.edit-img-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-lg);
-  background: rgba(0,0,0,0.55);
-  display: flex; align-items: center; justify-content: center;
+.status.error { color: var(--danger); }
+.status.success { color: var(--accent); }
+
+.progress-wrap {
+  display: none; margin-top: 12px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden; height: 4px;
 }
-@keyframes espin { to { transform: rotate(360deg); } }
-.edit-spinner {
-  width: 28px; height: 28px;
-  border: 2px solid rgba(255,255,255,0.15);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: espin .6s linear infinite;
+.progress-bar {
+  height: 100%; background: var(--accent); width: 0%;
+  transition: width .3s ease; border-radius: var(--radius-sm);
 }
+
+/* ─── PANNEAU D'ÉDITION INLINE ─── */
 .edit-panel {
-  width: 220px;
-  flex-shrink: 0;
+  display: none;
+  margin-top: 1.2rem;
   background: var(--surface);
   border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-xl);
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.edit-panel.visible { display: block; }
+
+.edit-panel-header {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 0.5px solid var(--border);
 }
 .edit-panel-title {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--text-3);
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-3);
 }
-.edit-control { display: flex; flex-direction: column; gap: 8px; }
-.edit-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-.edit-cancel {
-  flex: 1;
-  height: 36px;
-  border-radius: var(--radius);
-  border: 0.5px solid var(--border-md);
-  background: transparent;
-  color: var(--text-2);
-  font-family: 'Syne', sans-serif;
-  font-size: 13px; font-weight: 600;
-  cursor: pointer;
+.edit-panel-close {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 0.5px solid var(--border-md); background: transparent;
+  color: var(--text-3); font-size: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
   transition: border-color .15s, color .15s;
 }
-.edit-cancel:hover { border-color: var(--border-hi); color: var(--text); }
-.edit-confirm {
-  flex: 1;
-  height: 36px;
-  border-radius: var(--radius);
-  border: none;
-  background: var(--accent);
-  color: #0c0c0b;
-  font-family: 'Syne', sans-serif;
-  font-size: 13px; font-weight: 700;
-  cursor: pointer;
-  transition: background .15s;
-}
-.edit-confirm:hover { background: #dcff6a; }
-/* ─── EDIT MODAL TABS ─── */
-.edit-tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--surface-2);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 3px;
-  margin-bottom: 4px;
-}
-.edit-tab {
-  flex: 1;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-3);
-  font-family: 'Syne', sans-serif;
-  font-size: 12px; font-weight: 600;
-  cursor: pointer;
-  transition: all .15s;
-}
-.edit-tab.active {
-  background: var(--surface-3);
-  color: var(--text);
-  border: 0.5px solid var(--border-md);
+.edit-panel-close:hover { border-color: var(--border-hi); color: var(--text); }
+
+.edit-panel-body {
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 14px;
 }
 
-/* ─── CROP CANVAS ─── */
-.crop-canvas-wrap {
-  position: relative;
-  width: 100%;
-  cursor: crosshair;
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 20px 20px;
-  user-select: none;
-  border: 0.5px solid var(--border-md);
-  display: flex; align-items: center; justify-content: center;
+/* sliders */
+.slider-group { display: flex; flex-direction: column; gap: 8px; }
+.slider-header { display: flex; align-items: center; justify-content: space-between; }
+.slider-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
 }
-#edit-crop-canvas { display: block; max-width: 100%; max-height: 70vh; }
+.slider-val {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--accent); min-width: 28px; text-align: right;
+}
+.slider-track { display: flex; align-items: center; gap: 10px; }
+.slider-hint {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-3); white-space: nowrap; flex-shrink: 0;
+}
+input[type=range].tol-slider {
+  -webkit-appearance: none; flex: 1; height: 4px;
+  background: var(--surface-3); border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type=range].tol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0c0c0b;
+  box-shadow: 0 0 6px rgba(212,255,78,0.35); transition: box-shadow .15s;
+}
+input[type=range].tol-slider:hover::-webkit-slider-thumb { box-shadow: 0 0 12px rgba(212,255,78,0.55); }
+input[type=range].tol-slider::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0c0c0b; cursor: pointer;
+}
+.reset-btn {
+  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+  border: 0.5px solid var(--border-md); background: transparent;
+  color: var(--text-3); font-size: 9px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s; font-family: sans-serif;
+}
+.reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
+
+.panel-sep { height: 0.5px; background: var(--border-md); }
+
+/* ─── RECADRAGE INLINE ─── */
+.crop-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.crop-toggle-btn {
+  height: 26px; padding: 0 11px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md);
+  background: transparent; color: var(--text-3);
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: all .15s;
+}
+.crop-toggle-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.crop-toggle-btn.active { border-color: var(--accent-border); background: var(--accent-dim); color: var(--accent); }
+
+.crop-canvas-wrap {
+  display: none; position: relative; width: 100%; cursor: crosshair;
+  border-radius: var(--radius); overflow: hidden;
+  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 20px 20px;
+  user-select: none; border: 0.5px solid var(--border-md);
+  align-items: center; justify-content: center;
+}
+.crop-canvas-wrap.visible { display: flex; }
+#inline-crop-canvas { display: block; max-width: 100%; max-height: 300px; }
+
 .crop-box {
   position: absolute;
   border: 1.5px solid var(--accent);
   box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
-  cursor: move;
-  will-change: transform;
-  touch-action: none;
+  cursor: move; will-change: transform; touch-action: none;
 }
 .crop-handle {
-  position: absolute;
-  width: 9px; height: 9px;
-  background: var(--accent);
-  border: 1px solid rgba(0,0,0,0.3);
-  border-radius: 2px;
-  touch-action: none;
+  position: absolute; width: 9px; height: 9px;
+  background: var(--accent); border: 1px solid rgba(0,0,0,0.3);
+  border-radius: 2px; touch-action: none;
 }
 .crop-handle.tl { top:-5px; left:-5px; cursor:nw-resize; }
 .crop-handle.tr { top:-5px; right:-5px; cursor:ne-resize; }
@@ -588,74 +348,64 @@ input[type=range].tol-slider::-moz-range-thumb {
 .crop-handle.bc { bottom:-5px; left:calc(50% - 4px); cursor:s-resize; }
 .crop-handle.ml { top:calc(50% - 4px); left:-5px; cursor:w-resize; }
 .crop-handle.mr { top:calc(50% - 4px); right:-5px; cursor:e-resize; }
-.crop-dims-bar {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-top: 6px;
+
+.crop-dims-row {
+  display: flex; align-items: center; justify-content: space-between;
 }
 .crop-dims {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--text-3);
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3);
 }
 .crop-reset-btn {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--text-3);
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3);
   background: transparent; border: 0.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 3px 8px; cursor: pointer;
+  border-radius: var(--radius-sm); padding: 3px 8px; cursor: pointer;
   transition: border-color .15s, color .15s;
 }
 .crop-reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
-
-@media (max-width: 600px) {
-  .edit-modal { align-items: flex-start; padding: 1rem; }
-  .edit-modal-inner { flex-direction: column; gap: 12px; }
-  .edit-panel { width: 100%; }
-  #edit-img { max-height: 45vh; }
+/* ─── VALIDER TOUT ─── */
+.edit-panel-footer {
+  padding: 12px 16px;
+  border-top: 0.5px solid var(--border);
+  display: flex; gap: 8px;
 }
-  height: 0.5px;
-  background: var(--border-md);
-  margin: 2px 0;
+.edit-cancel-btn {
+  flex: 1; height: 36px; border-radius: var(--radius);
+  border: 0.5px solid var(--border-md); background: transparent;
+  color: var(--text-2); font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: border-color .15s, color .15s;
 }
+.edit-cancel-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.edit-confirm-btn {
+  flex: 1; height: 36px; border-radius: var(--radius);
+  border: none; background: var(--accent); color: #0c0c0b;
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.edit-confirm-btn:hover { background: #dcff6a; }
 
 /* ─── INFO BOX ─── */
 .info-box {
-  margin-top: 1.5rem;
-  padding: 14px 16px;
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-3);
-  line-height: 1.8;
+  margin-top: 1.5rem; padding: 14px 16px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-3); line-height: 1.8;
 }
-.info-box .label {
-  color: var(--accent);
-  font-weight: 500;
-}
+.info-box .label { color: var(--accent); font-weight: 500; }
 
 /* ─── TOAST ─── */
 .toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
+  position: fixed; bottom: 24px; left: 50%;
   transform: translateX(-50%) translateY(8px);
-  background: var(--surface-3);
-  border: 0.5px solid var(--border-md);
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  padding: 10px 18px;
-  border-radius: var(--radius);
-  opacity: 0;
-  transition: opacity .2s, transform .2s;
-  pointer-events: none;
-  z-index: 9999;
-  white-space: nowrap;
+  background: var(--surface-3); border: 0.5px solid var(--border-md);
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; padding: 10px 18px; border-radius: var(--radius);
+  opacity: 0; transition: opacity .2s, transform .2s;
+  pointer-events: none; z-index: 9999; white-space: nowrap;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast.error { border-color: var(--danger-border); color: var(--danger); }
+.toast.error { border-color: rgba(255,107,107,0.3); color: var(--danger); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -664,11 +414,9 @@ input[type=range].tol-slider::-moz-range-thumb {
   .header { gap: 10px; margin-bottom: 1.5rem; }
   .logo { width: 64px; height: 64px; }
   .header h1 { font-size: 18px; }
-  .canvas-wrap { grid-template-columns: 1fr; }
+  .canvas-wrap.dual { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
-  .run-btn { width: 100%; justify-content: center; }
-  .dl-btn { width: 100%; justify-content: center; }
-  .change-btn { width: 100%; text-align: center; }
+  .run-btn, .dl-btn { width: 100%; justify-content: center; }
 }
 </style>
 </head>
@@ -681,7 +429,7 @@ input[type=range].tol-slider::-moz-range-thumb {
     </a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.6</span>
+      <span class="header-tag">v2.7</span>
     </div>
   </div>
 
@@ -690,10 +438,11 @@ input[type=range].tol-slider::-moz-range-thumb {
     <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer</a>
   </nav>
 
+  <!-- Drop zone -->
   <div class="drop-zone" id="drop-zone"
        onclick="document.getElementById('file-in').click()"
        role="button" tabindex="0"
-       aria-label="Importer une image à détourer — cliquez ou glissez un fichier ici"
+       aria-label="Importer une image à détourer"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('file-in').click()}">
     <div class="drop-icon">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
@@ -708,26 +457,44 @@ input[type=range].tol-slider::-moz-range-thumb {
 
   <input type="file" id="file-in" accept="image/*" style="display:none">
 
-  <div class="canvas-wrap" id="canvas-wrap">
+  <!-- Aperçus — une ou deux colonnes selon l'état -->
+  <div class="canvas-wrap single" id="canvas-wrap">
+
+    <!-- Colonne Original -->
     <div class="canvas-col">
-      <span class="canvas-label">Original</span>
+      <div class="canvas-label-row">
+        <span class="canvas-label">Original</span>
+        <button class="change-img-btn" id="change-btn" aria-label="Changer d'image">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+          </svg>
+          Changer
+        </button>
+      </div>
       <img id="img-original" class="preview-img original" alt="Image originale">
     </div>
-    <div class="canvas-col">
-      <span class="canvas-label">Détouré</span>
-      <div class="result-wrap">
-        <img id="img-result" class="preview-img" alt="Image détourée" style="display:none">
-        <button class="edit-btn" id="edit-btn" aria-label="Modifier" style="display:none">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- Colonne Détouré (cachée tant qu'il n'y a pas de résultat) -->
+    <div class="canvas-col" id="result-col" style="display:none">
+      <div class="canvas-label-row">
+        <span class="canvas-label">Détouré</span>
+        <button class="edit-btn" id="edit-btn" aria-label="Modifier">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
           Modifier
         </button>
       </div>
+      <div class="result-wrap">
+        <img id="img-result" class="preview-img" alt="Image détourée">
+      </div>
     </div>
+
   </div>
 
+  <!-- Actions principales -->
   <div class="actions" id="actions">
     <button class="run-btn" id="run-btn">
       <svg class="run-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -744,36 +511,70 @@ input[type=range].tol-slider::-moz-range-thumb {
       </svg>
       Télécharger PNG
     </button>
-    <button class="change-btn">Changer</button>
   </div>
 
-  <div class="progress-wrap" id="progress-wrap">
-    <div class="progress-bar" id="progress-bar"></div>
-  </div>
-
+  <div class="progress-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
   <div class="status" id="status"></div>
 
+  <!-- ══════════════════════════════════════════
+       PANNEAU D'ÉDITION INLINE
+       Apparaît sous les aperçus quand on clique "Modifier"
+  ══════════════════════════════════════════ -->
+  <div class="edit-panel" id="edit-panel">
 
-  <div class="info-box">
-    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
-    <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
-  </div>
+    <div class="edit-panel-header">
+      <span class="edit-panel-title">Réglages &amp; Recadrage</span>
+      <button class="edit-panel-close" id="edit-panel-close" aria-label="Fermer">✕</button>
+    </div>
 
-</div>
+    <div class="edit-panel-body">
 
-<!-- Modale modifier -->
-<div class="edit-modal" id="edit-modal" role="dialog" aria-label="Modifier l'image" style="display:none">
-  <div class="edit-modal-inner">
-    <!-- zone image / canvas -->
-    <div class="edit-img-wrap" id="edit-img-wrap">
-      <!-- aperçu réglages -->
-      <img id="edit-img" alt="Aperçu" style="max-width:100%;max-height:80vh;border-radius:var(--radius-lg);border:0.5px solid var(--border-md);object-fit:contain;display:block;background:repeating-conic-gradient(#2a2a28 0% 25%,#1c1c1a 0% 50%) 0 0/20px 20px;">
-      <div class="edit-img-overlay" id="edit-overlay" style="display:none">
-        <div class="edit-spinner"></div>
+      <!-- Tolérance -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Tolérance</span>
+          <span class="slider-val" id="tol-value">0</span>
+        </div>
+        <div class="slider-track">
+          <span class="slider-hint">Faible</span>
+          <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="0">
+          <span class="slider-hint">Max</span>
+          <button class="reset-btn" id="reset-tol" aria-label="Réinitialiser">✕</button>
+        </div>
       </div>
-      <!-- canvas recadrage (masqué par défaut) -->
-      <div class="crop-canvas-wrap" id="crop-canvas-wrap" style="display:none">
-        <canvas id="edit-crop-canvas"></canvas>
+
+      <div class="panel-sep"></div>
+
+      <!-- Lissage -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Lissage des bords</span>
+          <span class="slider-val" id="feather-value">0</span>
+        </div>
+        <div class="slider-track">
+          <span class="slider-hint">Aucun</span>
+          <input type="range" class="tol-slider" id="feather-slider" min="0" max="100" value="0">
+          <span class="slider-hint">Max</span>
+          <button class="reset-btn" id="reset-feather" aria-label="Réinitialiser">✕</button>
+        </div>
+      </div>
+
+      <div class="panel-sep"></div>
+
+      <!-- Recadrage -->
+      <div class="crop-toggle-row">
+        <span class="slider-label">Recadrer</span>
+        <button class="crop-toggle-btn" id="crop-toggle-btn">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+          Afficher le cadre
+        </button>
+      </div>
+
+      <div class="crop-canvas-wrap" id="crop-canvas-wrap">
+        <canvas id="inline-crop-canvas"></canvas>
         <div class="crop-box" id="crop-box">
           <div class="crop-handle tl" data-h="tl"></div>
           <div class="crop-handle tr" data-h="tr"></div>
@@ -785,146 +586,249 @@ input[type=range].tol-slider::-moz-range-thumb {
           <div class="crop-handle mr" data-h="mr"></div>
         </div>
       </div>
+
+      <div class="crop-dims-row" id="crop-dims-row" style="display:none">
+        <span class="crop-dims" id="crop-dims">— × — px</span>
+        <button class="crop-reset-btn" id="crop-reset-btn">Réinitialiser</button>
+      </div>
+
+    </div><!-- /edit-panel-body -->
+
+    <div class="edit-panel-footer">
+      <button class="edit-cancel-btn" id="edit-cancel-btn">Annuler</button>
+      <button class="edit-confirm-btn" id="edit-confirm-btn">Valider</button>
     </div>
-    <!-- panneau latéral -->
-    <div class="edit-panel">
-      <div class="edit-tabs">
-        <button class="edit-tab active" id="tab-adjust" onclick="switchTab('adjust')">Réglages</button>
-        <button class="edit-tab" id="tab-crop" onclick="switchTab('crop')">Recadrer</button>
-      </div>
-      <!-- contenu onglet réglages -->
-      <div id="panel-adjust">
-        <div class="edit-control">
-          <div class="tolerance-header">
-            <span class="tolerance-label">Tolérance</span>
-            <span class="tolerance-value" id="m-tol-value">0</span>
-          </div>
-          <div class="tolerance-track">
-            <span class="tolerance-hint">Faible</span>
-            <input type="range" class="tol-slider" id="m-tol-slider" min="0" max="100" value="0">
-            <span class="tolerance-hint">Max</span>
-            <button class="reset-btn" id="m-reset-tol" aria-label="Annuler">✕</button>
-          </div>
-        </div>
-        <div class="tolerance-sep"></div>
-        <div class="edit-control">
-          <div class="tolerance-header">
-            <span class="tolerance-label">Lissage des bords</span>
-            <span class="tolerance-value" id="m-feather-value">0</span>
-          </div>
-          <div class="tolerance-track">
-            <span class="tolerance-hint">Aucun</span>
-            <input type="range" class="tol-slider" id="m-feather-slider" min="0" max="100" value="0">
-            <span class="tolerance-hint">Max</span>
-            <button class="reset-btn" id="m-reset-feather" aria-label="Annuler">✕</button>
-          </div>
-        </div>
-      </div>
-      <!-- contenu onglet recadrage -->
-      <div id="panel-crop" style="display:none">
-        <div class="crop-dims-bar">
-          <span class="crop-dims" id="crop-dims">— × — px</span>
-          <button class="crop-reset-btn" id="crop-reset-btn">Réinitialiser</button>
-        </div>
-      </div>
-      <div class="edit-actions">
-        <button class="edit-cancel" id="edit-cancel">Annuler</button>
-        <button class="edit-confirm" id="edit-confirm">Valider</button>
-      </div>
-    </div>
+
+  </div><!-- /edit-panel -->
+
+  <div class="info-box">
+    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
+    <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
   </div>
-</div>
+
+</div><!-- /container -->
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
 import { pipeline, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
-// ─── État ───
+// ─── État global ───
 let srcFile    = null;
 let resultBlob = null;
 let segmenter  = null;
-let rawPixels  = null;   // ImageData brute sauvegardée après le modèle (avant tolérance)
-let origPixels = null;   // Pixels de l'image originale (pour edge feathering)
+let rawPixels  = null;
+let origPixels = null;
 let rawW = 0, rawH = 0;
+let appliedTol     = 0;
+let appliedFeather = 0;
+let appliedCrop    = null; // {x,y,w,h} en fractions 0-1, ou null
 
-// Charger le modèle en arrière-plan dès le départ
+// Charger le modèle en arrière-plan
 pipeline('background-removal', 'briaai/RMBG-1.4')
   .then(p => { segmenter = p; })
   .catch(e => { console.error('Erreur modèle:', e); segmenter = 'error'; });
 
-// ─── DOM ───
-const dz = document.getElementById('drop-zone');
+// ─── Refs DOM ───
+const dz          = document.getElementById('drop-zone');
+const canvasWrap  = document.getElementById('canvas-wrap');
+const resultCol   = document.getElementById('result-col');
+const imgResult   = document.getElementById('img-result');
+const editBtn     = document.getElementById('edit-btn');
+const editPanel   = document.getElementById('edit-panel');
+const tolSlider   = document.getElementById('tol-slider');
+const tolValue    = document.getElementById('tol-value');
+const featherSlider = document.getElementById('feather-slider');
+const featherValue  = document.getElementById('feather-value');
+
+// ─── Drag & drop ───
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('over'));
 dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
 document.getElementById('file-in').addEventListener('change', e => loadFile(e.target.files[0]));
+
 document.getElementById('run-btn').addEventListener('click', runDetourage);
 document.getElementById('dl-btn').addEventListener('click', downloadResult);
-document.querySelector('.change-btn').addEventListener('click', resetAll);
+document.getElementById('change-btn').addEventListener('click', resetAll);
 
-// ─── État curseurs (valeurs appliquées à l'image principale) ───
-let appliedTol     = 0;
-let appliedFeather = 0;
-let appliedCrop    = null; // {x,y,w,h} en fractions 0-1, ou null = pas de recadrage
+// ─── Panneau d'édition ───
+editBtn.addEventListener('click', openEditPanel);
+document.getElementById('edit-panel-close').addEventListener('click', closeEditPanel);
+document.getElementById('edit-cancel-btn').addEventListener('click', closeEditPanel);
+document.getElementById('edit-confirm-btn').addEventListener('click', confirmEdit);
 
-// ─── Modale modifier ───
-const editBtn        = document.getElementById('edit-btn');
-const editModal      = document.getElementById('edit-modal');
-const editCancel     = document.getElementById('edit-cancel');
-const editConfirm    = document.getElementById('edit-confirm');
-const editImg        = document.getElementById('edit-img');
-const editOverlay    = document.getElementById('edit-overlay');
-const mTolSlider     = document.getElementById('m-tol-slider');
-const mTolValue      = document.getElementById('m-tol-value');
-const mFeatherSlider = document.getElementById('m-feather-slider');
-const mFeatherValue  = document.getElementById('m-feather-value');
+// Fermer avec Échap
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && editPanel.classList.contains('visible')) closeEditPanel();
+});
 
-let modalTimer  = null;
-let currentTab  = 'adjust';
+// ─── Sliders (preview en temps réel dans le panneau) ───
+// On garde une copie "draft" pour pouvoir annuler
+let draftTol = 0, draftFeather = 0;
 
-// ─── Tab switching ───
-window.switchTab = function(tab) {
-  currentTab = tab;
-  document.getElementById('tab-adjust').classList.toggle('active', tab === 'adjust');
-  document.getElementById('tab-crop').classList.toggle('active', tab === 'crop');
-  document.getElementById('panel-adjust').style.display   = tab === 'adjust' ? '' : 'none';
-  document.getElementById('panel-crop').style.display     = tab === 'crop'   ? '' : 'none';
-  document.getElementById('edit-img').style.display       = tab === 'adjust' ? 'block' : 'none';
-  document.getElementById('crop-canvas-wrap').style.display = tab === 'crop' ? '' : 'none';
-  if (tab === 'crop') initCropCanvas();
-};
+tolSlider.addEventListener('input', () => {
+  tolValue.textContent = tolSlider.value;
+  draftTol = parseInt(tolSlider.value, 10);
+  schedulePreview();
+});
+featherSlider.addEventListener('input', () => {
+  featherValue.textContent = featherSlider.value;
+  draftFeather = parseInt(featherSlider.value, 10);
+  schedulePreview();
+});
+document.getElementById('reset-tol').addEventListener('click', () => {
+  tolSlider.value = 0; tolValue.textContent = '0'; draftTol = 0; schedulePreview();
+});
+document.getElementById('reset-feather').addEventListener('click', () => {
+  featherSlider.value = 0; featherValue.textContent = '0'; draftFeather = 0; schedulePreview();
+});
 
-// ─── Crop state ───
-let cropCanvas, cropCtx, cropCanvasW, cropCanvasH, cBox, drag, modalCrop;
+let previewTimer = null;
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    if (!rawPixels) return;
+    const result = await buildPixelsWithCrop(draftTol, draftFeather, draftCrop);
+    const blob = await blobFromPixels(result.data, result.w, result.h);
+    const old = imgResult.src;
+    imgResult.src = URL.createObjectURL(blob);
+    if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+  }, 180);
+}
+
+function openEditPanel() {
+  // Initialiser les drafts depuis les valeurs appliquées
+  draftTol     = appliedTol;
+  draftFeather = appliedFeather;
+  draftCrop    = appliedCrop ? { ...appliedCrop } : null;
+  tolSlider.value = appliedTol;
+  tolValue.textContent = appliedTol;
+  featherSlider.value = appliedFeather;
+  featherValue.textContent = appliedFeather;
+  // Fermer crop si ouvert
+  closeCrop();
+  editPanel.classList.add('visible');
+  editPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeEditPanel() {
+  // Annuler : remettre l'image comme elle était avant d'ouvrir
+  closeCrop();
+  editPanel.classList.remove('visible');
+  // Remettre l'aperçu à l'état appliqué
+  revertToApplied();
+}
+
+async function revertToApplied() {
+  if (!rawPixels) return;
+  const result = await buildPixelsWithCrop(appliedTol, appliedFeather, appliedCrop);
+  const blob = await blobFromPixels(result.data, result.w, result.h);
+  resultBlob = blob;
+  const old = imgResult.src;
+  imgResult.src = URL.createObjectURL(blob);
+  if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+}
+
+async function confirmEdit() {
+  // Valider crop si ouvert
+  if (cropOpen && cBox && cropCanvasW) {
+    const cx = cBox.x / cropCanvasW, cy = cBox.y / cropCanvasH;
+    const cw = cBox.w / cropCanvasW, ch = cBox.h / cropCanvasH;
+    if (cx > 0.001 || cy > 0.001 || cw < 0.999 || ch < 0.999) {
+      if (appliedCrop) {
+        draftCrop = {
+          x: appliedCrop.x + cx * appliedCrop.w,
+          y: appliedCrop.y + cy * appliedCrop.h,
+          w: cw * appliedCrop.w,
+          h: ch * appliedCrop.h
+        };
+      } else {
+        draftCrop = { x: cx, y: cy, w: cw, h: ch };
+      }
+    } else {
+      draftCrop = appliedCrop;
+    }
+  }
+
+  appliedTol     = draftTol;
+  appliedFeather = draftFeather;
+  appliedCrop    = draftCrop;
+
+  const result = await buildPixelsWithCrop(appliedTol, appliedFeather, appliedCrop);
+  const blob = await blobFromPixels(result.data, result.w, result.h);
+  resultBlob = blob;
+  const old = imgResult.src;
+  imgResult.src = URL.createObjectURL(blob);
+  if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+
+  document.getElementById('dl-btn').classList.add('visible');
+  closeCrop();
+  editPanel.classList.remove('visible');
+  showToast('Modifications appliquées ✓');
+}
+
+// ─── Crop ───
+let cropOpen = false;
+let draftCrop = null;
+let cropCanvas, cropCtx, cropCanvasW, cropCanvasH, cBox, drag;
+
+const cropToggleBtn  = document.getElementById('crop-toggle-btn');
+const cropCanvasWrap = document.getElementById('crop-canvas-wrap');
+const cropDimsRow    = document.getElementById('crop-dims-row');
+
+cropToggleBtn.addEventListener('click', () => {
+  if (!cropOpen) openCrop();
+  else closeCrop();
+});
+
+document.getElementById('crop-reset-btn').addEventListener('click', () => {
+  cBox = { x: 0, y: 0, w: cropCanvasW, h: cropCanvasH };
+  updateCropBox();
+});
+
+function openCrop() {
+  cropOpen = true;
+  cropToggleBtn.classList.add('active');
+  cropToggleBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Masquer le cadre`;
+  cropCanvasWrap.classList.add('visible');
+  cropDimsRow.style.display = '';
+  initCropCanvas();
+}
+
+function closeCrop() {
+  cropOpen = false;
+  drag = null;
+  cropToggleBtn.classList.remove('active');
+  cropToggleBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Afficher le cadre`;
+  cropCanvasWrap.classList.remove('visible');
+  cropDimsRow.style.display = 'none';
+}
 
 function initCropCanvas() {
-  cropCanvas = document.getElementById('edit-crop-canvas');
+  cropCanvas = document.getElementById('inline-crop-canvas');
   cropCtx    = cropCanvas.getContext('2d');
-  const wrap = document.getElementById('crop-canvas-wrap');
-  const maxW = wrap.offsetWidth || 600;
-  const maxH = window.innerHeight * 0.65;
+  const maxW = cropCanvasWrap.offsetWidth || 600;
+  const maxH = 300;
   const ir = rawW / rawH;
   let cw, ch;
   if (ir > maxW / maxH) { cw = maxW; ch = Math.round(maxW / ir); }
   else { ch = maxH; cw = Math.round(maxH * ir); }
-  cropCanvas.width  = cw; cropCanvas.height = ch;
-  cropCanvas.style.width  = cw + 'px'; cropCanvas.style.height = ch + 'px';
+  cropCanvas.width = cw; cropCanvas.height = ch;
+  cropCanvas.style.width = cw + 'px'; cropCanvas.style.height = ch + 'px';
   cropCanvasW = cw; cropCanvasH = ch;
-  // Draw the current result image onto canvas
+
   const tmpImg = new Image();
   tmpImg.onload = () => {
     cropCtx.clearRect(0, 0, cw, ch);
     cropCtx.drawImage(tmpImg, 0, 0, cw, ch);
-    // Restore previous crop or reset
-    if (modalCrop) {
-      cBox = { x: modalCrop.x * cw, y: modalCrop.y * ch, w: modalCrop.w * cw, h: modalCrop.h * ch };
+    if (draftCrop) {
+      cBox = { x: draftCrop.x * cw, y: draftCrop.y * ch, w: draftCrop.w * cw, h: draftCrop.h * ch };
     } else {
       cBox = { x: 0, y: 0, w: cw, h: ch };
     }
     updateCropBox();
   };
-  tmpImg.src = editImg.src || document.getElementById('img-result').src;
+  tmpImg.src = imgResult.src;
 }
 
 function updateCropBox() {
@@ -939,10 +843,9 @@ function updateCropBox() {
 }
 
 function clampBox(b, isMove) {
-  const mn = 20;
   if (!isMove) {
-    if (b.w < mn) b.w = mn;
-    if (b.h < mn) b.h = mn;
+    if (b.w < 20) b.w = 20;
+    if (b.h < 20) b.h = 20;
     if (b.w > cropCanvasW) b.w = cropCanvasW;
     if (b.h > cropCanvasH) b.h = cropCanvasH;
   }
@@ -956,8 +859,7 @@ function clampBox(b, isMove) {
 }
 
 function getCropPos(e) {
-  const wrap = document.getElementById('crop-canvas-wrap');
-  const rect = wrap.getBoundingClientRect();
+  const rect = cropCanvasWrap.getBoundingClientRect();
   const sx = cropCanvasW / rect.width, sy = cropCanvasH / rect.height;
   const src = e.touches ? e.touches[0] : e;
   return {
@@ -967,26 +869,25 @@ function getCropPos(e) {
 }
 
 function onCropDown(e, h) {
+  if (!cropOpen) return;
   e.preventDefault();
   const p = getCropPos(e);
   drag = { h, sx: p.x, sy: p.y, ob: { ...cBox } };
 }
 
 function onCropMove(e) {
-  if (!drag || currentTab !== 'crop') return;
+  if (!drag || !cropOpen) return;
   e.preventDefault();
   const p = getCropPos(e), dx = p.x - drag.sx, dy = p.y - drag.sy, o = drag.ob;
   let b = { ...o }, H = drag.h;
   if (H === 'move') { b.x = o.x + dx; b.y = o.y + dy; }
   else {
-    if (H==='br'||H==='mr'||H==='tr') dx2=Math.min(dx,cropCanvasW-(o.x+o.w)); else dx2=dx;
-    if (H==='bl'||H==='ml'||H==='tl') dx2=Math.max(dx,-o.x); else if(H!=='br'&&H!=='mr'&&H!=='tr')dx2=dx;
-    let dx2=dx, dy2=dy;
-    if (H==='br'||H==='mr'||H==='tr') dx2=Math.min(dx,cropCanvasW-(o.x+o.w));
-    if (H==='bl'||H==='ml'||H==='tl') dx2=Math.max(dx,-o.x);
-    if (H==='br'||H==='bl'||H==='bc') dy2=Math.min(dy,cropCanvasH-(o.y+o.h));
-    if (H==='tr'||H==='tl'||H==='tc') dy2=Math.max(dy,-o.y);
-    if (H==='br') { b.w=Math.max(20,o.w+dx2); b.h=Math.max(20,o.h+dy2); }
+    let dx2 = dx, dy2 = dy;
+    if (H==='br'||H==='mr'||H==='tr') dx2 = Math.min(dx, cropCanvasW - (o.x + o.w));
+    if (H==='bl'||H==='ml'||H==='tl') dx2 = Math.max(dx, -o.x);
+    if (H==='br'||H==='bl'||H==='bc') dy2 = Math.min(dy, cropCanvasH - (o.y + o.h));
+    if (H==='tr'||H==='tl'||H==='tc') dy2 = Math.max(dy, -o.y);
+    if      (H==='br') { b.w=Math.max(20,o.w+dx2); b.h=Math.max(20,o.h+dy2); }
     else if (H==='mr') { b.w=Math.max(20,o.w+dx2); }
     else if (H==='tr') { b.w=Math.max(20,o.w+dx2); b.h=Math.max(20,o.h-dy2); b.y=o.y+o.h-b.h; }
     else if (H==='bl') { b.w=Math.max(20,o.w-dx2); b.x=o.x+o.w-b.w; b.h=Math.max(20,o.h+dy2); }
@@ -1000,7 +901,6 @@ function onCropMove(e) {
 }
 function onCropUp() { drag = null; }
 
-// Bind crop events
 const cbEl = document.getElementById('crop-box');
 cbEl.addEventListener('mousedown',  e => { if (e.target === cbEl) onCropDown(e, 'move'); });
 cbEl.addEventListener('touchstart', e => { if (e.target === cbEl) onCropDown(e, 'move'); }, { passive: false });
@@ -1013,40 +913,76 @@ document.addEventListener('mouseup',    onCropUp);
 document.addEventListener('touchmove',  onCropMove, { passive: false });
 document.addEventListener('touchend',   onCropUp);
 
-document.getElementById('crop-reset-btn').addEventListener('click', () => {
-  cBox = { x: 0, y: 0, w: cropCanvasW, h: cropCanvasH };
-  updateCropBox();
-});
-
-// ─── Overlay spinner ───
-function showEditOverlay() { editOverlay.style.display = 'flex'; }
-function hideEditOverlay() { editOverlay.style.display = 'none'; }
-
-// ─── Apply adjust effects preview ───
-async function applyModalEffects() {
-  if (!rawPixels) return;
-  showEditOverlay();
-  await new Promise(r => setTimeout(r, 30));
-  const tol     = parseInt(mTolSlider.value, 10);
-  const feather = parseInt(mFeatherSlider.value, 10);
-  // Apply effects on cropped pixels if a crop is active, else full image
-  const pixels = await buildPixelsWithCrop(tol, feather, modalCrop);
-  const blob = await blobFromPixels(pixels.data, pixels.w, pixels.h);
-  const oldSrc = editImg.src;
-  editImg.src = URL.createObjectURL(blob);
-  if (oldSrc && oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
-  hideEditOverlay();
+// ─── Pixel processing ───
+function applySharpen(pixels, tolerance) {
+  const data = new Uint8ClampedArray(pixels);
+  if (tolerance === 0) return data;
+  const threshold = Math.round((1 - tolerance / 100) * 255);
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < threshold) data[i] = 0;
+  }
+  return data;
 }
 
-// Build pixels applying optional crop then tol+feather
+function applyEdgeFeathering(pixels, origPx, w, h, amount) {
+  if (amount === 0) return new Uint8ClampedArray(pixels);
+  const radius = Math.round((amount / 100) * 6) + 1;
+  const data   = new Uint8ClampedArray(pixels);
+  const sigma  = radius / 2;
+  const kernel = []; let ksum = 0;
+  for (let i = -radius; i <= radius; i++) {
+    const v = Math.exp(-(i * i) / (2 * sigma * sigma));
+    kernel.push(v); ksum += v;
+  }
+  for (let i = 0; i < kernel.length; i++) kernel[i] /= ksum;
+  const alpha = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3];
+  const tmp = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let k = -radius; k <= radius; k++) {
+        s += alpha[y * w + Math.min(Math.max(x + k, 0), w - 1)] * kernel[k + radius];
+      }
+      tmp[y * w + x] = s;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let k = -radius; k <= radius; k++) {
+        s += tmp[Math.min(Math.max(y + k, 0), h - 1) * w + x] * kernel[k + radius];
+      }
+      data[(y * w + x) * 4 + 3] = Math.round(s);
+    }
+  }
+  return data;
+}
+
+async function blobFromPixels(data, w, h) {
+  const oc = new OffscreenCanvas(w, h);
+  oc.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
+  return oc.convertToBlob({ type: 'image/png' });
+}
+
+function cropPixels(src, srcW, sx, sy, sw, sh) {
+  const out = new Uint8ClampedArray(sw * sh * 4);
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      const si = ((sy + y) * srcW + (sx + x)) * 4;
+      const di = (y * sw + x) * 4;
+      out[di] = src[si]; out[di+1] = src[si+1]; out[di+2] = src[si+2]; out[di+3] = src[si+3];
+    }
+  }
+  return out;
+}
+
 async function buildPixelsWithCrop(tol, feather, crop) {
   if (!crop || (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1)) {
-    // No crop: full image
     let px = applySharpen(rawPixels, tol);
     px = applyEdgeFeathering(px, origPixels, rawW, rawH, feather);
     return { data: px, w: rawW, h: rawH };
   }
-  // Crop the raw pixel arrays first
   const sx = Math.round(crop.x * rawW), sy = Math.round(crop.y * rawH);
   const sw = Math.round(crop.w * rawW), sh = Math.round(crop.h * rawH);
   const croppedRaw  = cropPixels(rawPixels,  rawW, sx, sy, sw, sh);
@@ -1056,118 +992,114 @@ async function buildPixelsWithCrop(tol, feather, crop) {
   return { data: px, w: sw, h: sh };
 }
 
-function cropPixels(src, srcW, sx, sy, sw, sh) {
-  const out = new Uint8ClampedArray(sw * sh * 4);
-  for (let y = 0; y < sh; y++) {
-    for (let x = 0; x < sw; x++) {
-      const si = ((sy + y) * srcW + (sx + x)) * 4;
-      const di = (y * sw + x) * 4;
-      out[di]   = src[si];
-      out[di+1] = src[si+1];
-      out[di+2] = src[si+2];
-      out[di+3] = src[si+3];
-    }
+// ─── Détourage ───
+async function runDetourage() {
+  if (!srcFile) return;
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.classList.add('loading');
+  document.getElementById('dl-btn').classList.remove('visible');
+  showProgress(10); setStatus('Chargement du modèle…');
+
+  let waited = 0;
+  while (!segmenter) {
+    if (waited > 60000) { setStatus('Délai dépassé.', 'error'); hideProgress(); btn.disabled = false; btn.classList.remove('loading'); return; }
+    await new Promise(r => setTimeout(r, 200)); waited += 200;
   }
-  return out;
-}
+  if (segmenter === 'error') { setStatus('Erreur de chargement du modèle.', 'error'); hideProgress(); btn.disabled = false; btn.classList.remove('loading'); return; }
 
-function onModalSliderChange() {
-  mTolValue.textContent     = mTolSlider.value;
-  mFeatherValue.textContent = mFeatherSlider.value;
-  clearTimeout(modalTimer);
-  modalTimer = setTimeout(() => applyModalEffects(), 200);
-}
-mTolSlider.addEventListener('input', onModalSliderChange);
-mFeatherSlider.addEventListener('input', onModalSliderChange);
+  try {
+    showProgress(40); setStatus('Segmentation en cours…');
+    const dataUrl = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.readAsDataURL(srcFile);
+    });
 
-document.getElementById('m-reset-tol').addEventListener('click', () => {
-  mTolSlider.value = 0; mTolValue.textContent = '0';
-  clearTimeout(modalTimer);
-  modalTimer = setTimeout(() => applyModalEffects(), 200);
-});
-document.getElementById('m-reset-feather').addEventListener('click', () => {
-  mFeatherSlider.value = 0; mFeatherValue.textContent = '0';
-  clearTimeout(modalTimer);
-  modalTimer = setTimeout(() => applyModalEffects(), 200);
-});
+    showProgress(60);
+    const output = await segmenter(dataUrl);
+    showProgress(90);
 
-editBtn.addEventListener('click', async () => {
-  mTolSlider.value     = appliedTol;     mTolValue.textContent     = appliedTol;
-  mFeatherSlider.value = appliedFeather; mFeatherValue.textContent = appliedFeather;
-  modalCrop = appliedCrop ? { ...appliedCrop } : null;
-  // Switch to adjust tab by default on open
-  switchTab('adjust');
-  editImg.src = document.getElementById('img-result').src;
-  editModal.style.display = 'flex';
-});
+    const rawImage = output[0];
+    if (!rawImage) throw new Error('Résultat vide.');
 
-editCancel.addEventListener('click', () => {
-  clearTimeout(modalTimer);
-  drag = null;
-  const oldSrc = editImg.src;
-  editImg.src = '';
-  if (oldSrc && oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
-  editModal.style.display = 'none';
-});
-
-editConfirm.addEventListener('click', async () => {
-  clearTimeout(modalTimer);
-  drag = null;
-  appliedTol     = parseInt(mTolSlider.value, 10);
-  appliedFeather = parseInt(mFeatherSlider.value, 10);
-  // Commit crop if on crop tab and box is not full image
-  if (currentTab === 'crop' && cBox && cropCanvasW) {
-    const cx = cBox.x / cropCanvasW, cy = cBox.y / cropCanvasH;
-    const cw = cBox.w / cropCanvasW, ch = cBox.h / cropCanvasH;
-    if (cx > 0.001 || cy > 0.001 || cw < 0.999 || ch < 0.999) {
-      // Compose with existing crop if any
-      if (appliedCrop) {
-        modalCrop = {
-          x: appliedCrop.x + cx * appliedCrop.w,
-          y: appliedCrop.y + cy * appliedCrop.h,
-          w: cw * appliedCrop.w,
-          h: ch * appliedCrop.h
-        };
-      } else {
-        modalCrop = { x: cx, y: cy, w: cw, h: ch };
-      }
+    const srcCanvas = rawImage.toCanvas();
+    let htmlCanvas;
+    if (srcCanvas instanceof HTMLCanvasElement) {
+      htmlCanvas = srcCanvas;
     } else {
-      modalCrop = appliedCrop; // no real crop change
+      htmlCanvas = document.createElement('canvas');
+      htmlCanvas.width = srcCanvas.width; htmlCanvas.height = srcCanvas.height;
+      htmlCanvas.getContext('2d').drawImage(srcCanvas, 0, 0);
     }
-  }
-  appliedCrop = modalCrop;
-  const result = await buildPixelsWithCrop(appliedTol, appliedFeather, appliedCrop);
-  const blob = await blobFromPixels(result.data, result.w, result.h);
-  resultBlob = blob;
-  const ri = document.getElementById('img-result');
-  const oldMain = ri.src;
-  ri.src = URL.createObjectURL(blob);
-  if (oldMain && oldMain.startsWith('blob:')) URL.revokeObjectURL(oldMain);
-  const oldEdit = editImg.src;
-  editImg.src = '';
-  if (oldEdit && oldEdit.startsWith('blob:')) URL.revokeObjectURL(oldEdit);
-  editModal.style.display = 'none';
-});
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && editModal.style.display !== 'none') editCancel.click();
-});
+    rawW = htmlCanvas.width; rawH = htmlCanvas.height;
+    rawPixels = htmlCanvas.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+
+    origPixels = await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const oc = document.createElement('canvas');
+        oc.width = rawW; oc.height = rawH;
+        oc.getContext('2d').drawImage(img, 0, 0, rawW, rawH);
+        resolve(oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice());
+      };
+      img.src = dataUrl;
+    });
+
+    appliedTol = 0; appliedFeather = 0; appliedCrop = null;
+    const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
+    resultBlob = blob;
+
+    const url = URL.createObjectURL(blob);
+    imgResult.src = url;
+
+    // Afficher la colonne résultat + passer en 2 colonnes
+    resultCol.style.display = '';
+    canvasWrap.classList.remove('single');
+    canvasWrap.classList.add('dual');
+
+    editBtn.classList.add('visible');
+    document.getElementById('dl-btn').classList.add('visible');
+    setStatus('✓ Fond supprimé avec succès.', 'success');
+    showProgress(100);
+    setTimeout(hideProgress, 800);
+    btn.disabled = false; btn.classList.remove('loading');
+
+  } catch(e) {
+    console.error(e);
+    setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
+    hideProgress(); btn.disabled = false; btn.classList.remove('loading');
+  }
+}
+
+function downloadResult() {
+  if (!resultBlob) return;
+  const name = srcFile ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png' : 'image_detoure.png';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(resultBlob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => document.body.removeChild(a), 100);
+}
 
 function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
-  resultBlob = null;
-  rawPixels = null;
-  origPixels = null;
+  resultBlob = null; rawPixels = null; origPixels = null;
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById('img-original').src = ev.target.result;
-    document.getElementById('img-result').src = '';
-    document.getElementById('img-result').style.display = 'none';
-    document.getElementById('canvas-wrap').style.display = 'grid';
+    imgResult.src = '';
+    resultCol.style.display = 'none';
+    canvasWrap.classList.remove('dual');
+    canvasWrap.classList.add('single');
+    canvasWrap.style.display = 'block'; // show as block for single-col
     document.getElementById('actions').style.display = 'flex';
     document.getElementById('dl-btn').classList.remove('visible');
+    editBtn.classList.remove('visible');
+    editPanel.classList.remove('visible');
+    closeCrop();
     document.getElementById('drop-zone').style.display = 'none';
     setStatus(''); hideProgress();
   };
@@ -1176,16 +1108,19 @@ function loadFile(file) {
 
 function resetAll() {
   srcFile = null; resultBlob = null; rawPixels = null; origPixels = null;
+  appliedTol = 0; appliedFeather = 0; appliedCrop = null;
   document.getElementById('drop-zone').style.display = '';
-  document.getElementById('canvas-wrap').style.display = 'none';
+  canvasWrap.style.display = 'none';
+  canvasWrap.classList.remove('dual'); canvasWrap.classList.add('single');
   document.getElementById('actions').style.display = 'none';
   document.getElementById('dl-btn').classList.remove('visible');
   document.getElementById('img-original').src = '';
-  document.getElementById('img-result').src = '';
-  document.getElementById('img-result').style.display = 'none';
-  document.getElementById('edit-btn').style.display = 'none';
+  imgResult.src = '';
+  resultCol.style.display = 'none';
+  editBtn.classList.remove('visible');
+  editPanel.classList.remove('visible');
+  closeCrop();
   document.getElementById('file-in').value = '';
-  appliedTol = 0; appliedFeather = 0;
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
   btn.disabled = false; btn.classList.remove('loading');
@@ -1212,185 +1147,8 @@ function showToast(msg, type) {
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
-// ─── Curseur 1 : Tolérance (seuil de coupure sur l'alpha) ───
-// 0 = masque brut, rien ne change
-// 1→100 = seuil décroissant : 1 = très permissif, 100 = très strict
-function applySharpen(pixels, tolerance) {
-  const data = new Uint8ClampedArray(pixels);
-  if (tolerance === 0) return data;
-
-  const threshold = Math.round((1 - tolerance / 100) * 255);
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] < threshold) data[i] = 0;
-  }
-  return data;
-}
-
-
-// ─── Curseur 2 : Lissage des bords (blur gaussien sur le canal alpha) ───
-// Adoucit les transitions brusques opaque/transparent sans toucher aux couleurs
-function applyEdgeFeathering(pixels, origPx, w, h, amount) {
-  if (amount === 0) return new Uint8ClampedArray(pixels);
-
-  const radius = Math.round((amount / 100) * 6) + 1; // 1 à 7px
-  const data   = new Uint8ClampedArray(pixels);
-
-  // Kernel gaussien 1D
-  const sigma = radius / 2;
-  const kernel = [];
-  let ksum = 0;
-  for (let i = -radius; i <= radius; i++) {
-    const v = Math.exp(-(i * i) / (2 * sigma * sigma));
-    kernel.push(v); ksum += v;
-  }
-  for (let i = 0; i < kernel.length; i++) kernel[i] /= ksum;
-
-  // Extraire le canal alpha
-  const alpha = new Float32Array(w * h);
-  for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3];
-
-  // Passe horizontale
-  const tmp = new Float32Array(w * h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let s = 0;
-      for (let k = -radius; k <= radius; k++) {
-        const nx = Math.min(Math.max(x + k, 0), w - 1);
-        s += alpha[y * w + nx] * kernel[k + radius];
-      }
-      tmp[y * w + x] = s;
-    }
-  }
-
-  // Passe verticale
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let s = 0;
-      for (let k = -radius; k <= radius; k++) {
-        const ny = Math.min(Math.max(y + k, 0), h - 1);
-        s += tmp[ny * w + x] * kernel[k + radius];
-      }
-      data[(y * w + x) * 4 + 3] = Math.round(s);
-    }
-  }
-  return data;
-}
-async function blobFromPixels(data, w, h) {
-  const offscreen = new OffscreenCanvas(w, h);
-  const ctx = offscreen.getContext('2d');
-  ctx.putImageData(new ImageData(data, w, h), 0, 0);
-  return offscreen.convertToBlob({ type: 'image/png' });
-}
-
-// ─── Applique les trois effets en séquence ───
-async function applyEffects(tol, feather) {
-  if (!rawPixels) return;
-  let pixels = applySharpen(rawPixels, tol);
-  pixels = applyEdgeFeathering(pixels, origPixels, rawW, rawH, feather);
-  const blob = await blobFromPixels(pixels, rawW, rawH);
-  resultBlob = blob;
-  const oldUrl = document.getElementById('img-result').src;
-  document.getElementById('img-result').src = URL.createObjectURL(blob);
-  if (oldUrl && oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
-}
-
-async function runDetourage() {
-  if (!srcFile) return;
-  const btn = document.getElementById('run-btn');
-  btn.disabled = true; btn.classList.add('loading');
-  document.getElementById('dl-btn').classList.remove('visible');
-  document.getElementById('img-result').style.display = 'none';
-  showProgress(10); setStatus('Chargement du modèle…');
-
-  // Attendre que le modèle soit prêt (max 60s)
-  let waited = 0;
-  while (!segmenter) {
-    if (waited > 60000) { setStatus('Délai dépassé.', 'error'); hideProgress(); btn.disabled = false; btn.classList.remove('loading'); return; }
-    await new Promise(r => setTimeout(r, 200));
-    waited += 200;
-  }
-  if (segmenter === 'error') { setStatus('Erreur de chargement du modèle.', 'error'); hideProgress(); btn.disabled = false; btn.classList.remove('loading'); return; }
-
-  try {
-    showProgress(40); setStatus('Segmentation en cours…');
-
-    const dataUrl = await new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = e => resolve(e.target.result);
-      reader.readAsDataURL(srcFile);
-    });
-
-    showProgress(60);
-    const output = await segmenter(dataUrl);
-    showProgress(90);
-
-    const rawImage = output[0];
-    if (!rawImage) throw new Error('Résultat vide.');
-
-    // Obtenir un HTMLCanvasElement pour lire les pixels
-    const srcCanvas = rawImage.toCanvas();
-    let htmlCanvas;
-    if (srcCanvas instanceof HTMLCanvasElement) {
-      htmlCanvas = srcCanvas;
-    } else {
-      // OffscreenCanvas → recopier dans un canvas DOM
-      htmlCanvas = document.createElement('canvas');
-      htmlCanvas.width = srcCanvas.width;
-      htmlCanvas.height = srcCanvas.height;
-      htmlCanvas.getContext('2d').drawImage(srcCanvas, 0, 0);
-    }
-
-    rawW = htmlCanvas.width;
-    rawH = htmlCanvas.height;
-
-    // Sauvegarder les pixels bruts du masque (avant tolérance)
-    rawPixels = htmlCanvas.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
-
-    // Sauvegarder les pixels originaux (RGB sans masque) pour edge feathering
-    // On recharge l'image source dans un canvas à la même résolution
-    origPixels = await new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const oc = document.createElement('canvas');
-        oc.width = rawW; oc.height = rawH;
-        oc.getContext('2d').drawImage(img, 0, 0, rawW, rawH);
-        resolve(oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice());
-      };
-      img.src = dataUrl;
-    });
-
-    // Réinitialiser les curseurs et afficher le résultat brut
-    appliedTol = 0; appliedFeather = 0; appliedCrop = null;
-    const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
-    resultBlob = blob;
-
-    const url = URL.createObjectURL(blob);
-    const ri = document.getElementById('img-result');
-    ri.src = url; ri.style.display = 'block';
-    document.getElementById('edit-btn').style.display = 'flex';
-
-    document.getElementById('dl-btn').classList.add('visible');
-    setStatus('✓ Fond supprimé avec succès.', 'success');
-    showProgress(100);
-    setTimeout(hideProgress, 800);
-    btn.disabled = false; btn.classList.remove('loading');
-
-  } catch(e) {
-    console.error(e);
-    setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
-    hideProgress(); btn.disabled = false; btn.classList.remove('loading');
-  }
-}
-
-function downloadResult() {
-  if (!resultBlob) return;
-  const name = srcFile ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png' : 'image_detoure.png';
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(resultBlob);
-  a.download = name;
-  document.body.appendChild(a); a.click();
-  setTimeout(() => document.body.removeChild(a), 100);
-}
+// Affichage initial correct du canvas-wrap (caché)
+canvasWrap.style.display = 'none';
 </script>
 </body>
 </html>
