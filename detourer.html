@@ -561,9 +561,25 @@ async function runDetourage() {
     if (!rawImage) throw new Error('Résultat vide.');
 
     const canvas = rawImage.toCanvas();
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    // toCanvas() peut retourner un OffscreenCanvas (pas de .toBlob)
+    // ou un HTMLCanvasElement selon le navigateur/contexte
+    let blob;
+    if (typeof canvas.toBlob === 'function') {
+      blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    } else if (typeof canvas.convertToBlob === 'function') {
+      // OffscreenCanvas
+      blob = await canvas.convertToBlob({ type: 'image/png' });
+    } else {
+      // Fallback : dessiner sur un HTMLCanvasElement classique
+      const fallback = document.createElement('canvas');
+      fallback.width = canvas.width;
+      fallback.height = canvas.height;
+      fallback.getContext('2d').drawImage(canvas, 0, 0);
+      blob = await new Promise(resolve => fallback.toBlob(resolve, 'image/png'));
+    }
 
     resultBlob = blob;
+
     const url = URL.createObjectURL(blob);
     const ri = document.getElementById('img-result');
     ri.src = url; ri.style.display = 'block';
