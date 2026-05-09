@@ -398,6 +398,59 @@ input[type=range].tol-slider::-moz-range-thumb {
   font-family: sans-serif;
 }
 .reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
+
+.result-wrap {
+  position: relative;
+  display: flex;
+}
+.zoom-btn {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md);
+  background: rgba(20,20,19,0.75);
+  backdrop-filter: blur(6px);
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s;
+}
+.zoom-btn:hover { border-color: var(--border-hi); color: var(--text); }
+
+.zoom-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.zoom-modal img {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-md);
+  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 20px 20px;
+  object-fit: contain;
+}
+.zoom-close {
+  position: fixed;
+  top: 20px; right: 20px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s;
+}
+.zoom-close:hover { border-color: var(--border-hi); color: var(--text); }
   height: 0.5px;
   background: var(--border-md);
   margin: 2px 0;
@@ -500,7 +553,15 @@ input[type=range].tol-slider::-moz-range-thumb {
     </div>
     <div class="canvas-col">
       <span class="canvas-label">Détouré</span>
-      <img id="img-result" class="preview-img" alt="Image détourée" style="display:none">
+      <div class="result-wrap">
+        <img id="img-result" class="preview-img" alt="Image détourée" style="display:none">
+        <button class="zoom-btn" id="zoom-btn" aria-label="Agrandir" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -561,7 +622,11 @@ input[type=range].tol-slider::-moz-range-thumb {
 
 </div>
 
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<!-- Modale zoom -->
+<div class="zoom-modal" id="zoom-modal" role="dialog" aria-label="Aperçu agrandi" style="display:none">
+  <button class="zoom-close" id="zoom-close" aria-label="Fermer">✕</button>
+  <img id="zoom-img" alt="Aperçu agrandi">
+</div> role="status" aria-live="polite"></div>
 
 <script type="module">
 import { pipeline, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
@@ -617,6 +682,20 @@ document.getElementById('reset-feather').addEventListener('click', () => {
   sliderTimer = setTimeout(() => applyEffects(), 80);
 });
 
+// ─── Zoom modal ───
+const zoomBtn   = document.getElementById('zoom-btn');
+const zoomModal = document.getElementById('zoom-modal');
+const zoomClose = document.getElementById('zoom-close');
+const zoomImg   = document.getElementById('zoom-img');
+
+zoomBtn.addEventListener('click', () => {
+  zoomImg.src = document.getElementById('img-result').src;
+  zoomModal.style.display = 'flex';
+});
+zoomClose.addEventListener('click', () => { zoomModal.style.display = 'none'; });
+zoomModal.addEventListener('click', e => { if (e.target === zoomModal) zoomModal.style.display = 'none'; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') zoomModal.style.display = 'none'; });
+
 function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
@@ -649,6 +728,7 @@ function resetAll() {
   document.getElementById('img-original').src = '';
   document.getElementById('img-result').src = '';
   document.getElementById('img-result').style.display = 'none';
+  document.getElementById('zoom-btn').style.display = 'none';
   document.getElementById('file-in').value = '';
   tolSlider.value = 0; tolValue.textContent = '0';
   featherSlider.value = 0; featherValue.textContent = '0';
@@ -679,14 +759,13 @@ function showToast(msg, type) {
 }
 
 // ─── Curseur 1 : Tolérance (seuil de coupure sur l'alpha) ───
-// 0 = masque brut du modèle, aucune modification
-// 1→100 = seuil croissant : les pixels dont l'alpha < seuil sont mis à 0
-//         threshold linéaire : tolerance 100 → threshold 255 (tout coupé sauf opaque pur)
+// 0 = masque brut, rien ne change
+// 1→100 = seuil décroissant : 1 = très permissif, 100 = très strict
 function applySharpen(pixels, tolerance) {
   const data = new Uint8ClampedArray(pixels);
   if (tolerance === 0) return data;
 
-  const threshold = Math.round((tolerance / 100) * 255);
+  const threshold = Math.round((1 - tolerance / 100) * 255);
   for (let i = 3; i < data.length; i += 4) {
     if (data[i] < threshold) data[i] = 0;
   }
@@ -694,78 +773,54 @@ function applySharpen(pixels, tolerance) {
 }
 
 
-// ─── Curseur 3 : Lissage des bords (edge feathering) ───
-// Détecte les pixels de bord du masque et y applique un fondu
-// basé sur le gradient de luminosité de l'image originale
+// ─── Curseur 2 : Lissage des bords (blur gaussien sur le canal alpha) ───
+// Adoucit les transitions brusques opaque/transparent sans toucher aux couleurs
 function applyEdgeFeathering(pixels, origPx, w, h, amount) {
-  if (amount === 0 || !origPx) return new Uint8ClampedArray(pixels);
+  if (amount === 0) return new Uint8ClampedArray(pixels);
 
-  const radius = Math.round((amount / 100) * 8) + 1; // 1 à 9px
+  const radius = Math.round((amount / 100) * 6) + 1; // 1 à 7px
   const data   = new Uint8ClampedArray(pixels);
-  const orig   = origPx;
 
-  // Luminosité d'un pixel original
-  function luma(idx) {
-    return 0.299 * orig[idx] + 0.587 * orig[idx + 1] + 0.114 * orig[idx + 2];
+  // Kernel gaussien 1D
+  const sigma = radius / 2;
+  const kernel = [];
+  let ksum = 0;
+  for (let i = -radius; i <= radius; i++) {
+    const v = Math.exp(-(i * i) / (2 * sigma * sigma));
+    kernel.push(v); ksum += v;
   }
+  for (let i = 0; i < kernel.length; i++) kernel[i] /= ksum;
 
-  // 1. Identifier les pixels de bord : alpha entre 10 et 245
-  //    ET voisins avec une variation d'alpha significative
-  const isBorder = new Uint8Array(w * h);
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const i = y * w + x;
-      const a = data[i * 4 + 3];
-      if (a < 10 || a > 245) continue;
-      // Vérifier si on est proche d'une transition
-      const neighbors = [
-        data[(i - 1) * 4 + 3], data[(i + 1) * 4 + 3],
-        data[(i - w) * 4 + 3], data[(i + w) * 4 + 3]
-      ];
-      const minN = Math.min(...neighbors);
-      const maxN = Math.max(...neighbors);
-      if (maxN - minN > 30) isBorder[i] = 1;
+  // Extraire le canal alpha
+  const alpha = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3];
+
+  // Passe horizontale
+  const tmp = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const nx = Math.min(Math.max(x + k, 0), w - 1);
+        s += alpha[y * w + nx] * kernel[k + radius];
+      }
+      tmp[y * w + x] = s;
     }
   }
 
-  // 2. Sur les pixels de bord + voisins (dans le rayon),
-  //    pondérer l'alpha par le gradient de luminosité local
-  for (let y = radius; y < h - radius; y++) {
-    for (let x = radius; x < w - radius; x++) {
-      const i = y * w + x;
-      if (!isBorder[i]) continue;
-
-      const cx = i * 4;
-      const curAlpha = data[cx + 3];
-      const curLuma  = luma(cx);
-
-      // Chercher dans le voisinage le pixel le plus "intérieur" (alpha max)
-      // et le plus "extérieur" (alpha min) pour calibrer le gradient
-      let sumWeight = 0, sumAlpha = 0;
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist > radius) continue;
-          const ni = ((y + dy) * w + (x + dx)) * 4;
-          const nLuma = luma(ni);
-          // Poids : fort si luminosité similaire (même "objet")
-          const lumaDiff = Math.abs(curLuma - nLuma);
-          const w2 = Math.exp(-dist * 0.5) * Math.exp(-lumaDiff * 0.05);
-          sumWeight += w2;
-          sumAlpha  += data[ni + 3] * w2;
-        }
+  // Passe verticale
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const ny = Math.min(Math.max(y + k, 0), h - 1);
+        s += tmp[ny * w + x] * kernel[k + radius];
       }
-
-      if (sumWeight > 0) {
-        const blended = sumAlpha / sumWeight;
-        // Mélanger progressivement selon l'amount
-        data[cx + 3] = Math.round(curAlpha * (1 - amount / 100) + blended * (amount / 100));
-      }
+      data[(y * w + x) * 4 + 3] = Math.round(s);
     }
   }
   return data;
 }
-
 async function blobFromPixels(data, w, h) {
   const offscreen = new OffscreenCanvas(w, h);
   const ctx = offscreen.getContext('2d');
@@ -862,6 +917,7 @@ async function runDetourage() {
     const url = URL.createObjectURL(blob);
     const ri = document.getElementById('img-result');
     ri.src = url; ri.style.display = 'block';
+    document.getElementById('zoom-btn').style.display = 'flex';
 
     document.getElementById('dl-btn').classList.add('visible');
     document.getElementById('tolerance-wrap').classList.add('visible');
