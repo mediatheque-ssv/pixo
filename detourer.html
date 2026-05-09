@@ -529,16 +529,6 @@ input[type=range].tol-slider::-moz-range-thumb {
     </div>
     <div class="tolerance-sep"></div>
     <div class="tolerance-header">
-      <span class="tolerance-label">Flou des contours</span>
-      <span class="tolerance-value" id="blur-value">0</span>
-    </div>
-    <div class="tolerance-track">
-      <span class="tolerance-hint">Aucun</span>
-      <input type="range" class="tol-slider" id="blur-slider" min="0" max="100" value="0">
-      <span class="tolerance-hint">Max</span>
-    </div>
-    <div class="tolerance-sep"></div>
-    <div class="tolerance-header">
       <span class="tolerance-label">Lissage des bords</span>
       <span class="tolerance-value" id="feather-value">0</span>
     </div>
@@ -587,8 +577,6 @@ document.querySelector('.change-btn').addEventListener('click', resetAll);
 // ─── Sliders ───
 const tolSlider  = document.getElementById('tol-slider');
 const tolValue   = document.getElementById('tol-value');
-const blurSlider = document.getElementById('blur-slider');
-const blurValue  = document.getElementById('blur-value');
 let sliderTimer  = null;
 
 const featherSlider = document.getElementById('feather-slider');
@@ -596,13 +584,11 @@ const featherValue  = document.getElementById('feather-value');
 
 function onSliderChange() {
   tolValue.textContent     = tolSlider.value;
-  blurValue.textContent    = blurSlider.value;
   featherValue.textContent = featherSlider.value;
   clearTimeout(sliderTimer);
   sliderTimer = setTimeout(() => applyEffects(), 80);
 }
 tolSlider.addEventListener('input', onSliderChange);
-blurSlider.addEventListener('input', onSliderChange);
 featherSlider.addEventListener('input', onSliderChange);
 
 function loadFile(file) {
@@ -639,7 +625,6 @@ function resetAll() {
   document.getElementById('img-result').style.display = 'none';
   document.getElementById('file-in').value = '';
   tolSlider.value = 50; tolValue.textContent = '50';
-  blurSlider.value = 0; blurValue.textContent = '0';
   featherSlider.value = 0; featherValue.textContent = '0';
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
@@ -667,75 +652,32 @@ function showToast(msg, type) {
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
-// ─── Curseur 1 : Tolérance (contraste centré sur la médiane réelle du masque) ───
-// 50 = neutre (masque brut), 0 = très lâche, 100 = très dur
+// ─── Curseur 1 : Tolérance (seuil de coupure sur l'alpha) ───
+// 50 = neutre (masque brut), 0 = tout opaque, 100 = tout transparent
+// Principe : un seuil bas → seuls les pixels très transparents sont coupés
+//            un seuil haut → les pixels semi-transparents sont aussi coupés
 function applySharpen(pixels, tolerance) {
   const data = new Uint8ClampedArray(pixels);
   if (tolerance === 50) return data;
 
-  // Calculer la médiane des alphas non-nuls pour centrer la courbe
-  const alphas = [];
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] > 0 && data[i] < 255) alphas.push(data[i] / 255);
-  }
-  alphas.sort((a, b) => a - b);
-  const mid = alphas.length > 0 ? alphas[Math.floor(alphas.length / 2)] : 0.5;
-
   if (tolerance > 50) {
-    // Durcit : sigmoïde centrée sur la médiane réelle
-    const steepness = ((tolerance - 50) / 50) * 12;
+    // Augmente le seuil : les pixels sous le seuil → 0, au-dessus → inchangés
+    // tolerance 50→100 donne threshold 0→200
+    const threshold = ((tolerance - 50) / 50) * 200;
     for (let i = 3; i < data.length; i += 4) {
-      const a = data[i] / 255;
-      data[i] = Math.round((1 / (1 + Math.exp(-steepness * (a - mid)))) * 255);
+      if (data[i] < threshold) data[i] = 0;
     }
   } else {
-    // Assouplit : gamma centré — tire les bords vers la transparence
-    // sans toucher aux pixels franchement opaques
-    const strength = ((50 - tolerance) / 50) * 3;
+    // Réduit le seuil : récupère des pixels semi-transparents → opaques
+    // tolerance 50→0 donne un boost : les pixels > seuil deviennent 255
+    const threshold = ((50 - tolerance) / 50) * 200;
     for (let i = 3; i < data.length; i += 4) {
-      const a = data[i] / 255;
-      // N'agit que sous la médiane, laisse le cœur du sujet intact
-      if (a < mid) {
-        const t = a / mid; // normalise 0→mid vers 0→1
-        data[i] = Math.round(Math.pow(t, 1 + strength) * mid * 255);
-      }
+      if (data[i] > 0 && data[i] >= threshold) data[i] = 255;
     }
   }
   return data;
 }
 
-// ─── Curseur 2 : Flou des contours (blur gaussien sur l'alpha) ───
-// 0 = aucun effet, 100 = blur max (12px)
-async function applyBlur(pixels, w, h, blurAmount) {
-  if (blurAmount === 0) return new Uint8ClampedArray(pixels);
-  const radius = (blurAmount / 100) * 12;
-
-  const alphaCanvas = document.createElement('canvas');
-  alphaCanvas.width = w; alphaCanvas.height = h;
-  const alphaImg = new ImageData(w, h);
-  for (let i = 0; i < pixels.length / 4; i++) {
-    const v = pixels[i * 4 + 3];
-    alphaImg.data[i * 4 + 0] = v;
-    alphaImg.data[i * 4 + 1] = v;
-    alphaImg.data[i * 4 + 2] = v;
-    alphaImg.data[i * 4 + 3] = 255;
-  }
-  alphaCanvas.getContext('2d').putImageData(alphaImg, 0, 0);
-
-  const blurred = document.createElement('canvas');
-  blurred.width = w; blurred.height = h;
-  const bctx = blurred.getContext('2d');
-  bctx.filter = `blur(${radius}px)`;
-  bctx.drawImage(alphaCanvas, 0, 0);
-  bctx.filter = 'none';
-
-  const blurredData = bctx.getImageData(0, 0, w, h).data;
-  const result = new Uint8ClampedArray(pixels);
-  for (let i = 0; i < result.length / 4; i++) {
-    result[i * 4 + 3] = blurredData[i * 4];
-  }
-  return result;
-}
 
 // ─── Curseur 3 : Lissage des bords (edge feathering) ───
 // Détecte les pixels de bord du masque et y applique un fondu
@@ -820,11 +762,9 @@ async function blobFromPixels(data, w, h) {
 async function applyEffects() {
   if (!rawPixels) return;
   const tol     = parseInt(tolSlider.value, 10);
-  const blur    = parseInt(blurSlider.value, 10);
   const feather = parseInt(featherSlider.value, 10);
   let pixels = applySharpen(rawPixels, tol);
   pixels = applyEdgeFeathering(pixels, origPixels, rawW, rawH, feather);
-  pixels = await applyBlur(pixels, rawW, rawH, blur);
   const blob = await blobFromPixels(pixels, rawW, rawH);
   resultBlob = blob;
   const oldUrl = document.getElementById('img-result').src;
@@ -900,8 +840,7 @@ async function runDetourage() {
 
     // Réinitialiser les curseurs et afficher le résultat brut
     tolSlider.value = 50; tolValue.textContent = '50';
-    blurSlider.value = 0; blurValue.textContent = '0';
-  featherSlider.value = 0; featherValue.textContent = '0';
+    featherSlider.value = 0; featherValue.textContent = '0';
     const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
     resultBlob = blob;
 
