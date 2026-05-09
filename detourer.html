@@ -523,8 +523,8 @@ input[type=range].tol-slider::-moz-range-thumb {
       <span class="tolerance-value" id="tol-value">50</span>
     </div>
     <div class="tolerance-track">
-      <span class="tolerance-hint">Aucune</span>
-      <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="0">
+      <span class="tolerance-hint">Faible</span>
+      <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="50">
       <span class="tolerance-hint">Max</span>
     </div>
     <div class="tolerance-sep"></div>
@@ -621,7 +621,7 @@ function resetAll() {
   document.getElementById('img-result').src = '';
   document.getElementById('img-result').style.display = 'none';
   document.getElementById('file-in').value = '';
-  tolSlider.value = 0; tolValue.textContent = '0';
+  tolSlider.value = 50; tolValue.textContent = '50';
   blurSlider.value = 0; blurValue.textContent = '0';
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
@@ -650,14 +650,24 @@ function showToast(msg, type) {
 }
 
 // ─── Curseur 1 : Tolérance (sigmoïde sur l'alpha) ───
-// 0 = aucun effet (masque brut), 100 = très dur (tout ou rien)
+// 50 = neutre (masque brut), 0 = très lâche, 100 = très dur
 function applySharpen(pixels, tolerance) {
   const data = new Uint8ClampedArray(pixels);
-  if (tolerance === 0) return data;
-  const steepness = (tolerance / 100) * 12; // 0 → 12
-  for (let i = 3; i < data.length; i += 4) {
-    const a = data[i] / 255;
-    data[i] = Math.round((1 / (1 + Math.exp(-steepness * (a - 0.5)))) * 255);
+  if (tolerance === 50) return data;
+
+  if (tolerance > 50) {
+    // Durcit : sigmoïde de plus en plus prononcée
+    const steepness = ((tolerance - 50) / 50) * 12;
+    for (let i = 3; i < data.length; i += 4) {
+      const a = data[i] / 255;
+      data[i] = Math.round((1 / (1 + Math.exp(-steepness * (a - 0.5)))) * 255);
+    }
+  } else {
+    // Assouplit : gamma qui pousse les alphas vers le bas
+    const gamma = 1 + ((50 - tolerance) / 50) * 3;
+    for (let i = 3; i < data.length; i += 4) {
+      data[i] = Math.round(Math.pow(data[i] / 255, gamma) * 255);
+    }
   }
   return data;
 }
@@ -770,7 +780,7 @@ async function runDetourage() {
     rawPixels = htmlCanvas.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
 
     // Réinitialiser les curseurs et afficher le résultat brut
-    tolSlider.value = 0; tolValue.textContent = '0';
+    tolSlider.value = 50; tolValue.textContent = '50';
     blurSlider.value = 0; blurValue.textContent = '0';
     const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
     resultBlob = blob;
