@@ -519,13 +519,13 @@ input[type=range].tol-slider::-moz-range-thumb {
   <!-- Réglages fins — affichés après détourage -->
   <div class="tolerance-wrap" id="tolerance-wrap">
     <div class="tolerance-header">
-      <span class="tolerance-label">Netteté des bords</span>
+      <span class="tolerance-label">Tolérance</span>
       <span class="tolerance-value" id="tol-value">50</span>
     </div>
     <div class="tolerance-track">
-      <span class="tolerance-hint">Doux</span>
-      <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="50">
-      <span class="tolerance-hint">Net</span>
+      <span class="tolerance-hint">Aucune</span>
+      <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="0">
+      <span class="tolerance-hint">Max</span>
     </div>
     <div class="tolerance-sep"></div>
     <div class="tolerance-header">
@@ -621,7 +621,7 @@ function resetAll() {
   document.getElementById('img-result').src = '';
   document.getElementById('img-result').style.display = 'none';
   document.getElementById('file-in').value = '';
-  tolSlider.value = 50; tolValue.textContent = '50';
+  tolSlider.value = 0; tolValue.textContent = '0';
   blurSlider.value = 0; blurValue.textContent = '0';
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
@@ -649,12 +649,12 @@ function showToast(msg, type) {
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
-// ─── Curseur 1 : Netteté (sigmoïde sur l'alpha) ───
-// 50 = neutre, 100 = très net
+// ─── Curseur 1 : Tolérance (sigmoïde sur l'alpha) ───
+// 0 = aucun effet (masque brut), 100 = très dur (tout ou rien)
 function applySharpen(pixels, tolerance) {
   const data = new Uint8ClampedArray(pixels);
-  if (tolerance === 50) return data;
-  const steepness = ((tolerance - 50) / 50) * 10;
+  if (tolerance === 0) return data;
+  const steepness = (tolerance / 100) * 12; // 0 → 12
   for (let i = 3; i < data.length; i += 4) {
     const a = data[i] / 255;
     data[i] = Math.round((1 / (1 + Math.exp(-steepness * (a - 0.5)))) * 255);
@@ -770,7 +770,7 @@ async function runDetourage() {
     rawPixels = htmlCanvas.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
 
     // Réinitialiser les curseurs et afficher le résultat brut
-    tolSlider.value = 50; tolValue.textContent = '50';
+    tolSlider.value = 0; tolValue.textContent = '0';
     blurSlider.value = 0; blurValue.textContent = '0';
     const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
     resultBlob = blob;
