@@ -628,21 +628,29 @@ function showToast(msg, type) {
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
-// ─── Courbe sigmoïde sur le canal alpha ───
-// tolerance 0-100 → steepness 0-10
+// ─── Courbe sur le canal alpha ───
+// 0   = très doux (laisse les semi-transparences telles quelles, gamma < 1)
+// 50  = neutre (aucun effet)
+// 100 = très net (sigmoïde qui pousse vers 0 ou 1)
 function applyAlphaCurve(pixels, tolerance) {
   const data = new Uint8ClampedArray(pixels);
-  if (tolerance === 50) return data; // Centre = aucun effet
+  if (tolerance === 50) return data;
 
-  const steepness = ((tolerance - 50) / 50) * 10; // [-10 .. +10]
   for (let i = 3; i < data.length; i += 4) {
     const a = data[i] / 255;
     let newA;
-    if (Math.abs(steepness) < 0.01) {
-      newA = a;
-    } else {
+
+    if (tolerance > 50) {
+      // Côté NET : sigmoïde qui durcit les bords
+      const steepness = ((tolerance - 50) / 50) * 10; // 0 → 10
       newA = 1 / (1 + Math.exp(-steepness * (a - 0.5)));
+    } else {
+      // Côté DOUX : gamma < 1 qui étale les semi-transparences
+      // tolerance 50→0 donne gamma 1→3
+      const gamma = 1 + ((50 - tolerance) / 50) * 2;
+      newA = Math.pow(a, gamma);
     }
+
     data[i] = Math.round(newA * 255);
   }
   return data;
