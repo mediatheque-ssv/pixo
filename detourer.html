@@ -403,54 +403,131 @@ input[type=range].tol-slider::-moz-range-thumb {
   position: relative;
   display: flex;
 }
-.zoom-btn {
+.edit-btn {
   position: absolute;
   top: 8px; right: 8px;
-  width: 28px; height: 28px;
+  height: 28px;
+  padding: 0 10px;
   border-radius: var(--radius-sm);
   border: 0.5px solid var(--border-md);
-  background: rgba(20,20,19,0.75);
+  background: rgba(20,20,19,0.82);
   backdrop-filter: blur(6px);
   color: var(--text-2);
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Syne', sans-serif;
+  font-size: 11px; font-weight: 600;
   transition: border-color .15s, color .15s;
 }
-.zoom-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.edit-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
-.zoom-modal {
+/* ─── EDIT MODAL ─── */
+.edit-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.88);
-  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.92);
+  backdrop-filter: blur(10px);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1.5rem;
 }
-.zoom-modal img {
-  max-width: 100%;
+.edit-modal-inner {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  max-width: 900px;
+  width: 100%;
   max-height: 90vh;
+}
+.edit-img-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#edit-img {
+  max-width: 100%;
+  max-height: 80vh;
   border-radius: var(--radius-lg);
   border: 0.5px solid var(--border-md);
   background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 20px 20px;
   object-fit: contain;
+  display: block;
 }
-.zoom-close {
-  position: fixed;
-  top: 20px; right: 20px;
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  border: 0.5px solid var(--border-md);
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 12px;
-  cursor: pointer;
+.edit-img-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: rgba(0,0,0,0.55);
   display: flex; align-items: center; justify-content: center;
+}
+@keyframes espin { to { transform: rotate(360deg); } }
+.edit-spinner {
+  width: 28px; height: 28px;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: espin .6s linear infinite;
+}
+.edit-panel {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-xl);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.edit-panel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+}
+.edit-control { display: flex; flex-direction: column; gap: 8px; }
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.edit-cancel {
+  flex: 1;
+  height: 36px;
+  border-radius: var(--radius);
+  border: 0.5px solid var(--border-md);
+  background: transparent;
+  color: var(--text-2);
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
   transition: border-color .15s, color .15s;
 }
-.zoom-close:hover { border-color: var(--border-hi); color: var(--text); }
+.edit-cancel:hover { border-color: var(--border-hi); color: var(--text); }
+.edit-confirm {
+  flex: 1;
+  height: 36px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: #0c0c0b;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+.edit-confirm:hover { background: #dcff6a; }
+
+@media (max-width: 600px) {
+  .edit-modal-inner { flex-direction: column; }
+  .edit-panel { width: 100%; }
+}
   height: 0.5px;
   background: var(--border-md);
   margin: 2px 0;
@@ -525,7 +602,7 @@ input[type=range].tol-slider::-moz-range-thumb {
 
   <nav class="nav" role="tablist">
     <a class="nav-btn" href="index.html" role="tab" aria-selected="false">Redimensionner</a>
-    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer (bêta)</a>
+    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer</a>
   </nav>
 
   <div class="drop-zone" id="drop-zone"
@@ -555,11 +632,12 @@ input[type=range].tol-slider::-moz-range-thumb {
       <span class="canvas-label">Détouré</span>
       <div class="result-wrap">
         <img id="img-result" class="preview-img" alt="Image détourée" style="display:none">
-        <button class="zoom-btn" id="zoom-btn" aria-label="Agrandir" style="display:none">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+        <button class="edit-btn" id="edit-btn" aria-label="Modifier" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
+          Modifier
         </button>
       </div>
     </div>
@@ -590,30 +668,6 @@ input[type=range].tol-slider::-moz-range-thumb {
 
   <div class="status" id="status"></div>
 
-  <!-- Réglages fins — affichés après détourage -->
-  <div class="tolerance-wrap" id="tolerance-wrap">
-    <div class="tolerance-header">
-      <span class="tolerance-label">Tolérance</span>
-      <span class="tolerance-value" id="tol-value">0</span>
-    </div>
-    <div class="tolerance-track">
-      <span class="tolerance-hint">Faible</span>
-      <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="0">
-      <span class="tolerance-hint">Max</span>
-      <button class="reset-btn" id="reset-tol" aria-label="Annuler">✕</button>
-    </div>
-    <div class="tolerance-sep"></div>
-    <div class="tolerance-header">
-      <span class="tolerance-label">Lissage des bords</span>
-      <span class="tolerance-value" id="feather-value">0</span>
-    </div>
-    <div class="tolerance-track">
-      <span class="tolerance-hint">Aucun</span>
-      <input type="range" class="tol-slider" id="feather-slider" min="0" max="100" value="0">
-      <span class="tolerance-hint">Max</span>
-      <button class="reset-btn" id="reset-feather" aria-label="Annuler">✕</button>
-    </div>
-  </div>
 
   <div class="info-box">
     <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
@@ -622,10 +676,48 @@ input[type=range].tol-slider::-moz-range-thumb {
 
 </div>
 
-<!-- Modale zoom -->
-<div class="zoom-modal" id="zoom-modal" role="dialog" aria-label="Aperçu agrandi" style="display:none">
-  <button class="zoom-close" id="zoom-close" aria-label="Fermer">✕</button>
-  <img id="zoom-img" alt="Aperçu agrandi">
+<!-- Modale modifier -->
+<div class="edit-modal" id="edit-modal" role="dialog" aria-label="Modifier l'image" style="display:none">
+  <div class="edit-modal-inner">
+    <div class="edit-img-wrap">
+      <img id="edit-img" alt="Aperçu">
+      <div class="edit-img-overlay" id="edit-overlay" style="display:none">
+        <div class="edit-spinner"></div>
+      </div>
+    </div>
+    <div class="edit-panel">
+      <div class="edit-panel-title">Réglages</div>
+      <div class="edit-control">
+        <div class="tolerance-header">
+          <span class="tolerance-label">Tolérance</span>
+          <span class="tolerance-value" id="m-tol-value">0</span>
+        </div>
+        <div class="tolerance-track">
+          <span class="tolerance-hint">Faible</span>
+          <input type="range" class="tol-slider" id="m-tol-slider" min="0" max="100" value="0">
+          <span class="tolerance-hint">Max</span>
+          <button class="reset-btn" id="m-reset-tol" aria-label="Annuler">✕</button>
+        </div>
+      </div>
+      <div class="tolerance-sep"></div>
+      <div class="edit-control">
+        <div class="tolerance-header">
+          <span class="tolerance-label">Lissage des bords</span>
+          <span class="tolerance-value" id="m-feather-value">0</span>
+        </div>
+        <div class="tolerance-track">
+          <span class="tolerance-hint">Aucun</span>
+          <input type="range" class="tol-slider" id="m-feather-slider" min="0" max="100" value="0">
+          <span class="tolerance-hint">Max</span>
+          <button class="reset-btn" id="m-reset-feather" aria-label="Annuler">✕</button>
+        </div>
+      </div>
+      <div class="edit-actions">
+        <button class="edit-cancel" id="edit-cancel">Annuler</button>
+        <button class="edit-confirm" id="edit-confirm">Valider</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -656,47 +748,104 @@ document.getElementById('run-btn').addEventListener('click', runDetourage);
 document.getElementById('dl-btn').addEventListener('click', downloadResult);
 document.querySelector('.change-btn').addEventListener('click', resetAll);
 
-// ─── Sliders ───
-const tolSlider  = document.getElementById('tol-slider');
-const tolValue   = document.getElementById('tol-value');
-let sliderTimer  = null;
+// ─── État curseurs (valeurs appliquées à l'image principale) ───
+let appliedTol     = 0;
+let appliedFeather = 0;
 
-const featherSlider = document.getElementById('feather-slider');
-const featherValue  = document.getElementById('feather-value');
+// ─── Modale modifier ───
+const editBtn        = document.getElementById('edit-btn');
+const editModal      = document.getElementById('edit-modal');
+const editCancel     = document.getElementById('edit-cancel');
+const editConfirm    = document.getElementById('edit-confirm');
+const editImg        = document.getElementById('edit-img');
+const editOverlay    = document.getElementById('edit-overlay');
+const mTolSlider     = document.getElementById('m-tol-slider');
+const mTolValue      = document.getElementById('m-tol-value');
+const mFeatherSlider = document.getElementById('m-feather-slider');
+const mFeatherValue  = document.getElementById('m-feather-value');
 
-function onSliderChange() {
-  tolValue.textContent     = tolSlider.value;
-  featherValue.textContent = featherSlider.value;
-  clearTimeout(sliderTimer);
-  sliderTimer = setTimeout(() => applyEffects(), 80);
+let modalTimer = null;
+
+function showEditOverlay() { editOverlay.style.display = 'flex'; }
+function hideEditOverlay() { editOverlay.style.display = 'none'; }
+
+async function applyModalEffects() {
+  if (!rawPixels) return;
+  showEditOverlay();
+  // Laisser le DOM se mettre à jour avant le calcul lourd
+  await new Promise(r => setTimeout(r, 30));
+  const tol     = parseInt(mTolSlider.value, 10);
+  const feather = parseInt(mFeatherSlider.value, 10);
+  let pixels = applySharpen(rawPixels, tol);
+  pixels = applyEdgeFeathering(pixels, origPixels, rawW, rawH, feather);
+  const blob = await blobFromPixels(pixels, rawW, rawH);
+  const oldSrc = editImg.src;
+  editImg.src = URL.createObjectURL(blob);
+  if (oldSrc && oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
+  hideEditOverlay();
 }
-tolSlider.addEventListener('input', onSliderChange);
-featherSlider.addEventListener('input', onSliderChange);
 
-document.getElementById('reset-tol').addEventListener('click', () => {
-  tolSlider.value = 0; tolValue.textContent = '0';
-  clearTimeout(sliderTimer);
-  sliderTimer = setTimeout(() => applyEffects(), 80);
+function onModalSliderChange() {
+  mTolValue.textContent     = mTolSlider.value;
+  mFeatherValue.textContent = mFeatherSlider.value;
+  clearTimeout(modalTimer);
+  modalTimer = setTimeout(() => applyModalEffects(), 200);
+}
+mTolSlider.addEventListener('input', onModalSliderChange);
+mFeatherSlider.addEventListener('input', onModalSliderChange);
+
+document.getElementById('m-reset-tol').addEventListener('click', () => {
+  mTolSlider.value = 0; mTolValue.textContent = '0';
+  clearTimeout(modalTimer);
+  modalTimer = setTimeout(() => applyModalEffects(), 200);
 });
-document.getElementById('reset-feather').addEventListener('click', () => {
-  featherSlider.value = 0; featherValue.textContent = '0';
-  clearTimeout(sliderTimer);
-  sliderTimer = setTimeout(() => applyEffects(), 80);
+document.getElementById('m-reset-feather').addEventListener('click', () => {
+  mFeatherSlider.value = 0; mFeatherValue.textContent = '0';
+  clearTimeout(modalTimer);
+  modalTimer = setTimeout(() => applyModalEffects(), 200);
 });
 
-// ─── Zoom modal ───
-const zoomBtn   = document.getElementById('zoom-btn');
-const zoomModal = document.getElementById('zoom-modal');
-const zoomClose = document.getElementById('zoom-close');
-const zoomImg   = document.getElementById('zoom-img');
-
-zoomBtn.addEventListener('click', () => {
-  zoomImg.src = document.getElementById('img-result').src;
-  zoomModal.style.display = 'flex';
+editBtn.addEventListener('click', async () => {
+  // Ouvrir la modale avec les valeurs actuellement appliquées
+  mTolSlider.value     = appliedTol;     mTolValue.textContent     = appliedTol;
+  mFeatherSlider.value = appliedFeather; mFeatherValue.textContent = appliedFeather;
+  // Afficher l'image résultat actuelle dans la modale
+  editImg.src = document.getElementById('img-result').src;
+  editModal.style.display = 'flex';
 });
-zoomClose.addEventListener('click', () => { zoomModal.style.display = 'none'; });
-zoomModal.addEventListener('click', e => { if (e.target === zoomModal) zoomModal.style.display = 'none'; });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') zoomModal.style.display = 'none'; });
+
+editCancel.addEventListener('click', () => {
+  // Jeter les changements, fermer
+  clearTimeout(modalTimer);
+  const oldSrc = editImg.src;
+  editImg.src = '';
+  if (oldSrc && oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
+  editModal.style.display = 'none';
+});
+
+editConfirm.addEventListener('click', async () => {
+  // Appliquer les réglages à l'image principale
+  clearTimeout(modalTimer);
+  appliedTol     = parseInt(mTolSlider.value, 10);
+  appliedFeather = parseInt(mFeatherSlider.value, 10);
+  // Recalculer et mettre à jour l'image principale + resultBlob
+  let pixels = applySharpen(rawPixels, appliedTol);
+  pixels = applyEdgeFeathering(pixels, origPixels, rawW, rawH, appliedFeather);
+  const blob = await blobFromPixels(pixels, rawW, rawH);
+  resultBlob = blob;
+  const ri = document.getElementById('img-result');
+  const oldMain = ri.src;
+  ri.src = URL.createObjectURL(blob);
+  if (oldMain && oldMain.startsWith('blob:')) URL.revokeObjectURL(oldMain);
+  const oldEdit = editImg.src;
+  editImg.src = '';
+  if (oldEdit && oldEdit.startsWith('blob:')) URL.revokeObjectURL(oldEdit);
+  editModal.style.display = 'none';
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && editModal.style.display !== 'none') editCancel.click();
+});
 
 function loadFile(file) {
   if (!file) return;
@@ -713,7 +862,6 @@ function loadFile(file) {
     document.getElementById('canvas-wrap').style.display = 'grid';
     document.getElementById('actions').style.display = 'flex';
     document.getElementById('dl-btn').classList.remove('visible');
-    document.getElementById('tolerance-wrap').classList.remove('visible');
     document.getElementById('drop-zone').style.display = 'none';
     setStatus(''); hideProgress();
   };
@@ -726,14 +874,12 @@ function resetAll() {
   document.getElementById('canvas-wrap').style.display = 'none';
   document.getElementById('actions').style.display = 'none';
   document.getElementById('dl-btn').classList.remove('visible');
-  document.getElementById('tolerance-wrap').classList.remove('visible');
   document.getElementById('img-original').src = '';
   document.getElementById('img-result').src = '';
   document.getElementById('img-result').style.display = 'none';
-  document.getElementById('zoom-btn').style.display = 'none';
+  document.getElementById('edit-btn').style.display = 'none';
   document.getElementById('file-in').value = '';
-  tolSlider.value = 0; tolValue.textContent = '0';
-  featherSlider.value = 0; featherValue.textContent = '0';
+  appliedTol = 0; appliedFeather = 0;
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
   btn.disabled = false; btn.classList.remove('loading');
@@ -831,10 +977,8 @@ async function blobFromPixels(data, w, h) {
 }
 
 // ─── Applique les trois effets en séquence ───
-async function applyEffects() {
+async function applyEffects(tol, feather) {
   if (!rawPixels) return;
-  const tol     = parseInt(tolSlider.value, 10);
-  const feather = parseInt(featherSlider.value, 10);
   let pixels = applySharpen(rawPixels, tol);
   pixels = applyEdgeFeathering(pixels, origPixels, rawW, rawH, feather);
   const blob = await blobFromPixels(pixels, rawW, rawH);
@@ -849,7 +993,6 @@ async function runDetourage() {
   const btn = document.getElementById('run-btn');
   btn.disabled = true; btn.classList.add('loading');
   document.getElementById('dl-btn').classList.remove('visible');
-  document.getElementById('tolerance-wrap').classList.remove('visible');
   document.getElementById('img-result').style.display = 'none';
   showProgress(10); setStatus('Chargement du modèle…');
 
@@ -911,18 +1054,16 @@ async function runDetourage() {
     });
 
     // Réinitialiser les curseurs et afficher le résultat brut
-    tolSlider.value = 0; tolValue.textContent = '0';
-    featherSlider.value = 0; featherValue.textContent = '0';
+    appliedTol = 0; appliedFeather = 0;
     const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
     resultBlob = blob;
 
     const url = URL.createObjectURL(blob);
     const ri = document.getElementById('img-result');
     ri.src = url; ri.style.display = 'block';
-    document.getElementById('zoom-btn').style.display = 'flex';
+    document.getElementById('edit-btn').style.display = 'flex';
 
     document.getElementById('dl-btn').classList.add('visible');
-    document.getElementById('tolerance-wrap').classList.add('visible');
     setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100);
     setTimeout(hideProgress, 800);
