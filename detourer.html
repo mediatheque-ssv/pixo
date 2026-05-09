@@ -375,7 +375,7 @@ body::before {
     </a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.6</span>
+      <span class="header-tag">v2.7</span>
     </div>
   </div>
 
@@ -447,19 +447,18 @@ body::before {
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<!-- Transformers.js — fonctionne nativement en CDN, pas de bundler requis -->
+<!-- Transformers.js v2 — version CDN éprouvée -->
 <script type="module">
-  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2/dist/transformers.min.js';
-  window._bgRemovalReady = false;
-  pipeline('image-segmentation', 'Xenova/selfie-segmentation', { quantized: true })
-    .then(function(seg) {
-      window._segmenter = seg;
-      window._bgRemovalReady = true;
-    })
-    .catch(function(e) {
-      console.error('Erreur chargement modèle:', e);
-      window._bgRemovalReady = 'error';
-    });
+  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+  try {
+    const seg = await pipeline('image-segmentation', 'Xenova/selfie-segmentation', { quantized: true });
+    // Wrapper pour préserver le contexte du pipeline
+    window._segmenter = (input) => seg(input);
+    window._bgRemovalReady = true;
+  } catch(e) {
+    console.error('Erreur chargement modèle:', e);
+    window._bgRemovalReady = 'error';
+  }
 </script>
 
 <script>
