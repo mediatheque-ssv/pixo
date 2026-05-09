@@ -448,7 +448,7 @@ body::before {
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
 // ─── État ───
 let srcFile = null;
@@ -456,7 +456,7 @@ let resultBlob = null;
 let segmenter = null;
 
 // Charger le modèle en arrière-plan dès le départ
-pipeline('image-segmentation', 'Xenova/selfie-segmentation', { quantized: true })
+pipeline('background-removal', 'briaai/RMBG-1.4')
   .then(p => { segmenter = p; })
   .catch(e => { console.error('Erreur modèle:', e); segmenter = 'error'; });
 
@@ -545,16 +545,6 @@ async function runDetourage() {
   try {
     showProgress(40); setStatus('Segmentation en cours…');
 
-    // Dimensions natives
-    const originalImg = await new Promise(resolve => {
-      const img = new Image();
-      const url = URL.createObjectURL(srcFile);
-      img.onload = () => { resolve(img); URL.revokeObjectURL(url); };
-      img.src = url;
-    });
-    const W = originalImg.naturalWidth;
-    const H = originalImg.naturalHeight;
-
     // data URL pour le modèle
     const dataUrl = await new Promise(resolve => {
       const reader = new FileReader();
@@ -563,57 +553,22 @@ async function runDetourage() {
     });
 
     showProgress(60);
-    const results = await segmenter(dataUrl);  // appel direct, pas via window
-    showProgress(80); setStatus('Application du masque…');
+    // background-removal retourne directement [{output: Blob}]
+    const results = await segmenter(dataUrl);
+    showProgress(90);
 
-    const bgResult = results.find(r => r.label === 'background');
-    const maskResult = bgResult || results[0];
-    const isBackground = !!bgResult;
-    if (!maskResult?.mask) throw new Error('Masque introuvable.');
+    const blob = results[0].output;
+    if (!blob) throw new Error('Résultat vide.');
 
-    // Canvas natif
-    const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(originalImg, 0, 0, W, H);
-    const imageData = ctx.getImageData(0, 0, W, H);
-    const pixels = imageData.data;
-
-    // Upscale du masque
-    const maskRaw = maskResult.mask;
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = maskRaw.width; maskCanvas.height = maskRaw.height;
-    const maskCtx = maskCanvas.getContext('2d');
-    const mId = maskCtx.createImageData(maskRaw.width, maskRaw.height);
-    for (let i = 0; i < maskRaw.data.length; i++) {
-      mId.data[i*4] = mId.data[i*4+1] = mId.data[i*4+2] = maskRaw.data[i];
-      mId.data[i*4+3] = 255;
-    }
-    maskCtx.putImageData(mId, 0, 0);
-
-    const sc = document.createElement('canvas');
-    sc.width = W; sc.height = H;
-    const sCtx = sc.getContext('2d');
-    sCtx.drawImage(maskCanvas, 0, 0, W, H);
-    const scaledMask = sCtx.getImageData(0, 0, W, H);
-
-    for (let j = 0; j < pixels.length / 4; j++) {
-      const v = scaledMask.data[j*4];
-      pixels[j*4+3] = isBackground ? (v > 128 ? 0 : 255) : (v > 128 ? 255 : 0);
-    }
-    ctx.putImageData(imageData, 0, 0);
-
+    resultBlob = blob;
+    const url = URL.createObjectURL(blob);
+    const ri = document.getElementById('img-result');
+    ri.src = url; ri.style.display = 'block';
+    document.getElementById('dl-btn').classList.add('visible');
+    setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100);
-    canvas.toBlob(blob => {
-      resultBlob = blob;
-      const url = URL.createObjectURL(blob);
-      const ri = document.getElementById('img-result');
-      ri.src = url; ri.style.display = 'block';
-      document.getElementById('dl-btn').classList.add('visible');
-      setStatus('✓ Fond supprimé avec succès.', 'success');
-      setTimeout(hideProgress, 800);
-      btn.disabled = false; btn.classList.remove('loading');
-    }, 'image/png');
+    setTimeout(hideProgress, 800);
+    btn.disabled = false; btn.classList.remove('loading');
 
   } catch(e) {
     console.error(e);
