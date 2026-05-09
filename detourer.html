@@ -211,8 +211,8 @@ body::before {
   flex-wrap: wrap;
 }
 .run-btn {
-  flex: 1;
   height: 48px;
+  padding: 0 20px;
   background: var(--accent);
   border: none;
   border-radius: var(--radius-lg);
@@ -313,6 +313,78 @@ body::before {
   border-radius: var(--radius-sm);
 }
 
+/* ─── TOLERANCE SLIDER ─── */
+.tolerance-wrap {
+  display: none;
+  margin-top: 1.2rem;
+  background: var(--surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px 16px;
+  gap: 10px;
+  flex-direction: column;
+}
+.tolerance-wrap.visible { display: flex; }
+.tolerance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tolerance-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+}
+.tolerance-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  min-width: 30px;
+  text-align: right;
+}
+.tolerance-track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tolerance-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+input[type=range].tol-slider {
+  -webkit-appearance: none;
+  flex: 1;
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range].tol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #0c0c0b;
+  box-shadow: 0 0 6px rgba(212,255,78,0.35);
+  transition: box-shadow .15s;
+}
+input[type=range].tol-slider:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 12px rgba(212,255,78,0.55);
+}
+input[type=range].tol-slider::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #0c0c0b;
+  cursor: pointer;
+}
+
 /* ─── INFO BOX ─── */
 .info-box {
   margin-top: 1.5rem;
@@ -361,6 +433,7 @@ body::before {
   .header h1 { font-size: 18px; }
   .canvas-wrap { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
+  .run-btn { width: 100%; justify-content: center; }
   .dl-btn { width: 100%; justify-content: center; }
   .change-btn { width: 100%; text-align: center; }
 }
@@ -438,6 +511,19 @@ body::before {
 
   <div class="status" id="status"></div>
 
+  <!-- Slider de tolérance — affiché après détourage -->
+  <div class="tolerance-wrap" id="tolerance-wrap">
+    <div class="tolerance-header">
+      <span class="tolerance-label">Netteté des bords</span>
+      <span class="tolerance-value" id="tol-value">50</span>
+    </div>
+    <div class="tolerance-track">
+      <span class="tolerance-hint">Doux</span>
+      <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="50">
+      <span class="tolerance-hint">Net</span>
+    </div>
+  </div>
+
   <div class="info-box">
     <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
     <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
@@ -451,9 +537,11 @@ body::before {
 import { pipeline, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
 // ─── État ───
-let srcFile = null;
+let srcFile    = null;
 let resultBlob = null;
-let segmenter = null;
+let segmenter  = null;
+let rawPixels  = null;   // ImageData brute sauvegardée après le modèle (avant tolérance)
+let rawW = 0, rawH = 0;
 
 // Charger le modèle en arrière-plan dès le départ
 pipeline('background-removal', 'briaai/RMBG-1.4')
@@ -470,11 +558,23 @@ document.getElementById('run-btn').addEventListener('click', runDetourage);
 document.getElementById('dl-btn').addEventListener('click', downloadResult);
 document.querySelector('.change-btn').addEventListener('click', resetAll);
 
+// ─── Slider de tolérance ───
+const tolSlider = document.getElementById('tol-slider');
+const tolValue  = document.getElementById('tol-value');
+let sliderTimer = null;
+
+tolSlider.addEventListener('input', () => {
+  tolValue.textContent = tolSlider.value;
+  clearTimeout(sliderTimer);
+  sliderTimer = setTimeout(() => applyTolerance(), 80);
+});
+
 function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
   resultBlob = null;
+  rawPixels = null;
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById('img-original').src = ev.target.result;
@@ -483,6 +583,7 @@ function loadFile(file) {
     document.getElementById('canvas-wrap').style.display = 'grid';
     document.getElementById('actions').style.display = 'flex';
     document.getElementById('dl-btn').classList.remove('visible');
+    document.getElementById('tolerance-wrap').classList.remove('visible');
     document.getElementById('drop-zone').style.display = 'none';
     setStatus(''); hideProgress();
   };
@@ -490,15 +591,17 @@ function loadFile(file) {
 }
 
 function resetAll() {
-  srcFile = null; resultBlob = null;
+  srcFile = null; resultBlob = null; rawPixels = null;
   document.getElementById('drop-zone').style.display = '';
   document.getElementById('canvas-wrap').style.display = 'none';
   document.getElementById('actions').style.display = 'none';
   document.getElementById('dl-btn').classList.remove('visible');
+  document.getElementById('tolerance-wrap').classList.remove('visible');
   document.getElementById('img-original').src = '';
   document.getElementById('img-result').src = '';
   document.getElementById('img-result').style.display = 'none';
   document.getElementById('file-in').value = '';
+  tolSlider.value = 50; tolValue.textContent = '50';
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
   btn.disabled = false; btn.classList.remove('loading');
@@ -525,11 +628,51 @@ function showToast(msg, type) {
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
+// ─── Courbe sigmoïde sur le canal alpha ───
+// tolerance 0-100 → steepness 0-10
+function applyAlphaCurve(pixels, tolerance) {
+  const data = new Uint8ClampedArray(pixels);
+  if (tolerance === 50) return data; // Centre = aucun effet
+
+  const steepness = ((tolerance - 50) / 50) * 10; // [-10 .. +10]
+  for (let i = 3; i < data.length; i += 4) {
+    const a = data[i] / 255;
+    let newA;
+    if (Math.abs(steepness) < 0.01) {
+      newA = a;
+    } else {
+      newA = 1 / (1 + Math.exp(-steepness * (a - 0.5)));
+    }
+    data[i] = Math.round(newA * 255);
+  }
+  return data;
+}
+
+async function blobFromPixels(data, w, h) {
+  const offscreen = new OffscreenCanvas(w, h);
+  const ctx = offscreen.getContext('2d');
+  const imgData = new ImageData(data, w, h);
+  ctx.putImageData(imgData, 0, 0);
+  return offscreen.convertToBlob({ type: 'image/png' });
+}
+
+async function applyTolerance() {
+  if (!rawPixels) return;
+  const tol = parseInt(tolSlider.value, 10);
+  const processed = applyAlphaCurve(rawPixels, tol);
+  const blob = await blobFromPixels(processed, rawW, rawH);
+  resultBlob = blob;
+  const oldUrl = document.getElementById('img-result').src;
+  document.getElementById('img-result').src = URL.createObjectURL(blob);
+  if (oldUrl && oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
+}
+
 async function runDetourage() {
   if (!srcFile) return;
   const btn = document.getElementById('run-btn');
   btn.disabled = true; btn.classList.add('loading');
   document.getElementById('dl-btn').classList.remove('visible');
+  document.getElementById('tolerance-wrap').classList.remove('visible');
   document.getElementById('img-result').style.display = 'none';
   showProgress(10); setStatus('Chargement du modèle…');
 
@@ -545,7 +688,6 @@ async function runDetourage() {
   try {
     showProgress(40); setStatus('Segmentation en cours…');
 
-    // data URL pour le modèle
     const dataUrl = await new Promise(resolve => {
       const reader = new FileReader();
       reader.onload = e => resolve(e.target.result);
@@ -556,34 +698,41 @@ async function runDetourage() {
     const output = await segmenter(dataUrl);
     showProgress(90);
 
-    // output[0] est une RawImage — on la convertit en blob via canvas
     const rawImage = output[0];
     if (!rawImage) throw new Error('Résultat vide.');
 
-    const canvas = rawImage.toCanvas();
-    // toCanvas() peut retourner un OffscreenCanvas (pas de .toBlob)
-    // ou un HTMLCanvasElement selon le navigateur/contexte
-    let blob;
-    if (typeof canvas.toBlob === 'function') {
-      blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    } else if (typeof canvas.convertToBlob === 'function') {
-      // OffscreenCanvas
-      blob = await canvas.convertToBlob({ type: 'image/png' });
+    // Obtenir un HTMLCanvasElement pour lire les pixels
+    const srcCanvas = rawImage.toCanvas();
+    let htmlCanvas;
+    if (srcCanvas instanceof HTMLCanvasElement) {
+      htmlCanvas = srcCanvas;
     } else {
-      // Fallback : dessiner sur un HTMLCanvasElement classique
-      const fallback = document.createElement('canvas');
-      fallback.width = canvas.width;
-      fallback.height = canvas.height;
-      fallback.getContext('2d').drawImage(canvas, 0, 0);
-      blob = await new Promise(resolve => fallback.toBlob(resolve, 'image/png'));
+      // OffscreenCanvas → recopier dans un canvas DOM
+      htmlCanvas = document.createElement('canvas');
+      htmlCanvas.width = srcCanvas.width;
+      htmlCanvas.height = srcCanvas.height;
+      htmlCanvas.getContext('2d').drawImage(srcCanvas, 0, 0);
     }
 
+    rawW = htmlCanvas.width;
+    rawH = htmlCanvas.height;
+
+    // Sauvegarder les pixels bruts (avant tolérance)
+    rawPixels = htmlCanvas.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+
+    // Appliquer la tolérance courante (valeur par défaut 50 = aucun effet)
+    tolSlider.value = 50; tolValue.textContent = '50';
+    const tol = 50;
+    const processed = applyAlphaCurve(rawPixels, tol);
+    const blob = await blobFromPixels(processed, rawW, rawH);
     resultBlob = blob;
 
     const url = URL.createObjectURL(blob);
     const ri = document.getElementById('img-result');
     ri.src = url; ri.style.display = 'block';
+
     document.getElementById('dl-btn').classList.add('visible');
+    document.getElementById('tolerance-wrap').classList.add('visible');
     setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100);
     setTimeout(hideProgress, 800);
