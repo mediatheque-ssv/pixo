@@ -14,7 +14,6 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 :root {
   --bg: #000000;
@@ -39,38 +38,28 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 body {
   font-family: 'Syne', sans-serif;
-  font-size: 14px;
-  color: var(--text);
-  background: var(--bg);
-  min-height: 100vh;
-  padding: 2.5rem 1rem 4rem;
-  line-height: 1.5;
+  font-size: 14px; color: var(--text); background: var(--bg);
+  min-height: 100vh; padding: 2.5rem 1rem 4rem; line-height: 1.5;
 }
 body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
+  content: ''; position: fixed; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.4;
+  pointer-events: none; z-index: 0; opacity: 0.4;
 }
 
 .container { max-width: 740px; margin: 0 auto; position: relative; z-index: 1; }
 
-/* ─── HEADER ─── */
+/* HEADER */
 .header { display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; }
 .logo { width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; }
 .header-title { display: flex; align-items: baseline; gap: 14px; }
-.header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); }
+.header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
 .header-tag {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; color: var(--text-3);
-  border: 0.5px solid var(--border-md);
-  padding: 3px 8px; border-radius: 4px; letter-spacing: 0.03em;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
+  border: 0.5px solid var(--border-md); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.03em;
 }
 
-/* ─── NAV ─── */
+/* NAV */
 .nav {
   display: flex; gap: 4px; margin-bottom: 2rem;
   background: var(--surface); border: 0.5px solid var(--border-md);
@@ -78,15 +67,14 @@ body::before {
 }
 .nav-btn {
   flex: 1; height: 34px; font-size: 13px; font-weight: 600;
-  font-family: 'Syne', sans-serif; letter-spacing: -0.01em;
-  border: none; border-radius: var(--radius); cursor: pointer;
-  background: transparent; color: var(--text-3); transition: all .15s;
+  font-family: 'Syne', sans-serif; border: none; border-radius: var(--radius);
+  cursor: pointer; background: transparent; color: var(--text-3); transition: all .15s;
   text-decoration: none; display: flex; align-items: center; justify-content: center;
 }
 .nav-btn:hover { color: var(--text); }
 .nav-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
 
-/* ─── DROP ZONE ─── */
+/* DROP ZONE */
 .drop-zone {
   border: 1px dashed var(--border-md); border-radius: var(--radius-xl);
   padding: 2.5rem 2rem; text-align: center; cursor: pointer;
@@ -99,7 +87,7 @@ body::before {
   pointer-events: none;
 }
 .drop-zone:hover { border-color: var(--border-hi); background: var(--surface-2); }
-.drop-zone.over { border-color: var(--accent-border); background: var(--accent-dim); }
+.drop-zone.over  { border-color: var(--accent-border); background: var(--accent-dim); }
 .drop-icon {
   width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
   background: var(--surface-2); border: 0.5px solid var(--border-md);
@@ -108,97 +96,118 @@ body::before {
 .drop-label { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
 .drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.04em; }
 
-/* ─── CANVAS WRAP ─── */
-.canvas-wrap {
+/* PREVIEW GRID — 1 ou 2 colonnes */
+.preview-grid {
   display: none;
   margin-top: 1.5rem;
-}
-.canvas-wrap.dual {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
   align-items: start;
 }
-.canvas-wrap.single {
-  display: grid;
-  grid-template-columns: 1fr;
-  max-width: 380px;
+.preview-grid.single { display: grid; grid-template-columns: 1fr; max-width: 380px; }
+.preview-grid.dual   { display: grid; grid-template-columns: 1fr 1fr; }
+
+.preview-col { display: flex; flex-direction: column; gap: 7px; }
+
+.col-label-row {
+  display: flex; align-items: center; justify-content: space-between; min-height: 20px;
+}
+.col-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-3); text-transform: uppercase; letter-spacing: .08em;
 }
 
-.canvas-col { display: flex; flex-direction: column; gap: 7px; }
-
-.canvas-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 20px;
-}
-.canvas-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--text-3);
-  text-transform: uppercase; letter-spacing: .08em;
-}
-
-.change-img-btn {
-  height: 22px;
-  padding: 0 9px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border-md);
-  background: transparent;
-  color: var(--text-3);
-  font-family: 'Syne', sans-serif;
-  font-size: 10px; font-weight: 600;
-  cursor: pointer;
-  display: flex; align-items: center; gap: 5px;
+.change-btn {
+  height: 22px; padding: 0 9px; border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md); background: transparent; color: var(--text-3);
+  font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
   transition: border-color .15s, color .15s;
 }
-.change-img-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.change-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
 .preview-img {
-  width: 100%; border-radius: var(--radius-lg);
-  border: 0.5px solid var(--border-md); display: block;
-  object-fit: contain; max-height: 320px;
-  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
+  width: 100%; border-radius: var(--radius-lg); border: 0.5px solid var(--border-md);
+  display: block; object-fit: contain; max-height: 320px;
 }
 .preview-img.original { background: var(--surface-2); }
-
-.result-wrap { position: relative; display: block; }
-.edit-btn {
-  position: absolute;
-  top: 8px; right: 8px; z-index: 20;
-  height: 28px; padding: 0 10px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border-md);
-  background: rgba(20,20,19,0.82);
-  backdrop-filter: blur(6px);
-  color: var(--text-2); cursor: pointer;
-  display: none; align-items: center; gap: 6px;
-  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+.preview-img.result {
+  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
 }
-.edit-btn:hover { border-color: var(--border-hi); color: var(--text); }
-.edit-btn.visible { display: flex; }
 
-/* ─── ACTIONS ─── */
+/* SLIDERS PANEL — sous l'image résultat */
+.sliders-panel {
+  display: none;
+  flex-direction: column; gap: 12px;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 14px 16px;
+}
+.sliders-panel.visible { display: flex; }
+
+.slider-row { display: flex; flex-direction: column; gap: 6px; }
+.slider-header { display: flex; align-items: center; justify-content: space-between; }
+.slider-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
+}
+.slider-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); }
+.slider-track { display: flex; align-items: center; gap: 8px; }
+.slider-hint {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-3); white-space: nowrap; flex-shrink: 0;
+}
+input[type=range].rng {
+  -webkit-appearance: none; flex: 1; height: 4px;
+  background: var(--surface-3); border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type=range].rng::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0c0c0b;
+  box-shadow: 0 0 6px rgba(212,255,78,0.35); transition: box-shadow .15s;
+}
+input[type=range].rng:hover::-webkit-slider-thumb { box-shadow: 0 0 12px rgba(212,255,78,0.55); }
+input[type=range].rng::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0c0c0b; cursor: pointer; border: none;
+}
+
+.panel-sep { height: 0.5px; background: var(--border-md); }
+
+.apply-btn {
+  align-self: flex-end; height: 32px; padding: 0 16px;
+  border-radius: var(--radius); border: none;
+  background: var(--accent); color: #0c0c0b;
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.apply-btn:hover:not(:disabled) { background: #dcff6a; }
+.apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.apply-btn .spinner {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(12,12,11,0.3); border-top-color: #0c0c0b;
+  border-radius: 50%; animation: spin .6s linear infinite; display: none;
+}
+.apply-btn.loading .spinner { display: block; }
+.apply-btn.loading .apply-label { display: none; }
+
+/* ACTIONS */
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
 .run-btn {
-  height: 48px; padding: 0 20px; background: var(--accent);
+  height: 48px; padding: 0 24px; background: var(--accent);
   border: none; border-radius: var(--radius-lg);
   font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif;
-  cursor: pointer; color: #0c0c0b; letter-spacing: -0.01em;
+  cursor: pointer; color: #0c0c0b;
   transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px;
-  box-shadow: 0 0 0 0 rgba(212,255,78,0);
 }
 .run-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
-.run-btn:active:not(:disabled) { transform: scale(0.99) translateY(0); }
-.run-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+.run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .run-btn .spinner {
   width: 16px; height: 16px;
   border: 2px solid rgba(12,12,11,0.3); border-top-color: #0c0c0b;
-  border-radius: 50%; animation: spin .6s linear infinite;
-  display: none; flex-shrink: 0;
+  border-radius: 50%; animation: spin .6s linear infinite; display: none;
 }
 .run-btn.loading .spinner { display: block; }
-.run-btn.loading .run-icon { display: none; }
+.run-btn.loading .run-label { display: none; }
 
 .dl-btn {
   height: 48px; padding: 0 20px;
@@ -210,173 +219,22 @@ body::before {
 .dl-btn:hover { background: rgba(212,255,78,0.18); transform: translateY(-1px); }
 .dl-btn.visible { display: flex; }
 
-/* ─── STATUS / PROGRESS ─── */
+/* STATUS / PROGRESS */
 .status {
   font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  color: var(--text-3); margin-top: 12px; min-height: 16px;
-  text-align: center; transition: color .2s;
+  color: var(--text-3); margin-top: 12px; min-height: 16px; text-align: center;
 }
-.status.error { color: var(--danger); }
+.status.error   { color: var(--danger); }
 .status.success { color: var(--accent); }
 
 .progress-wrap {
-  display: none; margin-top: 12px;
+  display: none; margin-top: 12px; height: 4px;
   background: var(--surface); border: 0.5px solid var(--border);
-  border-radius: var(--radius-sm); overflow: hidden; height: 4px;
+  border-radius: var(--radius-sm); overflow: hidden;
 }
-.progress-bar {
-  height: 100%; background: var(--accent); width: 0%;
-  transition: width .3s ease; border-radius: var(--radius-sm);
-}
+.progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width .3s ease; }
 
-/* ─── MODAL D'ÉDITION ─── */
-.edit-modal {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.82);
-  backdrop-filter: blur(10px);
-  display: none; align-items: center; justify-content: center;
-  z-index: 9999; padding: 2rem;
-}
-.edit-modal.visible { display: flex; }
-
-.edit-window {
-  width: min(1300px, 100%);
-  height: min(850px, 92vh);
-  background: var(--surface);
-  border: 1px solid var(--border-md);
-  border-radius: 18px;
-  overflow: hidden;
-  display: grid;
-  grid-template-columns: 1fr 320px;
-}
-
-.edit-preview-wrap {
-  background: #0f0f0f;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 20px 20px;
-}
-
-.edit-preview-stage { position: relative; display: inline-flex; }
-
-#edit-canvas {
-  display: block;
-  max-width: calc(100vw - 420px);
-  max-height: 86vh;
-}
-
-/* Crop box dans la modal */
-.edit-crop-box {
-  position: absolute;
-  border: 1.5px solid var(--accent);
-  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
-  cursor: move; will-change: transform; touch-action: none;
-  display: none;
-}
-.edit-crop-box.visible { display: block; }
-
-.crop-handle {
-  position: absolute; width: 9px; height: 9px;
-  background: var(--accent); border: 1px solid rgba(0,0,0,0.3);
-  border-radius: 2px; touch-action: none;
-}
-.crop-handle.tl { top:-5px; left:-5px; cursor:nw-resize; }
-.crop-handle.tr { top:-5px; right:-5px; cursor:ne-resize; }
-.crop-handle.bl { bottom:-5px; left:-5px; cursor:sw-resize; }
-.crop-handle.br { bottom:-5px; right:-5px; cursor:se-resize; }
-.crop-handle.tc { top:-5px; left:calc(50% - 4px); cursor:n-resize; }
-.crop-handle.bc { bottom:-5px; left:calc(50% - 4px); cursor:s-resize; }
-.crop-handle.ml { top:calc(50% - 4px); left:-5px; cursor:w-resize; }
-.crop-handle.mr { top:calc(50% - 4px); right:-5px; cursor:e-resize; }
-
-.edit-sidebar {
-  border-left: 1px solid var(--border);
-  padding: 24px;
-  display: flex; flex-direction: column; gap: 20px;
-  overflow-y: auto;
-}
-
-.sidebar-section-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; text-transform: uppercase;
-  letter-spacing: .08em; color: var(--text-3);
-  margin-bottom: 10px;
-}
-
-/* Sliders dans la sidebar */
-.sidebar-slider-group { display: flex; flex-direction: column; gap: 8px; }
-.sidebar-slider-header { display: flex; align-items: center; justify-content: space-between; }
-.sidebar-slider-label {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
-}
-.sidebar-slider-val {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  color: var(--accent); min-width: 28px; text-align: right;
-}
-
-input[type=range].tol-slider {
-  -webkit-appearance: none; width: 100%; height: 4px;
-  background: var(--surface-3); border-radius: 2px; outline: none; cursor: pointer;
-}
-input[type=range].tol-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #0c0c0b;
-  box-shadow: 0 0 6px rgba(212,255,78,0.35); transition: box-shadow .15s;
-}
-input[type=range].tol-slider:hover::-webkit-slider-thumb { box-shadow: 0 0 12px rgba(212,255,78,0.55); }
-input[type=range].tol-slider::-moz-range-thumb {
-  width: 16px; height: 16px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #0c0c0b; cursor: pointer;
-}
-
-.panel-sep { height: 0.5px; background: var(--border-md); }
-
-/* Crop dans la sidebar */
-.crop-toggle-btn {
-  height: 30px; padding: 0 12px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border-md);
-  background: transparent; color: var(--text-3);
-  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
-  cursor: pointer; display: flex; align-items: center; gap: 6px;
-  transition: all .15s; width: 100%; justify-content: center;
-}
-.crop-toggle-btn:hover { border-color: var(--border-hi); color: var(--text); }
-.crop-toggle-btn.active { border-color: var(--accent-border); background: var(--accent-dim); color: var(--accent); }
-
-.crop-dims {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3);
-  text-align: center; min-height: 16px;
-}
-.crop-reset-btn {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3);
-  background: transparent; border: 0.5px solid var(--border);
-  border-radius: var(--radius-sm); padding: 4px 10px; cursor: pointer;
-  transition: border-color .15s, color .15s; width: 100%; margin-top: 4px;
-}
-.crop-reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
-
-.edit-actions {
-  margin-top: auto; display: flex; gap: 8px;
-}
-.edit-cancel-btn {
-  flex: 1; height: 38px; border-radius: var(--radius);
-  border: 0.5px solid var(--border-md); background: transparent;
-  color: var(--text-2); font-family: 'Syne', sans-serif;
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  transition: border-color .15s, color .15s;
-}
-.edit-cancel-btn:hover { border-color: var(--border-hi); color: var(--text); }
-.edit-confirm-btn {
-  flex: 1; height: 38px; border-radius: var(--radius);
-  border: none; background: var(--accent); color: #0c0c0b;
-  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
-  cursor: pointer; transition: background .15s;
-}
-.edit-confirm-btn:hover { background: #dcff6a; }
-
-/* ─── INFO BOX ─── */
+/* INFO BOX */
 .info-box {
   margin-top: 1.5rem; padding: 14px 16px;
   background: var(--surface); border: 0.5px solid var(--border);
@@ -385,7 +243,7 @@ input[type=range].tol-slider::-moz-range-thumb {
 }
 .info-box .label { color: var(--accent); font-weight: 500; }
 
-/* ─── TOAST ─── */
+/* TOAST */
 .toast {
   position: fixed; bottom: 24px; left: 50%;
   transform: translateX(-50%) translateY(8px);
@@ -402,14 +260,11 @@ input[type=range].tol-slider::-moz-range-thumb {
 
 @media (max-width: 600px) {
   body { padding: 1.5rem 0.75rem 3rem; }
-  .header { gap: 10px; margin-bottom: 1.5rem; }
   .logo { width: 64px; height: 64px; }
   .header h1 { font-size: 18px; }
-  .canvas-wrap.dual { grid-template-columns: 1fr; }
+  .preview-grid.dual { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
   .run-btn, .dl-btn { width: 100%; justify-content: center; }
-  .edit-window { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-  #edit-canvas { max-width: 100vw; max-height: 50vh; }
 }
 </style>
 </head>
@@ -417,9 +272,7 @@ input[type=range].tol-slider::-moz-range-thumb {
 <div class="container">
 
   <div class="header">
-    <a href="index.html">
-      <img src="logo.png" alt="Pixo" class="logo">
-    </a>
+    <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
       <span class="header-tag">v2.7</span>
@@ -427,15 +280,15 @@ input[type=range].tol-slider::-moz-range-thumb {
   </div>
 
   <nav class="nav" role="tablist">
-    <a class="nav-btn" href="index.html" role="tab" aria-selected="false">Redimensionner</a>
+    <a class="nav-btn" href="index.html" role="tab">Redimensionner</a>
     <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer</a>
   </nav>
 
   <!-- Drop zone -->
   <div class="drop-zone" id="drop-zone"
-       onclick="document.getElementById('file-in').click()"
        role="button" tabindex="0"
        aria-label="Importer une image à détourer"
+       onclick="document.getElementById('file-in').click()"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('file-in').click()}">
     <div class="drop-icon">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
@@ -447,17 +300,16 @@ input[type=range].tol-slider::-moz-range-thumb {
     <div class="drop-label">Glissez une image ici ou cliquez pour parcourir</div>
     <div class="drop-hint">JPG · PNG · WEBP</div>
   </div>
-
   <input type="file" id="file-in" accept="image/*" style="display:none">
 
-  <!-- Aperçus -->
-  <div class="canvas-wrap single" id="canvas-wrap">
+  <!-- Grille d'aperçus -->
+  <div class="preview-grid single" id="preview-grid">
 
     <!-- Colonne Original -->
-    <div class="canvas-col">
-      <div class="canvas-label-row">
-        <span class="canvas-label">Original</span>
-        <button class="change-img-btn" id="change-btn" aria-label="Changer d'image">
+    <div class="preview-col">
+      <div class="col-label-row">
+        <span class="col-label">Original</span>
+        <button class="change-btn" id="change-btn">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
@@ -468,33 +320,62 @@ input[type=range].tol-slider::-moz-range-thumb {
       <img id="img-original" class="preview-img original" alt="Image originale" style="display:none">
     </div>
 
-    <!-- Colonne Détouré -->
-    <div class="canvas-col" id="result-col" style="display:none">
-      <div class="canvas-label-row">
-        <span class="canvas-label">Détouré</span>
-        <button class="edit-btn" id="edit-btn" aria-label="Modifier">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-          Modifier
+    <!-- Colonne Résultat (masquée jusqu'au 1er détourage) -->
+    <div class="preview-col" id="col-result" style="display:none">
+      <div class="col-label-row">
+        <span class="col-label">Détouré</span>
+      </div>
+      <!-- Image résultat -->
+      <img id="img-result" class="preview-img result" alt="Image détourée">
+
+      <!-- Sliders juste en dessous de l'image résultat -->
+      <div class="sliders-panel" id="sliders-panel">
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label">Tolérance</span>
+            <span class="slider-val" id="tol-val">0</span>
+          </div>
+          <div class="slider-track">
+            <span class="slider-hint">Faible</span>
+            <input type="range" class="rng" id="tol-slider" min="0" max="100" value="0">
+            <span class="slider-hint">Max</span>
+          </div>
+        </div>
+
+        <div class="panel-sep"></div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label">Lissage des bords</span>
+            <span class="slider-val" id="feather-val">0</span>
+          </div>
+          <div class="slider-track">
+            <span class="slider-hint">Aucun</span>
+            <input type="range" class="rng" id="feather-slider" min="0" max="100" value="0">
+            <span class="slider-hint">Max</span>
+          </div>
+        </div>
+
+        <button class="apply-btn" id="apply-btn">
+          <div class="spinner"></div>
+          <span class="apply-label">Appliquer</span>
         </button>
-      </div>
-      <div class="result-wrap">
-        <img id="img-result" class="preview-img" alt="Image détourée">
-      </div>
-    </div>
 
-  </div>
+      </div><!-- /sliders-panel -->
 
-  <!-- Actions principales -->
+    </div><!-- /col-result -->
+
+  </div><!-- /preview-grid -->
+
+  <!-- Boutons principaux -->
   <div class="actions" id="actions">
     <button class="run-btn" id="run-btn">
-      <svg class="run-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="run-label" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
       </svg>
+      <span class="run-label">Supprimer le fond</span>
       <div class="spinner"></div>
-      Supprimer le fond
     </button>
     <button class="dl-btn" id="dl-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -514,173 +395,64 @@ input[type=range].tol-slider::-moz-range-thumb {
     <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
   </div>
 
-</div><!-- /container -->
-
-<!-- ══════════════════════════════════════════
-     MODAL D'ÉDITION (unique, hors container)
-══════════════════════════════════════════ -->
-<div class="edit-modal" id="edit-modal" role="dialog" aria-modal="true" aria-label="Éditeur d'image">
-  <div class="edit-window">
-
-    <!-- Zone de prévisualisation -->
-    <div class="edit-preview-wrap">
-      <div class="edit-preview-stage" id="edit-preview-stage">
-        <canvas id="edit-canvas"></canvas>
-        <div class="edit-crop-box" id="edit-crop-box">
-          <div class="crop-handle tl" data-h="tl"></div>
-          <div class="crop-handle tr" data-h="tr"></div>
-          <div class="crop-handle bl" data-h="bl"></div>
-          <div class="crop-handle br" data-h="br"></div>
-          <div class="crop-handle tc" data-h="tc"></div>
-          <div class="crop-handle bc" data-h="bc"></div>
-          <div class="crop-handle ml" data-h="ml"></div>
-          <div class="crop-handle mr" data-h="mr"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sidebar -->
-    <div class="edit-sidebar">
-
-      <div>
-        <div class="sidebar-section-title">Réglages</div>
-        <div class="sidebar-slider-group">
-          <div class="sidebar-slider-header">
-            <span class="sidebar-slider-label">Tolérance</span>
-            <span class="sidebar-slider-val" id="modal-tol-val">0</span>
-          </div>
-          <input type="range" class="tol-slider" id="modal-tol-slider" min="0" max="100" value="0">
-        </div>
-      </div>
-
-      <div class="panel-sep"></div>
-
-      <div>
-        <div class="sidebar-slider-group">
-          <div class="sidebar-slider-header">
-            <span class="sidebar-slider-label">Lissage des bords</span>
-            <span class="sidebar-slider-val" id="modal-feather-val">0</span>
-          </div>
-          <input type="range" class="tol-slider" id="modal-feather-slider" min="0" max="100" value="0">
-        </div>
-      </div>
-
-      <div class="panel-sep"></div>
-
-      <div>
-        <div class="sidebar-section-title">Recadrage</div>
-        <button class="crop-toggle-btn" id="modal-crop-toggle">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-          </svg>
-          Afficher le cadre
-        </button>
-        <div class="crop-dims" id="modal-crop-dims" style="margin-top:8px"></div>
-        <button class="crop-reset-btn" id="modal-crop-reset" style="display:none">Réinitialiser le recadrage</button>
-      </div>
-
-      <div class="edit-actions">
-        <button class="edit-cancel-btn" id="modal-cancel-btn">Annuler</button>
-        <button class="edit-confirm-btn" id="modal-confirm-btn">Valider</button>
-      </div>
-
-    </div>
-  </div>
 </div>
-
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-import { pipeline, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
-// ─── État global ───
-let srcFile       = null;
-let resultBlob    = null;
-let segmenter     = null;
-let rawPixels     = null;   // Uint8ClampedArray brute sortie du modèle
-let origPixels    = null;   // Uint8ClampedArray couleurs originales
+// ── État global ────────────────────────────────────────────────
+let srcFile    = null;
+let resultBlob = null;
+let segmenter  = null;
+let rawPixels  = null;  // canal alpha brut sorti du modèle (RGBA, alpha = masque)
+let origPixels = null;  // couleurs originales pleine résolution (RGBA)
 let rawW = 0, rawH = 0;
-let appliedTol    = 0;
-let appliedFeather = 0;
-let appliedCrop   = null;   // {x,y,w,h} en fractions 0-1
 
-// Crop en cours dans la modal (fractions)
-let modalCrop     = null;
-let cropActive    = false;
-
-// Charger le modèle en arrière-plan
+// Pré-charger le modèle en arrière-plan
 pipeline('background-removal', 'briaai/RMBG-1.4')
   .then(p  => { segmenter = p; })
-  .catch(e => { console.error('Erreur modèle:', e); segmenter = 'error'; });
+  .catch(() => { segmenter = 'error'; });
 
-// ─── Refs DOM ───
-const dropZone    = document.getElementById('drop-zone');
-const fileInput   = document.getElementById('file-in');
-const canvasWrap  = document.getElementById('canvas-wrap');
-const resultCol   = document.getElementById('result-col');
-const imgOriginal = document.getElementById('img-original');
-const imgResult   = document.getElementById('img-result');
-const editBtn     = document.getElementById('edit-btn');
-const actionsEl   = document.getElementById('actions');
-const runBtn      = document.getElementById('run-btn');
-const dlBtn       = document.getElementById('dl-btn');
-const changeBtn   = document.getElementById('change-btn');
-const statusEl    = document.getElementById('status');
-const progressWrap = document.getElementById('progress-wrap');
-const progressBar  = document.getElementById('progress-bar');
+// ── Refs DOM ───────────────────────────────────────────────────
+const dropZone     = document.getElementById('drop-zone');
+const fileInput    = document.getElementById('file-in');
+const previewGrid  = document.getElementById('preview-grid');
+const colResult    = document.getElementById('col-result');
+const imgOriginal  = document.getElementById('img-original');
+const imgResult    = document.getElementById('img-result');
+const actionsEl    = document.getElementById('actions');
+const runBtn       = document.getElementById('run-btn');
+const dlBtn        = document.getElementById('dl-btn');
+const changeBtn    = document.getElementById('change-btn');
+const slidersPanel = document.getElementById('sliders-panel');
+const tolSlider    = document.getElementById('tol-slider');
+const tolVal       = document.getElementById('tol-val');
+const featherSlider= document.getElementById('feather-slider');
+const featherVal   = document.getElementById('feather-val');
+const applyBtn     = document.getElementById('apply-btn');
 
-// Modal
-const editModal       = document.getElementById('edit-modal');
-const editCanvas      = document.getElementById('edit-canvas');
-const editCtx         = editCanvas.getContext('2d');
-const editCropBox     = document.getElementById('edit-crop-box');
-const modalTolSlider  = document.getElementById('modal-tol-slider');
-const modalTolVal     = document.getElementById('modal-tol-val');
-const modalFeatherSlider = document.getElementById('modal-feather-slider');
-const modalFeatherVal    = document.getElementById('modal-feather-val');
-const modalCropToggle = document.getElementById('modal-crop-toggle');
-const modalCropDims   = document.getElementById('modal-crop-dims');
-const modalCropReset  = document.getElementById('modal-crop-reset');
-const modalCancelBtn  = document.getElementById('modal-cancel-btn');
-const modalConfirmBtn = document.getElementById('modal-confirm-btn');
-
-// ─── Drag & drop ───
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+// ── Drag & drop / import ───────────────────────────────────────
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
-// ─── Boutons principaux ───
+// ── Boutons ────────────────────────────────────────────────────
 runBtn.addEventListener('click', runDetourage);
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
-editBtn.addEventListener('click', openEditModal);
+applyBtn.addEventListener('click', applySliders);
 
-// ─── Modal : boutons ───
-modalCancelBtn.addEventListener('click', closeEditModal);
-modalConfirmBtn.addEventListener('click', confirmEdit);
-modalCropToggle.addEventListener('click', toggleCrop);
-modalCropReset.addEventListener('click', resetCrop);
+// Affichage live des valeurs
+tolSlider.addEventListener('input',     () => { tolVal.textContent     = tolSlider.value; });
+featherSlider.addEventListener('input', () => { featherVal.textContent = featherSlider.value; });
 
-// Sliders modal
-modalTolSlider.addEventListener('input', () => {
-  modalTolVal.textContent = modalTolSlider.value;
-  refreshModalPreview();
-});
-modalFeatherSlider.addEventListener('input', () => {
-  modalFeatherVal.textContent = modalFeatherSlider.value;
-  refreshModalPreview();
-});
+// ── Traitement pixel ───────────────────────────────────────────
 
-// Fermeture Échap
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && editModal.classList.contains('visible')) closeEditModal();
-});
-
-// ─── Pixel processing ───
-function applySharpen(pixels, tolerance) {
-  const data = new Uint8ClampedArray(pixels);
+// Seuille le canal alpha : les semi-transparences sous le seuil passent à 0
+function applySharpen(src, tolerance) {
+  const data = new Uint8ClampedArray(src);
   if (tolerance === 0) return data;
   const threshold = Math.round((1 - tolerance / 100) * 255);
   for (let i = 3; i < data.length; i += 4) {
@@ -689,34 +461,42 @@ function applySharpen(pixels, tolerance) {
   return data;
 }
 
-function applyEdgeFeathering(pixels, origPx, w, h, amount) {
-  if (amount === 0) return new Uint8ClampedArray(pixels);
-  const radius = Math.round((amount / 100) * 6) + 1;
-  const data   = new Uint8ClampedArray(pixels);
+// Flou gaussien sur le canal alpha uniquement (lissage des bords)
+function applyFeather(src, w, h, amount) {
+  if (amount === 0) return new Uint8ClampedArray(src);
+  const radius = Math.round((amount / 100) * 8) + 1;
   const sigma  = radius / 2;
-  const kernel = []; let ksum = 0;
+  const data   = new Uint8ClampedArray(src);
+
+  // Kernel gaussien
+  const k = []; let ksum = 0;
   for (let i = -radius; i <= radius; i++) {
     const v = Math.exp(-(i * i) / (2 * sigma * sigma));
-    kernel.push(v); ksum += v;
+    k.push(v); ksum += v;
   }
-  for (let i = 0; i < kernel.length; i++) kernel[i] /= ksum;
+  for (let i = 0; i < k.length; i++) k[i] /= ksum;
+
+  // Extraire l'alpha
   const alpha = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3];
+
+  // Passe H
   const tmp = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let s = 0;
-      for (let k = -radius; k <= radius; k++) {
-        s += alpha[y * w + Math.min(Math.max(x + k, 0), w - 1)] * kernel[k + radius];
+      for (let ki = -radius; ki <= radius; ki++) {
+        s += alpha[y * w + Math.min(Math.max(x + ki, 0), w - 1)] * k[ki + radius];
       }
       tmp[y * w + x] = s;
     }
   }
+  // Passe V → réinjecte dans data
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let s = 0;
-      for (let k = -radius; k <= radius; k++) {
-        s += tmp[Math.min(Math.max(y + k, 0), h - 1) * w + x] * kernel[k + radius];
+      for (let ki = -radius; ki <= radius; ki++) {
+        s += tmp[Math.min(Math.max(y + ki, 0), h - 1) * w + x] * k[ki + radius];
       }
       data[(y * w + x) * 4 + 3] = Math.round(s);
     }
@@ -724,91 +504,95 @@ function applyEdgeFeathering(pixels, origPx, w, h, amount) {
   return data;
 }
 
-async function blobFromPixels(data, w, h) {
+// Remplace les RGB du masque par ceux de l'original (pour garder les vraies couleurs)
+function mergeWithOrig(masked, orig) {
+  const out = new Uint8ClampedArray(orig);   // copie les couleurs originales
+  for (let i = 3; i < out.length; i += 4) {
+    out[i] = masked[i];                       // applique l'alpha du masque traité
+  }
+  return out;
+}
+
+async function pixelsToBlob(data, w, h) {
   const oc = new OffscreenCanvas(w, h);
   oc.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
   return oc.convertToBlob({ type: 'image/png' });
 }
 
-function cropPixels(src, srcW, sx, sy, sw, sh) {
-  const out = new Uint8ClampedArray(sw * sh * 4);
-  for (let y = 0; y < sh; y++) {
-    for (let x = 0; x < sw; x++) {
-      const si = ((sy + y) * srcW + (sx + x)) * 4;
-      const di = (y * sw + x) * 4;
-      out[di]   = src[si];   out[di+1] = src[si+1];
-      out[di+2] = src[si+2]; out[di+3] = src[si+3];
-    }
-  }
-  return out;
+// Recalcule et affiche le résultat avec les réglages courants
+async function rebuild(tol, feather) {
+  let px = applySharpen(rawPixels, tol);
+  px = applyFeather(px, rawW, rawH, feather);
+  px = mergeWithOrig(px, origPixels);
+  const blob = await pixelsToBlob(px, rawW, rawH);
+  resultBlob = blob;
+  const prev = imgResult.src;
+  imgResult.src = URL.createObjectURL(blob);
+  if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
 }
 
-async function buildPixelsWithCrop(tol, feather, crop) {
-  const isFull = !crop || (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1);
-  if (isFull) {
-    let px = applySharpen(rawPixels, tol);
-    px = applyEdgeFeathering(px, origPixels, rawW, rawH, feather);
-    return { data: px, w: rawW, h: rawH };
+// ── Appliquer les curseurs ─────────────────────────────────────
+async function applySliders() {
+  if (!rawPixels) return;
+  applyBtn.classList.add('loading');
+  applyBtn.disabled = true;
+  try {
+    await rebuild(parseInt(tolSlider.value, 10), parseInt(featherSlider.value, 10));
+    dlBtn.classList.add('visible');
+    showToast('Réglages appliqués ✓');
+  } catch(e) {
+    showToast('Erreur lors de l\'application.', 'error');
+    console.error(e);
   }
-  const sx = Math.round(crop.x * rawW), sy = Math.round(crop.y * rawH);
-  const sw = Math.max(1, Math.round(crop.w * rawW));
-  const sh = Math.max(1, Math.round(crop.h * rawH));
-  const croppedRaw  = cropPixels(rawPixels,  rawW, sx, sy, sw, sh);
-  const croppedOrig = cropPixels(origPixels, rawW, sx, sy, sw, sh);
-  let px = applySharpen(croppedRaw, tol);
-  px = applyEdgeFeathering(px, croppedOrig, sw, sh, feather);
-  return { data: px, w: sw, h: sh };
+  applyBtn.classList.remove('loading');
+  applyBtn.disabled = false;
 }
 
-// ─── Détourage ───
+// ── Détourage ──────────────────────────────────────────────────
 async function runDetourage() {
   if (!srcFile) return;
   runBtn.disabled = true;
   runBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
-  showProgress(10);
-  setStatus('Chargement du modèle…');
+  showProgress(10); setStatus('Chargement du modèle…');
 
+  // Attendre le modèle (chargé en parallèle dès l'ouverture de la page)
   let waited = 0;
   while (!segmenter) {
-    if (waited > 60000) {
-      setStatus('Délai dépassé.', 'error');
-      hideProgress(); runBtn.disabled = false; runBtn.classList.remove('loading');
-      return;
-    }
-    await new Promise(r => setTimeout(r, 200)); waited += 200;
+    if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(); return; }
+    await sleep(300); waited += 300;
   }
   if (segmenter === 'error') {
-    setStatus('Erreur de chargement du modèle.', 'error');
-    hideProgress(); runBtn.disabled = false; runBtn.classList.remove('loading');
-    return;
+    setStatus('Erreur de chargement du modèle.', 'error'); endRun(); return;
   }
 
   try {
     showProgress(40); setStatus('Segmentation en cours…');
     const dataUrl = await fileToDataUrl(srcFile);
 
-    showProgress(60);
+    showProgress(65);
     const output = await segmenter(dataUrl);
-    showProgress(90);
+    showProgress(85);
 
-    const rawImage = output[0];
-    if (!rawImage) throw new Error('Résultat vide.');
+    if (!output || !output[0]) throw new Error('Résultat vide.');
 
-    const srcCanvas = rawImage.toCanvas();
-    let htmlCanvas;
+    // Canvas de sortie du modèle
+    const srcCanvas = output[0].toCanvas();
+    let mc;
     if (srcCanvas instanceof HTMLCanvasElement) {
-      htmlCanvas = srcCanvas;
+      mc = srcCanvas;
     } else {
-      htmlCanvas = document.createElement('canvas');
-      htmlCanvas.width  = srcCanvas.width;
-      htmlCanvas.height = srcCanvas.height;
-      htmlCanvas.getContext('2d').drawImage(srcCanvas, 0, 0);
+      mc = document.createElement('canvas');
+      mc.width = srcCanvas.width; mc.height = srcCanvas.height;
+      mc.getContext('2d').drawImage(srcCanvas, 0, 0);
     }
 
-    rawW = htmlCanvas.width; rawH = htmlCanvas.height;
-    rawPixels = htmlCanvas.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+    rawW = mc.width; rawH = mc.height;
 
+    // Stocker le masque alpha brut
+    rawPixels = mc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+
+    // Stocker les couleurs originales à la même résolution
     origPixels = await new Promise(resolve => {
       const img = new Image();
       img.onload = () => {
@@ -820,215 +604,33 @@ async function runDetourage() {
       img.src = dataUrl;
     });
 
-    appliedTol = 0; appliedFeather = 0; appliedCrop = null;
-    const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
-    resultBlob = blob;
+    // Remettre les sliders à zéro
+    tolSlider.value = 0;     tolVal.textContent     = '0';
+    featherSlider.value = 0; featherVal.textContent = '0';
 
-    const url = URL.createObjectURL(blob);
-    imgResult.src = url;
+    showProgress(95);
+    await rebuild(0, 0);
 
-    resultCol.style.display = 'block';
-    canvasWrap.classList.remove('single');
-    canvasWrap.classList.add('dual');
-
-    editBtn.classList.add('visible');
+    // Révéler la colonne résultat et passer en 2 colonnes
+    colResult.style.display = 'block';
+    previewGrid.classList.remove('single');
+    previewGrid.classList.add('dual');
+    slidersPanel.classList.add('visible');
     dlBtn.classList.add('visible');
-    runBtn.style.display = 'none';
+    runBtn.style.display = 'none'; // caché jusqu'au prochain reset
+
     setStatus('✓ Fond supprimé avec succès.', 'success');
-    showProgress(100);
-    setTimeout(hideProgress, 800);
-    runBtn.disabled = false; runBtn.classList.remove('loading');
+    showProgress(100); setTimeout(hideProgress, 800);
+    endRun();
 
   } catch(e) {
     console.error(e);
     setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
-    hideProgress(); runBtn.disabled = false; runBtn.classList.remove('loading');
+    hideProgress(); endRun();
   }
 }
 
-// ─── Modal d'édition ───
-function openEditModal() {
-  if (!imgResult.src) return;
-
-  // Sync les sliders avec les valeurs appliquées
-  modalTolSlider.value     = appliedTol;
-  modalTolVal.textContent  = appliedTol;
-  modalFeatherSlider.value = appliedFeather;
-  modalFeatherVal.textContent = appliedFeather;
-  modalCrop = appliedCrop ? { ...appliedCrop } : null;
-
-  editModal.classList.add('visible');
-  drawEditCanvas();
-
-  if (cropActive) {
-    updateCropBoxFromModal();
-    editCropBox.classList.add('visible');
-  } else {
-    editCropBox.classList.remove('visible');
-  }
-}
-
-function closeEditModal() {
-  editModal.classList.remove('visible');
-}
-
-async function confirmEdit() {
-  const tol     = parseInt(modalTolSlider.value, 10);
-  const feather = parseInt(modalFeatherSlider.value, 10);
-  const crop    = cropActive ? modalCrop : null;
-
-  appliedTol     = tol;
-  appliedFeather = feather;
-  appliedCrop    = crop;
-
-  const { data, w, h } = await buildPixelsWithCrop(tol, feather, crop);
-  const blob = await blobFromPixels(data, w, h);
-  resultBlob = blob;
-
-  const url = URL.createObjectURL(blob);
-  imgResult.src = url;
-  dlBtn.classList.add('visible');
-  closeEditModal();
-  showToast('Modifications appliquées ✓');
-}
-
-// ─── Aperçu dans la modal ───
-function drawEditCanvas() {
-  if (!imgResult.src) return;
-  const img = new Image();
-  img.onload = () => {
-    // Sidebar is 320px + borders, so available width ≈ viewport - 360
-    const maxW = Math.max(200, window.innerWidth  - 380);
-    const maxH = Math.max(200, window.innerHeight - 100);
-    const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
-    editCanvas.width  = Math.round(img.width  * ratio);
-    editCanvas.height = Math.round(img.height * ratio);
-    editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
-    editCtx.drawImage(img, 0, 0, editCanvas.width, editCanvas.height);
-    if (cropActive) updateCropBoxFromModal();
-  };
-  img.src = imgResult.src;
-}
-
-function refreshModalPreview() {
-  // Mise à jour légère : ré-dessine simplement le canvas courant
-  // (le vrai recalcul pixel n'est fait qu'au Valider)
-  drawEditCanvas();
-}
-
-// ─── Crop dans la modal ───
-function toggleCrop() {
-  cropActive = !cropActive;
-  if (cropActive) {
-    if (!modalCrop) modalCrop = { x: 0.05, y: 0.05, w: 0.9, h: 0.9 };
-    editCropBox.classList.add('visible');
-    modalCropToggle.classList.add('active');
-    modalCropToggle.textContent = '✕ Masquer le cadre';
-    modalCropReset.style.display = 'block';
-    updateCropBoxFromModal();
-    updateCropDims();
-    initCropDrag();
-  } else {
-    editCropBox.classList.remove('visible');
-    modalCropToggle.classList.remove('active');
-    modalCropToggle.innerHTML = `
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-        <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-      </svg>
-      Afficher le cadre`;
-    modalCropDims.textContent = '';
-    modalCropReset.style.display = 'none';
-  }
-}
-
-function resetCrop() {
-  modalCrop = { x: 0, y: 0, w: 1, h: 1 };
-  updateCropBoxFromModal();
-  updateCropDims();
-}
-
-function updateCropBoxFromModal() {
-  if (!modalCrop || !editCanvas.width) return;
-  const cw = editCanvas.width, ch = editCanvas.height;
-  editCropBox.style.left   = Math.round(modalCrop.x * cw) + 'px';
-  editCropBox.style.top    = Math.round(modalCrop.y * ch) + 'px';
-  editCropBox.style.width  = Math.round(modalCrop.w * cw) + 'px';
-  editCropBox.style.height = Math.round(modalCrop.h * ch) + 'px';
-}
-
-function updateCropDims() {
-  if (!modalCrop) { modalCropDims.textContent = ''; return; }
-  const pw = Math.round(modalCrop.w * rawW);
-  const ph = Math.round(modalCrop.h * rawH);
-  modalCropDims.textContent = pw + ' × ' + ph + ' px';
-}
-
-// Drag du crop box
-let _cropDragging = false;
-let _cropHandle   = null;
-let _cropStart    = null;
-
-function initCropDrag() {
-  // On (re)branche une fois, guard avec _cropDragBound
-  if (editCropBox._cropDragBound) return;
-  editCropBox._cropDragBound = true;
-
-  editCropBox.addEventListener('pointerdown', onCropPointerDown);
-  document.addEventListener('pointermove', onCropPointerMove);
-  document.addEventListener('pointerup',   onCropPointerUp);
-}
-
-function onCropPointerDown(e) {
-  e.preventDefault();
-  _cropDragging = true;
-  _cropHandle   = e.target.dataset.h || 'move';
-  const rect    = editCanvas.getBoundingClientRect();
-  _cropStart    = {
-    mx: e.clientX, my: e.clientY,
-    crop: { ...modalCrop },
-    cw: editCanvas.width, ch: editCanvas.height,
-    rect
-  };
-  editCropBox.setPointerCapture(e.pointerId);
-}
-
-function onCropPointerMove(e) {
-  if (!_cropDragging || !_cropStart) return;
-  const dx = (e.clientX - _cropStart.mx) / _cropStart.cw;
-  const dy = (e.clientY - _cropStart.my) / _cropStart.ch;
-  const c  = { ..._cropStart.crop };
-  const h  = _cropHandle;
-  const MIN = 0.02;
-
-  if (h === 'move') {
-    c.x = Math.min(Math.max(c.x + dx, 0), 1 - c.w);
-    c.y = Math.min(Math.max(c.y + dy, 0), 1 - c.h);
-  } else {
-    if (h.includes('l')) { const nx = c.x + dx; if (c.x + c.w - nx > MIN) { c.w = c.x + c.w - nx; c.x = nx; } }
-    if (h.includes('r')) { c.w = Math.min(Math.max(c.w + dx, MIN), 1 - c.x); }
-    if (h.includes('t')) { const ny = c.y + dy; if (c.y + c.h - ny > MIN) { c.h = c.y + c.h - ny; c.y = ny; } }
-    if (h.includes('b')) { c.h = Math.min(Math.max(c.h + dy, MIN), 1 - c.y); }
-  }
-  c.x = Math.max(0, Math.min(c.x, 1 - c.w));
-  c.y = Math.max(0, Math.min(c.y, 1 - c.h));
-  modalCrop = c;
-  updateCropBoxFromModal();
-  updateCropDims();
-}
-
-function onCropPointerUp() { _cropDragging = false; }
-
-// ─── Helpers ───
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = e => resolve(e.target.result);
-    r.onerror = () => reject(new Error('Lecture fichier impossible'));
-    r.readAsDataURL(file);
-  });
-}
-
+// ── Téléchargement ─────────────────────────────────────────────
 function downloadResult() {
   if (!resultBlob) return;
   const name = srcFile ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png' : 'image_detoure.png';
@@ -1036,66 +638,87 @@ function downloadResult() {
   a.href = URL.createObjectURL(resultBlob);
   a.download = name;
   document.body.appendChild(a); a.click();
-  setTimeout(() => document.body.removeChild(a), 100);
+  setTimeout(() => { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 200);
 }
 
+// ── Charger un fichier ─────────────────────────────────────────
 function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
-  srcFile    = file;
-  resultBlob = null; rawPixels = null; origPixels = null;
+  srcFile = file;
+  rawPixels = null; origPixels = null; resultBlob = null;
+
   const reader = new FileReader();
   reader.onload = ev => {
     imgOriginal.src = ev.target.result;
     imgOriginal.style.display = 'block';
-    imgResult.src   = '';
-    resultCol.style.display = 'none';
-    canvasWrap.classList.remove('dual');
-    canvasWrap.classList.add('single');
-    canvasWrap.style.display = 'block';
-    actionsEl.style.display  = 'flex';
+    imgResult.src = '';
+    colResult.style.display = 'none';
+    previewGrid.classList.remove('dual');
+    previewGrid.classList.add('single');
+    previewGrid.style.display = '';
+    slidersPanel.classList.remove('visible');
+    actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
-    editBtn.classList.remove('visible');
+    runBtn.style.display = '';
     dropZone.style.display = 'none';
     setStatus(''); hideProgress();
   };
   reader.readAsDataURL(file);
 }
 
+// ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
-  srcFile = null; resultBlob = null; rawPixels = null; origPixels = null;
-  appliedTol = 0; appliedFeather = 0; appliedCrop = null;
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null;
   dropZone.style.display = '';
-  canvasWrap.style.display = 'none';
-  canvasWrap.classList.remove('dual'); canvasWrap.classList.add('single');
+  previewGrid.className = 'preview-grid single';
+  previewGrid.style.display = 'none';
+  colResult.style.display = 'none';
+  slidersPanel.classList.remove('visible');
   actionsEl.style.display = 'none';
   dlBtn.classList.remove('visible');
-  imgOriginal.src = ''; imgOriginal.style.display = 'none'; imgResult.src = '';
-  resultCol.style.display = 'none';
-  editBtn.classList.remove('visible');
+  imgOriginal.src = ''; imgOriginal.style.display = 'none';
+  imgResult.src = '';
+  tolSlider.value = 0;     tolVal.textContent = '0';
+  featherSlider.value = 0; featherVal.textContent = '0';
   fileInput.value = '';
   setStatus(''); hideProgress();
-  runBtn.disabled = false; runBtn.classList.remove('loading'); runBtn.style.display = '';
+  endRun();
 }
 
+// ── Utils ──────────────────────────────────────────────────────
+function endRun() {
+  runBtn.disabled = false;
+  runBtn.classList.remove('loading');
+}
+function fileToDataUrl(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Lecture impossible'));
+    r.readAsDataURL(file);
+  });
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function setStatus(msg, type) {
-  statusEl.textContent = msg;
-  statusEl.className   = 'status' + (type ? ' ' + type : '');
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
 }
 function showProgress(pct) {
-  progressWrap.style.display = 'block';
-  progressBar.style.width    = pct + '%';
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('progress-bar').style.width = pct + '%';
 }
 function hideProgress() {
-  progressWrap.style.display = 'none';
-  progressBar.style.width    = '0%';
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('progress-bar').style.width = '0%';
 }
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className   = 'toast show' + (type ? ' ' + type : '');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 </script>
 </body>
