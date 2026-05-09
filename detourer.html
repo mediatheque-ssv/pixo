@@ -458,12 +458,6 @@ body::before {
 <script>
 var srcFile = null;
 var resultBlob = null;
-var _removeBackground = null;
-
-// Récupérer la fonction dès qu'elle est disponible
-window.addEventListener('imgly-ready', function() {
-  _removeBackground = window._removeBackground;
-});
 
 // ─── DROP ZONE ───
 document.addEventListener('DOMContentLoaded', function() {
@@ -554,9 +548,15 @@ function showToast(msg, type) {
 async function runDetourage() {
   if (!srcFile) return;
 
-  if (!_removeBackground) {
-    showToast('Librairie pas encore chargée, réessayez dans un instant.', 'error');
-    return;
+  // Attendre que la lib soit chargée (max 10s)
+  var waited = 0;
+  while (!window._removeBackground) {
+    if (waited > 10000) {
+      showToast('Impossible de charger la librairie.', 'error');
+      return;
+    }
+    await new Promise(function(r) { setTimeout(r, 100); });
+    waited += 100;
   }
 
   var btn = document.getElementById('run-btn');
@@ -571,7 +571,7 @@ async function runDetourage() {
     showProgress(30);
     setStatus('Analyse de l\'image en cours…');
 
-    var blob = await _removeBackground(srcFile, {
+    var blob = await window._removeBackground(srcFile, {
       progress: function(key, current, total) {
         if (total > 0) {
           var pct = key === 'compute:inference'
