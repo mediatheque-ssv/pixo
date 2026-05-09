@@ -110,9 +110,18 @@ body::before {
 
 /* ─── CANVAS WRAP ─── */
 .canvas-wrap {
-  display: none;
-  gap: 12px;
-  margin-top: 1.5rem;
+  display:none;
+  margin-top:1.5rem;
+}
+.canvas-wrap.dual{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  align-items:start;
+}
+.canvas-wrap.single{
+  display:block;
+  max-width:360px;
 }
 /* 1 colonne tant que pas de résultat, 2 colonnes sinon */
 .canvas-wrap.single { grid-template-columns: 1fr; max-width: 360px; }
@@ -159,17 +168,24 @@ body::before {
 /* Bouton "Modifier" flottant sur le résultat */
 .result-wrap { position: relative; display: flex; }
 .edit-btn {
-  position: absolute; top: 8px; right: 8px;
-  height: 28px; padding: 0 10px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border-md);
-  background: rgba(20,20,19,0.82);
-  backdrop-filter: blur(6px);
-  color: var(--text-2); cursor: pointer;
-  display: none; align-items: center; gap: 6px;
-  font-family: 'Syne', sans-serif;
-  font-size: 11px; font-weight: 600;
-  transition: border-color .15s, color .15s;
+  position:absolute;
+  top:8px;
+  right:8px;
+  z-index:20;
+  height:28px;
+  padding:0 10px;
+  border-radius:var(--radius-sm);
+  border:0.5px solid var(--border-md);
+  background:rgba(20,20,19,0.82);
+  backdrop-filter:blur(6px);
+  color:var(--text-2);
+  cursor:pointer;
+  display:none;
+  align-items:center;
+  gap:6px;
+  font-family:'Syne', sans-serif;
+  font-size:11px;
+  font-weight:600;
 }
 .edit-btn:hover { border-color: var(--border-hi); color: var(--text); }
 .edit-btn.visible { display: flex; }
@@ -872,7 +888,7 @@ async function runDetourage() {
     imgResult.src = url;
 
     // Afficher la colonne résultat + passer en 2 colonnes
-    resultCol.style.display = '';
+    resultCol.style.display = 'block';
     canvasWrap.classList.remove('single');
     canvasWrap.classList.add('dual');
 
@@ -912,7 +928,7 @@ function loadFile(file) {
     resultCol.style.display = 'none';
     canvasWrap.classList.remove('dual');
     canvasWrap.classList.add('single');
-    canvasWrap.style.display = 'block'; // show as block for single-col
+    canvasWrap.style.display = 'block';
     document.getElementById('actions').style.display = 'flex';
     document.getElementById('dl-btn').classList.remove('visible');
     editBtn.classList.remove('visible');
@@ -961,6 +977,11 @@ function showToast(msg, type) {
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
+
+const editBtn = document.getElementById('edit-btn');
+const imgResult = document.getElementById('img-result');
+const resultCol = document.getElementById('result-col');
+const canvasWrap = document.getElementById('canvas-wrap');
 
 const editModal = document.getElementById('edit-modal');
 const editCanvas = document.getElementById('edit-canvas');
