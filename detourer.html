@@ -439,8 +439,7 @@ body::before {
   <div class="status" id="status"></div>
 
   <div class="info-box">
-    <span class="label">IA locale</span> — Le modèle tourne entièrement dans votre navigateur, aucune image n'est envoyée vers un serveur.<br>
-    <span class="label">Première utilisation</span> — Le modèle (~50 Mo) est téléchargé une fois puis mis en cache automatiquement.<br>
+    <span class="label">Traitement</span> — L'image est envoyée à remove.bg via votre backend Vercel, aucune clé API n'est exposée côté client.<br>
     <span class="label">Format de sortie</span> — PNG avec fond transparent.
   </div>
 
@@ -448,14 +447,9 @@ body::before {
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script type="module">
-import { removeBackground } from 'https://esm.sh/@imgly/background-removal@1.4.5';
-
+<script>
 var srcFile = null;
 var resultBlob = null;
-
-// Expose functions needed by inline onclick handlers
-window._pixoDet = {};
 
 // ─── DROP ZONE ───
 var dz = document.getElementById('drop-zone');
@@ -535,7 +529,7 @@ function showToast(msg, type) {
   t._timer = setTimeout(function() { t.className = 'toast'; }, 2500);
 }
 
-// ─── DETOURAGE ───
+// ─── DETOURAGE via Vercel → remove.bg ───
 async function runDetourage() {
   if (!srcFile) return;
 
@@ -544,42 +538,46 @@ async function runDetourage() {
   btn.classList.add('loading');
   document.getElementById('dl-btn').classList.remove('visible');
   document.getElementById('img-result').style.display = 'none';
-  showProgress(5);
-  setStatus('Chargement de la librairie…');
+  showProgress(10);
+  setStatus('Envoi de l\'image…');
 
   try {
-    // Charger la librairie si pas encore présente
-    if (!window.imglyRemoveBackground) {
-      await new Promise(function(resolve, reject) {
-        var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser/background-removal.js';
-        s.onload = resolve;
-        s.onerror = function() { reject(new Error('Impossible de charger la librairie (vérifiez votre connexion).')); };
-        document.head.appendChild(s);
-      });
+    // Convertir le fichier en base64
+    var base64 = await new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        // Retirer le préfixe "data:image/...;base64,"
+        resolve(e.target.result.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(srcFile);
+    });
+
+    showProgress(30);
+    setStatus('Suppression du fond en cours…');
+
+    var response = await fetch('/api/removebg', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64 })
+    });
+
+    showProgress(80);
+
+    if (!response.ok) {
+      var errData = await response.json().catch(function() { return {}; });
+      throw new Error(errData.error || ('Erreur serveur : ' + response.status));
     }
 
-    showProgress(10);
-    setStatus('Préparation du modèle IA…');
+    var data = await response.json();
+    if (!data.image) throw new Error('Réponse invalide du serveur.');
 
-    var config = {
-      publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser/',
-      progress: function(key, current, total) {
-        if (total > 0) {
-          var pct = Math.round(10 + (current / total) * 70);
-          showProgress(pct);
-          setStatus('Téléchargement du modèle… ' + Math.round((current / total) * 100) + '%');
-        }
-      }
-    };
-
-    showProgress(15);
-    setStatus('Analyse de l\'image en cours…');
-
-    var removeBackground = window.imglyRemoveBackground || window.removeBackground;
-    if (!removeBackground) throw new Error('Librairie de détourage introuvable après chargement.');
-
-    var blob = await removeBackground(srcFile, config);
+    // Convertir le base64 retourné en Blob PNG
+    var byteChars = atob(data.image);
+    var byteNums = new Array(byteChars.length);
+    for (var i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+    var byteArray = new Uint8Array(byteNums);
+    var blob = new Blob([byteArray], { type: 'image/png' });
     resultBlob = blob;
 
     showProgress(100);
@@ -602,11 +600,6 @@ async function runDetourage() {
   btn.disabled = false;
   btn.classList.remove('loading');
 }
-
-// ─── EXPOSITION DES FONCTIONS (module scope → global) ───
-window.runDetourage = runDetourage;
-window.resetAll = resetAll;
-window.downloadResult = downloadResult;
 
 // ─── TÉLÉCHARGEMENT ───
 function downloadResult() {
