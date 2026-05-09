@@ -626,7 +626,9 @@ input[type=range].tol-slider::-moz-range-thumb {
 <div class="zoom-modal" id="zoom-modal" role="dialog" aria-label="Aperçu agrandi" style="display:none">
   <button class="zoom-close" id="zoom-close" aria-label="Fermer">✕</button>
   <img id="zoom-img" alt="Aperçu agrandi">
-</div> role="status" aria-live="polite"></div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
 import { pipeline, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
