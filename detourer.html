@@ -629,31 +629,57 @@ function showToast(msg, type) {
 }
 
 // ─── Courbe sur le canal alpha ───
-// 0   = très doux (laisse les semi-transparences telles quelles, gamma < 1)
+// 0   = bords floutés (blur gaussien sur l'alpha)
 // 50  = neutre (aucun effet)
 // 100 = très net (sigmoïde qui pousse vers 0 ou 1)
-function applyAlphaCurve(pixels, tolerance) {
-  const data = new Uint8ClampedArray(pixels);
-  if (tolerance === 50) return data;
-
-  for (let i = 3; i < data.length; i += 4) {
-    const a = data[i] / 255;
-    let newA;
-
-    if (tolerance > 50) {
-      // Côté NET : sigmoïde qui durcit les bords
-      const steepness = ((tolerance - 50) / 50) * 10; // 0 → 10
-      newA = 1 / (1 + Math.exp(-steepness * (a - 0.5)));
-    } else {
-      // Côté DOUX : gamma < 1 qui étale les semi-transparences
-      // tolerance 50→0 donne gamma 1→3
-      const gamma = 1 + ((50 - tolerance) / 50) * 2;
-      newA = Math.pow(a, gamma);
+async function applyAlphaCurve(pixels, w, h, tolerance) {
+  // Côté NET : sigmoïde
+  if (tolerance >= 50) {
+    const data = new Uint8ClampedArray(pixels);
+    if (tolerance === 50) return data;
+    const steepness = ((tolerance - 50) / 50) * 10;
+    for (let i = 3; i < data.length; i += 4) {
+      const a = data[i] / 255;
+      data[i] = Math.round((1 / (1 + Math.exp(-steepness * (a - 0.5)))) * 255);
     }
-
-    data[i] = Math.round(newA * 255);
+    return data;
   }
-  return data;
+
+  // Côté DOUX : blur gaussien sur le canal alpha
+  // tolerance 50→0 donne radius 0→12px
+  const radius = ((50 - tolerance) / 50) * 12;
+
+  // 1. Extraire l'alpha dans un canvas en niveaux de gris
+  const alphaCanvas = document.createElement('canvas');
+  alphaCanvas.width = w; alphaCanvas.height = h;
+  const actx = alphaCanvas.getContext('2d');
+  const alphaImg = new ImageData(w, h);
+  for (let i = 0; i < pixels.length / 4; i++) {
+    const v = pixels[i * 4 + 3];
+    alphaImg.data[i * 4 + 0] = v;
+    alphaImg.data[i * 4 + 1] = v;
+    alphaImg.data[i * 4 + 2] = v;
+    alphaImg.data[i * 4 + 3] = 255;
+  }
+  actx.putImageData(alphaImg, 0, 0);
+
+  // 2. Appliquer le blur via filter CSS
+  const blurred = document.createElement('canvas');
+  blurred.width = w; blurred.height = h;
+  const bctx = blurred.getContext('2d');
+  bctx.filter = `blur(${radius}px)`;
+  bctx.drawImage(alphaCanvas, 0, 0);
+  bctx.filter = 'none';
+
+  // 3. Lire l'alpha floutée (canal rouge = valeur alpha)
+  const blurredData = bctx.getImageData(0, 0, w, h).data;
+
+  // 4. Réinjecter dans les pixels d'origine
+  const result = new Uint8ClampedArray(pixels);
+  for (let i = 0; i < result.length / 4; i++) {
+    result[i * 4 + 3] = blurredData[i * 4]; // canal R = alpha floutée
+  }
+  return result;
 }
 
 async function blobFromPixels(data, w, h) {
@@ -667,7 +693,7 @@ async function blobFromPixels(data, w, h) {
 async function applyTolerance() {
   if (!rawPixels) return;
   const tol = parseInt(tolSlider.value, 10);
-  const processed = applyAlphaCurve(rawPixels, tol);
+  const processed = await applyAlphaCurve(rawPixels, rawW, rawH, tol);
   const blob = await blobFromPixels(processed, rawW, rawH);
   resultBlob = blob;
   const oldUrl = document.getElementById('img-result').src;
@@ -731,7 +757,7 @@ async function runDetourage() {
     // Appliquer la tolérance courante (valeur par défaut 50 = aucun effet)
     tolSlider.value = 50; tolValue.textContent = '50';
     const tol = 50;
-    const processed = applyAlphaCurve(rawPixels, tol);
+    const processed = await applyAlphaCurve(rawPixels, rawW, rawH, tol);
     const blob = await blobFromPixels(processed, rawW, rawH);
     resultBlob = blob;
 
