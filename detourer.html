@@ -439,15 +439,17 @@ body::before {
   <div class="status" id="status"></div>
 
   <div class="info-box">
-    <span class="label">Traitement</span> — L'image est envoyée à remove.bg via votre backend Vercel, aucune clé API n'est exposée côté client.<br>
-    <span class="label">Format de sortie</span> — PNG avec fond transparent.
+    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
+    <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
   </div>
 
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script>
+<script type="module">
+import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.mjs';
+
 var srcFile = null;
 var resultBlob = null;
 
@@ -486,7 +488,7 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
-function resetAll() {
+window.resetAll = function() {
   srcFile = null;
   resultBlob = null;
   document.getElementById('drop-zone').style.display = '';
@@ -502,7 +504,7 @@ function resetAll() {
   var btn = document.getElementById('run-btn');
   btn.disabled = false;
   btn.classList.remove('loading');
-}
+};
 
 // ─── STATUS & PROGRESS ───
 function setStatus(msg, type) {
@@ -529,8 +531,8 @@ function showToast(msg, type) {
   t._timer = setTimeout(function() { t.className = 'toast'; }, 2500);
 }
 
-// ─── DETOURAGE via Vercel → remove.bg ───
-async function runDetourage() {
+// ─── DETOURAGE via @imgly/background-removal (100% client-side) ───
+window.runDetourage = async function() {
   if (!srcFile) return;
 
   var btn = document.getElementById('run-btn');
@@ -539,47 +541,26 @@ async function runDetourage() {
   document.getElementById('dl-btn').classList.remove('visible');
   document.getElementById('img-result').style.display = 'none';
   showProgress(10);
-  setStatus('Envoi de l\'image…');
+  setStatus('Chargement du modèle…');
 
   try {
-    // Convertir le fichier en base64
-    var base64 = await new Promise(function(resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        // Retirer le préfixe "data:image/...;base64,"
-        resolve(e.target.result.split(',')[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(srcFile);
-    });
-
     showProgress(30);
-    setStatus('Suppression du fond en cours…');
+    setStatus('Analyse de l\'image en cours…');
 
-    var response = await fetch('/api/removebg', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64 })
+    const blob = await removeBackground(srcFile, {
+      progress: (key, current, total) => {
+        if (total > 0) {
+          // Le chargement du modèle représente 30→70%, le traitement 70→95%
+          const pct = key === 'compute:inference'
+            ? 70 + Math.round((current / total) * 25)
+            : 30 + Math.round((current / total) * 40);
+          showProgress(Math.min(pct, 95));
+          if (key === 'compute:inference') setStatus('Suppression du fond…');
+        }
+      }
     });
 
-    showProgress(80);
-
-    if (!response.ok) {
-      var errData = await response.json().catch(function() { return {}; });
-      throw new Error(errData.error || ('Erreur serveur : ' + response.status));
-    }
-
-    var data = await response.json();
-    if (!data.image) throw new Error('Réponse invalide du serveur.');
-
-    // Convertir le base64 retourné en Blob PNG
-    var byteChars = atob(data.image);
-    var byteNums = new Array(byteChars.length);
-    for (var i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
-    var byteArray = new Uint8Array(byteNums);
-    var blob = new Blob([byteArray], { type: 'image/png' });
     resultBlob = blob;
-
     showProgress(100);
 
     var url = URL.createObjectURL(blob);
@@ -599,10 +580,10 @@ async function runDetourage() {
 
   btn.disabled = false;
   btn.classList.remove('loading');
-}
+};
 
 // ─── TÉLÉCHARGEMENT ───
-function downloadResult() {
+window.downloadResult = function() {
   if (!resultBlob) return;
   var name = srcFile
     ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png'
@@ -613,7 +594,7 @@ function downloadResult() {
   document.body.appendChild(a);
   a.click();
   setTimeout(function() { document.body.removeChild(a); }, 100);
-}
+};
 </script>
 </body>
 </html>
