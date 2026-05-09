@@ -384,6 +384,11 @@ input[type=range].tol-slider::-moz-range-thumb {
   border: 2px solid #0c0c0b;
   cursor: pointer;
 }
+.tolerance-sep {
+  height: 0.5px;
+  background: var(--border-md);
+  margin: 2px 0;
+}
 
 /* ─── INFO BOX ─── */
 .info-box {
@@ -511,7 +516,7 @@ input[type=range].tol-slider::-moz-range-thumb {
 
   <div class="status" id="status"></div>
 
-  <!-- Slider de tolérance — affiché après détourage -->
+  <!-- Réglages fins — affichés après détourage -->
   <div class="tolerance-wrap" id="tolerance-wrap">
     <div class="tolerance-header">
       <span class="tolerance-label">Netteté des bords</span>
@@ -521,6 +526,16 @@ input[type=range].tol-slider::-moz-range-thumb {
       <span class="tolerance-hint">Doux</span>
       <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="50">
       <span class="tolerance-hint">Net</span>
+    </div>
+    <div class="tolerance-sep"></div>
+    <div class="tolerance-header">
+      <span class="tolerance-label">Flou des contours</span>
+      <span class="tolerance-value" id="blur-value">0</span>
+    </div>
+    <div class="tolerance-track">
+      <span class="tolerance-hint">Aucun</span>
+      <input type="range" class="tol-slider" id="blur-slider" min="0" max="100" value="0">
+      <span class="tolerance-hint">Max</span>
     </div>
   </div>
 
@@ -558,16 +573,21 @@ document.getElementById('run-btn').addEventListener('click', runDetourage);
 document.getElementById('dl-btn').addEventListener('click', downloadResult);
 document.querySelector('.change-btn').addEventListener('click', resetAll);
 
-// ─── Slider de tolérance ───
-const tolSlider = document.getElementById('tol-slider');
-const tolValue  = document.getElementById('tol-value');
-let sliderTimer = null;
+// ─── Sliders ───
+const tolSlider  = document.getElementById('tol-slider');
+const tolValue   = document.getElementById('tol-value');
+const blurSlider = document.getElementById('blur-slider');
+const blurValue  = document.getElementById('blur-value');
+let sliderTimer  = null;
 
-tolSlider.addEventListener('input', () => {
-  tolValue.textContent = tolSlider.value;
+function onSliderChange() {
+  tolValue.textContent  = tolSlider.value;
+  blurValue.textContent = blurSlider.value;
   clearTimeout(sliderTimer);
-  sliderTimer = setTimeout(() => applyTolerance(), 80);
-});
+  sliderTimer = setTimeout(() => applyEffects(), 80);
+}
+tolSlider.addEventListener('input', onSliderChange);
+blurSlider.addEventListener('input', onSliderChange);
 
 function loadFile(file) {
   if (!file) return;
@@ -602,6 +622,7 @@ function resetAll() {
   document.getElementById('img-result').style.display = 'none';
   document.getElementById('file-in').value = '';
   tolSlider.value = 50; tolValue.textContent = '50';
+  blurSlider.value = 0; blurValue.textContent = '0';
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
   btn.disabled = false; btn.classList.remove('loading');
@@ -628,31 +649,27 @@ function showToast(msg, type) {
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
-// ─── Courbe sur le canal alpha ───
-// 0   = bords floutés (blur gaussien sur l'alpha)
-// 50  = neutre (aucun effet)
-// 100 = très net (sigmoïde qui pousse vers 0 ou 1)
-async function applyAlphaCurve(pixels, w, h, tolerance) {
-  // Côté NET : sigmoïde
-  if (tolerance >= 50) {
-    const data = new Uint8ClampedArray(pixels);
-    if (tolerance === 50) return data;
-    const steepness = ((tolerance - 50) / 50) * 10;
-    for (let i = 3; i < data.length; i += 4) {
-      const a = data[i] / 255;
-      data[i] = Math.round((1 / (1 + Math.exp(-steepness * (a - 0.5)))) * 255);
-    }
-    return data;
+// ─── Curseur 1 : Netteté (sigmoïde sur l'alpha) ───
+// 50 = neutre, 100 = très net
+function applySharpen(pixels, tolerance) {
+  const data = new Uint8ClampedArray(pixels);
+  if (tolerance === 50) return data;
+  const steepness = ((tolerance - 50) / 50) * 10;
+  for (let i = 3; i < data.length; i += 4) {
+    const a = data[i] / 255;
+    data[i] = Math.round((1 / (1 + Math.exp(-steepness * (a - 0.5)))) * 255);
   }
+  return data;
+}
 
-  // Côté DOUX : blur gaussien sur le canal alpha
-  // tolerance 50→0 donne radius 0→12px
-  const radius = ((50 - tolerance) / 50) * 12;
+// ─── Curseur 2 : Flou des contours (blur gaussien sur l'alpha) ───
+// 0 = aucun effet, 100 = blur max (12px)
+async function applyBlur(pixels, w, h, blurAmount) {
+  if (blurAmount === 0) return new Uint8ClampedArray(pixels);
+  const radius = (blurAmount / 100) * 12;
 
-  // 1. Extraire l'alpha dans un canvas en niveaux de gris
   const alphaCanvas = document.createElement('canvas');
   alphaCanvas.width = w; alphaCanvas.height = h;
-  const actx = alphaCanvas.getContext('2d');
   const alphaImg = new ImageData(w, h);
   for (let i = 0; i < pixels.length / 4; i++) {
     const v = pixels[i * 4 + 3];
@@ -661,9 +678,8 @@ async function applyAlphaCurve(pixels, w, h, tolerance) {
     alphaImg.data[i * 4 + 2] = v;
     alphaImg.data[i * 4 + 3] = 255;
   }
-  actx.putImageData(alphaImg, 0, 0);
+  alphaCanvas.getContext('2d').putImageData(alphaImg, 0, 0);
 
-  // 2. Appliquer le blur via filter CSS
   const blurred = document.createElement('canvas');
   blurred.width = w; blurred.height = h;
   const bctx = blurred.getContext('2d');
@@ -671,13 +687,10 @@ async function applyAlphaCurve(pixels, w, h, tolerance) {
   bctx.drawImage(alphaCanvas, 0, 0);
   bctx.filter = 'none';
 
-  // 3. Lire l'alpha floutée (canal rouge = valeur alpha)
   const blurredData = bctx.getImageData(0, 0, w, h).data;
-
-  // 4. Réinjecter dans les pixels d'origine
   const result = new Uint8ClampedArray(pixels);
   for (let i = 0; i < result.length / 4; i++) {
-    result[i * 4 + 3] = blurredData[i * 4]; // canal R = alpha floutée
+    result[i * 4 + 3] = blurredData[i * 4];
   }
   return result;
 }
@@ -685,16 +698,18 @@ async function applyAlphaCurve(pixels, w, h, tolerance) {
 async function blobFromPixels(data, w, h) {
   const offscreen = new OffscreenCanvas(w, h);
   const ctx = offscreen.getContext('2d');
-  const imgData = new ImageData(data, w, h);
-  ctx.putImageData(imgData, 0, 0);
+  ctx.putImageData(new ImageData(data, w, h), 0, 0);
   return offscreen.convertToBlob({ type: 'image/png' });
 }
 
-async function applyTolerance() {
+// ─── Applique les deux effets en séquence ───
+async function applyEffects() {
   if (!rawPixels) return;
-  const tol = parseInt(tolSlider.value, 10);
-  const processed = await applyAlphaCurve(rawPixels, rawW, rawH, tol);
-  const blob = await blobFromPixels(processed, rawW, rawH);
+  const tol  = parseInt(tolSlider.value, 10);
+  const blur = parseInt(blurSlider.value, 10);
+  let pixels = applySharpen(rawPixels, tol);
+  pixels = await applyBlur(pixels, rawW, rawH, blur);
+  const blob = await blobFromPixels(pixels, rawW, rawH);
   resultBlob = blob;
   const oldUrl = document.getElementById('img-result').src;
   document.getElementById('img-result').src = URL.createObjectURL(blob);
@@ -754,11 +769,10 @@ async function runDetourage() {
     // Sauvegarder les pixels bruts (avant tolérance)
     rawPixels = htmlCanvas.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
 
-    // Appliquer la tolérance courante (valeur par défaut 50 = aucun effet)
+    // Réinitialiser les curseurs et afficher le résultat brut
     tolSlider.value = 50; tolValue.textContent = '50';
-    const tol = 50;
-    const processed = await applyAlphaCurve(rawPixels, rawW, rawH, tol);
-    const blob = await blobFromPixels(processed, rawW, rawH);
+    blurSlider.value = 0; blurValue.textContent = '0';
+    const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
     resultBlob = blob;
 
     const url = URL.createObjectURL(blob);
