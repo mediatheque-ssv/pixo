@@ -375,7 +375,7 @@ body::before {
     </a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.5.3</span>
+      <span class="header-tag">v2.6</span>
     </div>
   </div>
 
@@ -448,9 +448,14 @@ body::before {
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script>
+<script type="module">
+import { removeBackground } from 'https://esm.sh/@imgly/background-removal@1.4.5';
+
 var srcFile = null;
 var resultBlob = null;
+
+// Expose functions needed by inline onclick handlers
+window._pixoDet = {};
 
 // ─── DROP ZONE ───
 var dz = document.getElementById('drop-zone');
@@ -597,6 +602,11 @@ async function runDetourage() {
   btn.disabled = false;
   btn.classList.remove('loading');
 }
+
+// ─── EXPOSITION DES FONCTIONS (module scope → global) ───
+window.runDetourage = runDetourage;
+window.resetAll = resetAll;
+window.downloadResult = downloadResult;
 
 // ─── TÉLÉCHARGEMENT ───
 function downloadResult() {
