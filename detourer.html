@@ -432,6 +432,7 @@ input[type=range].tol-slider::-moz-range-thumb {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+  overflow-y: auto;
 }
 .edit-modal-inner {
   display: flex;
@@ -439,7 +440,6 @@ input[type=range].tol-slider::-moz-range-thumb {
   align-items: flex-start;
   max-width: 900px;
   width: 100%;
-  max-height: 90vh;
 }
 .edit-img-wrap {
   position: relative;
@@ -525,8 +525,10 @@ input[type=range].tol-slider::-moz-range-thumb {
 .edit-confirm:hover { background: #dcff6a; }
 
 @media (max-width: 600px) {
-  .edit-modal-inner { flex-direction: column; }
+  .edit-modal { align-items: flex-start; padding: 1rem; }
+  .edit-modal-inner { flex-direction: column; gap: 12px; }
   .edit-panel { width: 100%; }
+  #edit-img { max-height: 45vh; }
 }
   height: 0.5px;
   background: var(--border-md);
@@ -602,7 +604,7 @@ input[type=range].tol-slider::-moz-range-thumb {
 
   <nav class="nav" role="tablist">
     <a class="nav-btn" href="index.html" role="tab" aria-selected="false">Redimensionner</a>
-    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer (bêta)</a>
+    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer</a>
   </nav>
 
   <div class="drop-zone" id="drop-zone"
