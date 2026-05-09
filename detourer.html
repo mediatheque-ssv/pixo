@@ -414,14 +414,14 @@ body::before {
   </div>
 
   <div class="actions" id="actions">
-    <button class="run-btn" id="run-btn" onclick="runDetourage()">
+    <button class="run-btn" id="run-btn">
       <svg class="run-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
       </svg>
       <div class="spinner"></div>
       Supprimer le fond
     </button>
-    <button class="dl-btn" id="dl-btn" onclick="downloadResult()">
+    <button class="dl-btn" id="dl-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
@@ -429,7 +429,7 @@ body::before {
       </svg>
       Télécharger PNG
     </button>
-    <button class="change-btn" onclick="resetAll()">Changer</button>
+    <button class="change-btn">Changer</button>
   </div>
 
   <div class="progress-wrap" id="progress-wrap">
@@ -447,22 +447,41 @@ body::before {
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<!-- Chargement de la lib imgly en ESM -->
 <script type="module">
-import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.mjs';
+  import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.mjs';
+  window._removeBackground = removeBackground;
+  // Signaler que la lib est prête
+  window.dispatchEvent(new Event('imgly-ready'));
+</script>
 
+<script>
 var srcFile = null;
 var resultBlob = null;
+var _removeBackground = null;
+
+// Récupérer la fonction dès qu'elle est disponible
+window.addEventListener('imgly-ready', function() {
+  _removeBackground = window._removeBackground;
+});
 
 // ─── DROP ZONE ───
-var dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('over'); });
-dz.addEventListener('dragleave', function() { dz.classList.remove('over'); });
-dz.addEventListener('drop', function(e) {
-  e.preventDefault();
-  dz.classList.remove('over');
-  loadFile(e.dataTransfer.files[0]);
+document.addEventListener('DOMContentLoaded', function() {
+  var dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', function() { dz.classList.remove('over'); });
+  dz.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dz.classList.remove('over');
+    loadFile(e.dataTransfer.files[0]);
+  });
+  document.getElementById('file-in').onchange = function(e) { loadFile(e.target.files[0]); };
+
+  // Boutons
+  document.getElementById('run-btn').addEventListener('click', runDetourage);
+  document.getElementById('dl-btn').addEventListener('click', downloadResult);
+  document.querySelector('.change-btn').addEventListener('click', resetAll);
 });
-document.getElementById('file-in').onchange = function(e) { loadFile(e.target.files[0]); };
 
 function loadFile(file) {
   if (!file) return;
@@ -488,7 +507,7 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
-window.resetAll = function() {
+function resetAll() {
   srcFile = null;
   resultBlob = null;
   document.getElementById('drop-zone').style.display = '';
@@ -504,7 +523,7 @@ window.resetAll = function() {
   var btn = document.getElementById('run-btn');
   btn.disabled = false;
   btn.classList.remove('loading');
-};
+}
 
 // ─── STATUS & PROGRESS ───
 function setStatus(msg, type) {
@@ -532,8 +551,13 @@ function showToast(msg, type) {
 }
 
 // ─── DETOURAGE via @imgly/background-removal (100% client-side) ───
-window.runDetourage = async function() {
+async function runDetourage() {
   if (!srcFile) return;
+
+  if (!_removeBackground) {
+    showToast('Librairie pas encore chargée, réessayez dans un instant.', 'error');
+    return;
+  }
 
   var btn = document.getElementById('run-btn');
   btn.disabled = true;
@@ -547,11 +571,10 @@ window.runDetourage = async function() {
     showProgress(30);
     setStatus('Analyse de l\'image en cours…');
 
-    const blob = await removeBackground(srcFile, {
-      progress: (key, current, total) => {
+    var blob = await _removeBackground(srcFile, {
+      progress: function(key, current, total) {
         if (total > 0) {
-          // Le chargement du modèle représente 30→70%, le traitement 70→95%
-          const pct = key === 'compute:inference'
+          var pct = key === 'compute:inference'
             ? 70 + Math.round((current / total) * 25)
             : 30 + Math.round((current / total) * 40);
           showProgress(Math.min(pct, 95));
@@ -580,10 +603,10 @@ window.runDetourage = async function() {
 
   btn.disabled = false;
   btn.classList.remove('loading');
-};
+}
 
 // ─── TÉLÉCHARGEMENT ───
-window.downloadResult = function() {
+function downloadResult() {
   if (!resultBlob) return;
   var name = srcFile
     ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png'
@@ -594,7 +617,7 @@ window.downloadResult = function() {
   document.body.appendChild(a);
   a.click();
   setTimeout(function() { document.body.removeChild(a); }, 100);
-};
+}
 </script>
 </body>
 </html>
