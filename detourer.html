@@ -120,8 +120,9 @@ body::before {
   align-items: start;
 }
 .canvas-wrap.single {
-  display: block;
-  max-width: 360px;
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 380px;
 }
 
 .canvas-col { display: flex; flex-direction: column; gap: 7px; }
@@ -161,7 +162,7 @@ body::before {
 }
 .preview-img.original { background: var(--surface-2); }
 
-.result-wrap { position: relative; display: flex; }
+.result-wrap { position: relative; display: block; }
 .edit-btn {
   position: absolute;
   top: 8px; right: 8px; z-index: 20;
@@ -464,7 +465,7 @@ input[type=range].tol-slider::-moz-range-thumb {
           Changer
         </button>
       </div>
-      <img id="img-original" class="preview-img original" alt="Image originale">
+      <img id="img-original" class="preview-img original" alt="Image originale" style="display:none">
     </div>
 
     <!-- Colonne Détouré -->
@@ -832,6 +833,7 @@ async function runDetourage() {
 
     editBtn.classList.add('visible');
     dlBtn.classList.add('visible');
+    runBtn.style.display = 'none';
     setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100);
     setTimeout(hideProgress, 800);
@@ -895,8 +897,9 @@ function drawEditCanvas() {
   if (!imgResult.src) return;
   const img = new Image();
   img.onload = () => {
-    const maxW = editCanvas.parentElement.offsetWidth  || (window.innerWidth - 420);
-    const maxH = editCanvas.parentElement.offsetHeight || (window.innerHeight - 80);
+    // Sidebar is 320px + borders, so available width ≈ viewport - 360
+    const maxW = Math.max(200, window.innerWidth  - 380);
+    const maxH = Math.max(200, window.innerHeight - 100);
     const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
     editCanvas.width  = Math.round(img.width  * ratio);
     editCanvas.height = Math.round(img.height * ratio);
@@ -1044,6 +1047,7 @@ function loadFile(file) {
   const reader = new FileReader();
   reader.onload = ev => {
     imgOriginal.src = ev.target.result;
+    imgOriginal.style.display = 'block';
     imgResult.src   = '';
     resultCol.style.display = 'none';
     canvasWrap.classList.remove('dual');
@@ -1066,12 +1070,12 @@ function resetAll() {
   canvasWrap.classList.remove('dual'); canvasWrap.classList.add('single');
   actionsEl.style.display = 'none';
   dlBtn.classList.remove('visible');
-  imgOriginal.src = ''; imgResult.src = '';
+  imgOriginal.src = ''; imgOriginal.style.display = 'none'; imgResult.src = '';
   resultCol.style.display = 'none';
   editBtn.classList.remove('visible');
   fileInput.value = '';
   setStatus(''); hideProgress();
-  runBtn.disabled = false; runBtn.classList.remove('loading');
+  runBtn.disabled = false; runBtn.classList.remove('loading'); runBtn.style.display = '';
 }
 
 function setStatus(msg, type) {
