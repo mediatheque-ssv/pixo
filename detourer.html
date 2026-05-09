@@ -523,6 +523,89 @@ input[type=range].tol-slider::-moz-range-thumb {
   transition: background .15s;
 }
 .edit-confirm:hover { background: #dcff6a; }
+/* ─── EDIT MODAL TABS ─── */
+.edit-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px;
+  margin-bottom: 4px;
+}
+.edit-tab {
+  flex: 1;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.edit-tab.active {
+  background: var(--surface-3);
+  color: var(--text);
+  border: 0.5px solid var(--border-md);
+}
+
+/* ─── CROP CANVAS ─── */
+.crop-canvas-wrap {
+  position: relative;
+  width: 100%;
+  cursor: crosshair;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 20px 20px;
+  user-select: none;
+  border: 0.5px solid var(--border-md);
+  display: flex; align-items: center; justify-content: center;
+}
+#edit-crop-canvas { display: block; max-width: 100%; max-height: 70vh; }
+.crop-box {
+  position: absolute;
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  cursor: move;
+  will-change: transform;
+  touch-action: none;
+}
+.crop-handle {
+  position: absolute;
+  width: 9px; height: 9px;
+  background: var(--accent);
+  border: 1px solid rgba(0,0,0,0.3);
+  border-radius: 2px;
+  touch-action: none;
+}
+.crop-handle.tl { top:-5px; left:-5px; cursor:nw-resize; }
+.crop-handle.tr { top:-5px; right:-5px; cursor:ne-resize; }
+.crop-handle.bl { bottom:-5px; left:-5px; cursor:sw-resize; }
+.crop-handle.br { bottom:-5px; right:-5px; cursor:se-resize; }
+.crop-handle.tc { top:-5px; left:calc(50% - 4px); cursor:n-resize; }
+.crop-handle.bc { bottom:-5px; left:calc(50% - 4px); cursor:s-resize; }
+.crop-handle.ml { top:calc(50% - 4px); left:-5px; cursor:w-resize; }
+.crop-handle.mr { top:calc(50% - 4px); right:-5px; cursor:e-resize; }
+.crop-dims-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 6px;
+}
+.crop-dims {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-3);
+}
+.crop-reset-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-3);
+  background: transparent; border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.crop-reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
+
 
 @media (max-width: 600px) {
   .edit-modal { align-items: flex-start; padding: 1rem; }
@@ -681,37 +764,67 @@ input[type=range].tol-slider::-moz-range-thumb {
 <!-- Modale modifier -->
 <div class="edit-modal" id="edit-modal" role="dialog" aria-label="Modifier l'image" style="display:none">
   <div class="edit-modal-inner">
-    <div class="edit-img-wrap">
-      <img id="edit-img" alt="Aperçu">
+    <!-- zone image / canvas -->
+    <div class="edit-img-wrap" id="edit-img-wrap">
+      <!-- aperçu réglages -->
+      <img id="edit-img" alt="Aperçu" style="max-width:100%;max-height:80vh;border-radius:var(--radius-lg);border:0.5px solid var(--border-md);object-fit:contain;display:block;background:repeating-conic-gradient(#2a2a28 0% 25%,#1c1c1a 0% 50%) 0 0/20px 20px;">
       <div class="edit-img-overlay" id="edit-overlay" style="display:none">
         <div class="edit-spinner"></div>
       </div>
-    </div>
-    <div class="edit-panel">
-      <div class="edit-panel-title">Réglages</div>
-      <div class="edit-control">
-        <div class="tolerance-header">
-          <span class="tolerance-label">Tolérance</span>
-          <span class="tolerance-value" id="m-tol-value">0</span>
-        </div>
-        <div class="tolerance-track">
-          <span class="tolerance-hint">Faible</span>
-          <input type="range" class="tol-slider" id="m-tol-slider" min="0" max="100" value="0">
-          <span class="tolerance-hint">Max</span>
-          <button class="reset-btn" id="m-reset-tol" aria-label="Annuler">✕</button>
+      <!-- canvas recadrage (masqué par défaut) -->
+      <div class="crop-canvas-wrap" id="crop-canvas-wrap" style="display:none">
+        <canvas id="edit-crop-canvas"></canvas>
+        <div class="crop-box" id="crop-box">
+          <div class="crop-handle tl" data-h="tl"></div>
+          <div class="crop-handle tr" data-h="tr"></div>
+          <div class="crop-handle bl" data-h="bl"></div>
+          <div class="crop-handle br" data-h="br"></div>
+          <div class="crop-handle tc" data-h="tc"></div>
+          <div class="crop-handle bc" data-h="bc"></div>
+          <div class="crop-handle ml" data-h="ml"></div>
+          <div class="crop-handle mr" data-h="mr"></div>
         </div>
       </div>
-      <div class="tolerance-sep"></div>
-      <div class="edit-control">
-        <div class="tolerance-header">
-          <span class="tolerance-label">Lissage des bords</span>
-          <span class="tolerance-value" id="m-feather-value">0</span>
+    </div>
+    <!-- panneau latéral -->
+    <div class="edit-panel">
+      <div class="edit-tabs">
+        <button class="edit-tab active" id="tab-adjust" onclick="switchTab('adjust')">Réglages</button>
+        <button class="edit-tab" id="tab-crop" onclick="switchTab('crop')">Recadrer</button>
+      </div>
+      <!-- contenu onglet réglages -->
+      <div id="panel-adjust">
+        <div class="edit-control">
+          <div class="tolerance-header">
+            <span class="tolerance-label">Tolérance</span>
+            <span class="tolerance-value" id="m-tol-value">0</span>
+          </div>
+          <div class="tolerance-track">
+            <span class="tolerance-hint">Faible</span>
+            <input type="range" class="tol-slider" id="m-tol-slider" min="0" max="100" value="0">
+            <span class="tolerance-hint">Max</span>
+            <button class="reset-btn" id="m-reset-tol" aria-label="Annuler">✕</button>
+          </div>
         </div>
-        <div class="tolerance-track">
-          <span class="tolerance-hint">Aucun</span>
-          <input type="range" class="tol-slider" id="m-feather-slider" min="0" max="100" value="0">
-          <span class="tolerance-hint">Max</span>
-          <button class="reset-btn" id="m-reset-feather" aria-label="Annuler">✕</button>
+        <div class="tolerance-sep"></div>
+        <div class="edit-control">
+          <div class="tolerance-header">
+            <span class="tolerance-label">Lissage des bords</span>
+            <span class="tolerance-value" id="m-feather-value">0</span>
+          </div>
+          <div class="tolerance-track">
+            <span class="tolerance-hint">Aucun</span>
+            <input type="range" class="tol-slider" id="m-feather-slider" min="0" max="100" value="0">
+            <span class="tolerance-hint">Max</span>
+            <button class="reset-btn" id="m-reset-feather" aria-label="Annuler">✕</button>
+          </div>
+        </div>
+      </div>
+      <!-- contenu onglet recadrage -->
+      <div id="panel-crop" style="display:none">
+        <div class="crop-dims-bar">
+          <span class="crop-dims" id="crop-dims">— × — px</span>
+          <button class="crop-reset-btn" id="crop-reset-btn">Réinitialiser</button>
         </div>
       </div>
       <div class="edit-actions">
@@ -753,6 +866,7 @@ document.querySelector('.change-btn').addEventListener('click', resetAll);
 // ─── État curseurs (valeurs appliquées à l'image principale) ───
 let appliedTol     = 0;
 let appliedFeather = 0;
+let appliedCrop    = null; // {x,y,w,h} en fractions 0-1, ou null = pas de recadrage
 
 // ─── Modale modifier ───
 const editBtn        = document.getElementById('edit-btn');
@@ -766,25 +880,195 @@ const mTolValue      = document.getElementById('m-tol-value');
 const mFeatherSlider = document.getElementById('m-feather-slider');
 const mFeatherValue  = document.getElementById('m-feather-value');
 
-let modalTimer = null;
+let modalTimer  = null;
+let currentTab  = 'adjust';
 
+// ─── Tab switching ───
+window.switchTab = function(tab) {
+  currentTab = tab;
+  document.getElementById('tab-adjust').classList.toggle('active', tab === 'adjust');
+  document.getElementById('tab-crop').classList.toggle('active', tab === 'crop');
+  document.getElementById('panel-adjust').style.display   = tab === 'adjust' ? '' : 'none';
+  document.getElementById('panel-crop').style.display     = tab === 'crop'   ? '' : 'none';
+  document.getElementById('edit-img').style.display       = tab === 'adjust' ? 'block' : 'none';
+  document.getElementById('crop-canvas-wrap').style.display = tab === 'crop' ? '' : 'none';
+  if (tab === 'crop') initCropCanvas();
+};
+
+// ─── Crop state ───
+let cropCanvas, cropCtx, cropCanvasW, cropCanvasH, cBox, drag, modalCrop;
+
+function initCropCanvas() {
+  cropCanvas = document.getElementById('edit-crop-canvas');
+  cropCtx    = cropCanvas.getContext('2d');
+  const wrap = document.getElementById('crop-canvas-wrap');
+  const maxW = wrap.offsetWidth || 600;
+  const maxH = window.innerHeight * 0.65;
+  const ir = rawW / rawH;
+  let cw, ch;
+  if (ir > maxW / maxH) { cw = maxW; ch = Math.round(maxW / ir); }
+  else { ch = maxH; cw = Math.round(maxH * ir); }
+  cropCanvas.width  = cw; cropCanvas.height = ch;
+  cropCanvas.style.width  = cw + 'px'; cropCanvas.style.height = ch + 'px';
+  cropCanvasW = cw; cropCanvasH = ch;
+  // Draw the current result image onto canvas
+  const tmpImg = new Image();
+  tmpImg.onload = () => {
+    cropCtx.clearRect(0, 0, cw, ch);
+    cropCtx.drawImage(tmpImg, 0, 0, cw, ch);
+    // Restore previous crop or reset
+    if (modalCrop) {
+      cBox = { x: modalCrop.x * cw, y: modalCrop.y * ch, w: modalCrop.w * cw, h: modalCrop.h * ch };
+    } else {
+      cBox = { x: 0, y: 0, w: cw, h: ch };
+    }
+    updateCropBox();
+  };
+  tmpImg.src = editImg.src || document.getElementById('img-result').src;
+}
+
+function updateCropBox() {
+  const b = document.getElementById('crop-box');
+  b.style.left   = Math.round(cBox.x) + 'px';
+  b.style.top    = Math.round(cBox.y) + 'px';
+  b.style.width  = Math.round(cBox.w) + 'px';
+  b.style.height = Math.round(cBox.h) + 'px';
+  const rw = Math.round(cBox.w * (rawW / cropCanvasW));
+  const rh = Math.round(cBox.h * (rawH / cropCanvasH));
+  document.getElementById('crop-dims').textContent = rw + ' × ' + rh + ' px';
+}
+
+function clampBox(b, isMove) {
+  const mn = 20;
+  if (!isMove) {
+    if (b.w < mn) b.w = mn;
+    if (b.h < mn) b.h = mn;
+    if (b.w > cropCanvasW) b.w = cropCanvasW;
+    if (b.h > cropCanvasH) b.h = cropCanvasH;
+  }
+  if (b.x < 0) b.x = 0;
+  if (b.y < 0) b.y = 0;
+  if (b.x + b.w > cropCanvasW) b.x = cropCanvasW - b.w;
+  if (b.y + b.h > cropCanvasH) b.y = cropCanvasH - b.h;
+  if (b.x < 0) b.x = 0;
+  if (b.y < 0) b.y = 0;
+  return b;
+}
+
+function getCropPos(e) {
+  const wrap = document.getElementById('crop-canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const sx = cropCanvasW / rect.width, sy = cropCanvasH / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return {
+    x: Math.max(0, Math.min(cropCanvasW, (src.clientX - rect.left) * sx)),
+    y: Math.max(0, Math.min(cropCanvasH, (src.clientY - rect.top) * sy))
+  };
+}
+
+function onCropDown(e, h) {
+  e.preventDefault();
+  const p = getCropPos(e);
+  drag = { h, sx: p.x, sy: p.y, ob: { ...cBox } };
+}
+
+function onCropMove(e) {
+  if (!drag || currentTab !== 'crop') return;
+  e.preventDefault();
+  const p = getCropPos(e), dx = p.x - drag.sx, dy = p.y - drag.sy, o = drag.ob;
+  let b = { ...o }, H = drag.h;
+  if (H === 'move') { b.x = o.x + dx; b.y = o.y + dy; }
+  else {
+    if (H==='br'||H==='mr'||H==='tr') dx2=Math.min(dx,cropCanvasW-(o.x+o.w)); else dx2=dx;
+    if (H==='bl'||H==='ml'||H==='tl') dx2=Math.max(dx,-o.x); else if(H!=='br'&&H!=='mr'&&H!=='tr')dx2=dx;
+    let dx2=dx, dy2=dy;
+    if (H==='br'||H==='mr'||H==='tr') dx2=Math.min(dx,cropCanvasW-(o.x+o.w));
+    if (H==='bl'||H==='ml'||H==='tl') dx2=Math.max(dx,-o.x);
+    if (H==='br'||H==='bl'||H==='bc') dy2=Math.min(dy,cropCanvasH-(o.y+o.h));
+    if (H==='tr'||H==='tl'||H==='tc') dy2=Math.max(dy,-o.y);
+    if (H==='br') { b.w=Math.max(20,o.w+dx2); b.h=Math.max(20,o.h+dy2); }
+    else if (H==='mr') { b.w=Math.max(20,o.w+dx2); }
+    else if (H==='tr') { b.w=Math.max(20,o.w+dx2); b.h=Math.max(20,o.h-dy2); b.y=o.y+o.h-b.h; }
+    else if (H==='bl') { b.w=Math.max(20,o.w-dx2); b.x=o.x+o.w-b.w; b.h=Math.max(20,o.h+dy2); }
+    else if (H==='ml') { b.w=Math.max(20,o.w-dx2); b.x=o.x+o.w-b.w; }
+    else if (H==='tl') { b.w=Math.max(20,o.w-dx2); b.x=o.x+o.w-b.w; b.h=Math.max(20,o.h-dy2); b.y=o.y+o.h-b.h; }
+    else if (H==='bc') { b.h=Math.max(20,o.h+dy2); }
+    else if (H==='tc') { b.h=Math.max(20,o.h-dy2); b.y=o.y+o.h-b.h; }
+  }
+  cBox = clampBox(b, H === 'move');
+  updateCropBox();
+}
+function onCropUp() { drag = null; }
+
+// Bind crop events
+const cbEl = document.getElementById('crop-box');
+cbEl.addEventListener('mousedown',  e => { if (e.target === cbEl) onCropDown(e, 'move'); });
+cbEl.addEventListener('touchstart', e => { if (e.target === cbEl) onCropDown(e, 'move'); }, { passive: false });
+cbEl.querySelectorAll('.crop-handle').forEach(h => {
+  h.addEventListener('mousedown',  e => { e.stopPropagation(); onCropDown(e, h.dataset.h); });
+  h.addEventListener('touchstart', e => { e.stopPropagation(); onCropDown(e, h.dataset.h); }, { passive: false });
+});
+document.addEventListener('mousemove',  onCropMove);
+document.addEventListener('mouseup',    onCropUp);
+document.addEventListener('touchmove',  onCropMove, { passive: false });
+document.addEventListener('touchend',   onCropUp);
+
+document.getElementById('crop-reset-btn').addEventListener('click', () => {
+  cBox = { x: 0, y: 0, w: cropCanvasW, h: cropCanvasH };
+  updateCropBox();
+});
+
+// ─── Overlay spinner ───
 function showEditOverlay() { editOverlay.style.display = 'flex'; }
 function hideEditOverlay() { editOverlay.style.display = 'none'; }
 
+// ─── Apply adjust effects preview ───
 async function applyModalEffects() {
   if (!rawPixels) return;
   showEditOverlay();
-  // Laisser le DOM se mettre à jour avant le calcul lourd
   await new Promise(r => setTimeout(r, 30));
   const tol     = parseInt(mTolSlider.value, 10);
   const feather = parseInt(mFeatherSlider.value, 10);
-  let pixels = applySharpen(rawPixels, tol);
-  pixels = applyEdgeFeathering(pixels, origPixels, rawW, rawH, feather);
-  const blob = await blobFromPixels(pixels, rawW, rawH);
+  // Apply effects on cropped pixels if a crop is active, else full image
+  const pixels = await buildPixelsWithCrop(tol, feather, modalCrop);
+  const blob = await blobFromPixels(pixels.data, pixels.w, pixels.h);
   const oldSrc = editImg.src;
   editImg.src = URL.createObjectURL(blob);
   if (oldSrc && oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
   hideEditOverlay();
+}
+
+// Build pixels applying optional crop then tol+feather
+async function buildPixelsWithCrop(tol, feather, crop) {
+  if (!crop || (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1)) {
+    // No crop: full image
+    let px = applySharpen(rawPixels, tol);
+    px = applyEdgeFeathering(px, origPixels, rawW, rawH, feather);
+    return { data: px, w: rawW, h: rawH };
+  }
+  // Crop the raw pixel arrays first
+  const sx = Math.round(crop.x * rawW), sy = Math.round(crop.y * rawH);
+  const sw = Math.round(crop.w * rawW), sh = Math.round(crop.h * rawH);
+  const croppedRaw  = cropPixels(rawPixels,  rawW, sx, sy, sw, sh);
+  const croppedOrig = cropPixels(origPixels, rawW, sx, sy, sw, sh);
+  let px = applySharpen(croppedRaw, tol);
+  px = applyEdgeFeathering(px, croppedOrig, sw, sh, feather);
+  return { data: px, w: sw, h: sh };
+}
+
+function cropPixels(src, srcW, sx, sy, sw, sh) {
+  const out = new Uint8ClampedArray(sw * sh * 4);
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      const si = ((sy + y) * srcW + (sx + x)) * 4;
+      const di = (y * sw + x) * 4;
+      out[di]   = src[si];
+      out[di+1] = src[si+1];
+      out[di+2] = src[si+2];
+      out[di+3] = src[si+3];
+    }
+  }
+  return out;
 }
 
 function onModalSliderChange() {
@@ -808,17 +1092,18 @@ document.getElementById('m-reset-feather').addEventListener('click', () => {
 });
 
 editBtn.addEventListener('click', async () => {
-  // Ouvrir la modale avec les valeurs actuellement appliquées
   mTolSlider.value     = appliedTol;     mTolValue.textContent     = appliedTol;
   mFeatherSlider.value = appliedFeather; mFeatherValue.textContent = appliedFeather;
-  // Afficher l'image résultat actuelle dans la modale
+  modalCrop = appliedCrop ? { ...appliedCrop } : null;
+  // Switch to adjust tab by default on open
+  switchTab('adjust');
   editImg.src = document.getElementById('img-result').src;
   editModal.style.display = 'flex';
 });
 
 editCancel.addEventListener('click', () => {
-  // Jeter les changements, fermer
   clearTimeout(modalTimer);
+  drag = null;
   const oldSrc = editImg.src;
   editImg.src = '';
   if (oldSrc && oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
@@ -826,14 +1111,33 @@ editCancel.addEventListener('click', () => {
 });
 
 editConfirm.addEventListener('click', async () => {
-  // Appliquer les réglages à l'image principale
   clearTimeout(modalTimer);
+  drag = null;
   appliedTol     = parseInt(mTolSlider.value, 10);
   appliedFeather = parseInt(mFeatherSlider.value, 10);
-  // Recalculer et mettre à jour l'image principale + resultBlob
-  let pixels = applySharpen(rawPixels, appliedTol);
-  pixels = applyEdgeFeathering(pixels, origPixels, rawW, rawH, appliedFeather);
-  const blob = await blobFromPixels(pixels, rawW, rawH);
+  // Commit crop if on crop tab and box is not full image
+  if (currentTab === 'crop' && cBox && cropCanvasW) {
+    const cx = cBox.x / cropCanvasW, cy = cBox.y / cropCanvasH;
+    const cw = cBox.w / cropCanvasW, ch = cBox.h / cropCanvasH;
+    if (cx > 0.001 || cy > 0.001 || cw < 0.999 || ch < 0.999) {
+      // Compose with existing crop if any
+      if (appliedCrop) {
+        modalCrop = {
+          x: appliedCrop.x + cx * appliedCrop.w,
+          y: appliedCrop.y + cy * appliedCrop.h,
+          w: cw * appliedCrop.w,
+          h: ch * appliedCrop.h
+        };
+      } else {
+        modalCrop = { x: cx, y: cy, w: cw, h: ch };
+      }
+    } else {
+      modalCrop = appliedCrop; // no real crop change
+    }
+  }
+  appliedCrop = modalCrop;
+  const result = await buildPixelsWithCrop(appliedTol, appliedFeather, appliedCrop);
+  const blob = await blobFromPixels(result.data, result.w, result.h);
   resultBlob = blob;
   const ri = document.getElementById('img-result');
   const oldMain = ri.src;
@@ -1056,7 +1360,7 @@ async function runDetourage() {
     });
 
     // Réinitialiser les curseurs et afficher le résultat brut
-    appliedTol = 0; appliedFeather = 0;
+    appliedTol = 0; appliedFeather = 0; appliedCrop = null;
     const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
     resultBlob = blob;
 
