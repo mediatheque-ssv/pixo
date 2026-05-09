@@ -110,22 +110,19 @@ body::before {
 
 /* ─── CANVAS WRAP ─── */
 .canvas-wrap {
-  display:none;
-  margin-top:1.5rem;
+  display: none;
+  margin-top: 1.5rem;
 }
-.canvas-wrap.dual{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-  align-items:start;
+.canvas-wrap.dual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
 }
-.canvas-wrap.single{
-  display:block;
-  max-width:360px;
+.canvas-wrap.single {
+  display: block;
+  max-width: 360px;
 }
-/* 1 colonne tant que pas de résultat, 2 colonnes sinon */
-.canvas-wrap.single { grid-template-columns: 1fr; max-width: 360px; }
-.canvas-wrap.dual   { display: grid; grid-template-columns: 1fr 1fr; }
 
 .canvas-col { display: flex; flex-direction: column; gap: 7px; }
 
@@ -141,7 +138,6 @@ body::before {
   text-transform: uppercase; letter-spacing: .08em;
 }
 
-/* Petit bouton Changer sur l'original */
 .change-img-btn {
   height: 22px;
   padding: 0 9px;
@@ -165,27 +161,18 @@ body::before {
 }
 .preview-img.original { background: var(--surface-2); }
 
-/* Bouton "Modifier" flottant sur le résultat */
 .result-wrap { position: relative; display: flex; }
 .edit-btn {
-  position:absolute;
-  top:8px;
-  right:8px;
-  z-index:20;
-  height:28px;
-  padding:0 10px;
-  border-radius:var(--radius-sm);
-  border:0.5px solid var(--border-md);
-  background:rgba(20,20,19,0.82);
-  backdrop-filter:blur(6px);
-  color:var(--text-2);
-  cursor:pointer;
-  display:none;
-  align-items:center;
-  gap:6px;
-  font-family:'Syne', sans-serif;
-  font-size:11px;
-  font-weight:600;
+  position: absolute;
+  top: 8px; right: 8px; z-index: 20;
+  height: 28px; padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md);
+  background: rgba(20,20,19,0.82);
+  backdrop-filter: blur(6px);
+  color: var(--text-2); cursor: pointer;
+  display: none; align-items: center; gap: 6px;
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
 }
 .edit-btn:hover { border-color: var(--border-hi); color: var(--text); }
 .edit-btn.visible { display: flex; }
@@ -241,116 +228,52 @@ body::before {
   transition: width .3s ease; border-radius: var(--radius-sm);
 }
 
-/* ─── PANNEAU D'ÉDITION INLINE ─── */
-.edit-panel {
-  display: none;
-  margin-top: 1.2rem;
+/* ─── MODAL D'ÉDITION ─── */
+.edit-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.82);
+  backdrop-filter: blur(10px);
+  display: none; align-items: center; justify-content: center;
+  z-index: 9999; padding: 2rem;
+}
+.edit-modal.visible { display: flex; }
+
+.edit-window {
+  width: min(1300px, 100%);
+  height: min(850px, 92vh);
   background: var(--surface);
-  border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-md);
+  border-radius: 18px;
   overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 320px;
 }
-.edit-panel.visible { display: block; }
 
-.edit-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 11px 16px;
-  border-bottom: 0.5px solid var(--border);
-}
-.edit-panel-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; text-transform: uppercase;
-  letter-spacing: .08em; color: var(--text-3);
-}
-.edit-panel-close {
-  width: 22px; height: 22px; border-radius: 50%;
-  border: 0.5px solid var(--border-md); background: transparent;
-  color: var(--text-3); font-size: 10px; cursor: pointer;
+.edit-preview-wrap {
+  background: #0f0f0f;
   display: flex; align-items: center; justify-content: center;
-  transition: border-color .15s, color .15s;
-}
-.edit-panel-close:hover { border-color: var(--border-hi); color: var(--text); }
-
-.edit-panel-body {
-  padding: 14px 16px;
-  display: flex; flex-direction: column; gap: 14px;
-}
-
-/* sliders */
-.slider-group { display: flex; flex-direction: column; gap: 8px; }
-.slider-header { display: flex; align-items: center; justify-content: space-between; }
-.slider-label {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
-}
-.slider-val {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  color: var(--accent); min-width: 28px; text-align: right;
-}
-.slider-track { display: flex; align-items: center; gap: 10px; }
-.slider-hint {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: var(--text-3); white-space: nowrap; flex-shrink: 0;
-}
-input[type=range].tol-slider {
-  -webkit-appearance: none; flex: 1; height: 4px;
-  background: var(--surface-3); border-radius: 2px; outline: none; cursor: pointer;
-}
-input[type=range].tol-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #0c0c0b;
-  box-shadow: 0 0 6px rgba(212,255,78,0.35); transition: box-shadow .15s;
-}
-input[type=range].tol-slider:hover::-webkit-slider-thumb { box-shadow: 0 0 12px rgba(212,255,78,0.55); }
-input[type=range].tol-slider::-moz-range-thumb {
-  width: 16px; height: 16px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #0c0c0b; cursor: pointer;
-}
-.reset-btn {
-  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
-  border: 0.5px solid var(--border-md); background: transparent;
-  color: var(--text-3); font-size: 9px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: border-color .15s, color .15s; font-family: sans-serif;
-}
-.reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
-
-.panel-sep { height: 0.5px; background: var(--border-md); }
-
-/* ─── RECADRAGE INLINE ─── */
-.crop-toggle-row {
-  display: flex; align-items: center; justify-content: space-between;
-}
-.crop-toggle-btn {
-  height: 26px; padding: 0 11px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border-md);
-  background: transparent; color: var(--text-3);
-  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
-  cursor: pointer; display: flex; align-items: center; gap: 6px;
-  transition: all .15s;
-}
-.crop-toggle-btn:hover { border-color: var(--border-hi); color: var(--text); }
-.crop-toggle-btn.active { border-color: var(--accent-border); background: var(--accent-dim); color: var(--accent); }
-
-.crop-canvas-wrap {
-  display: none; position: relative; width: 100%; cursor: crosshair;
-  border-radius: var(--radius); overflow: hidden;
+  overflow: hidden;
   background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 20px 20px;
-  user-select: none; border: 0.5px solid var(--border-md);
-  align-items: center; justify-content: center;
 }
-.crop-canvas-wrap.visible { display: flex; }
-#inline-crop-canvas { display: block; max-width: 100%; max-height: 300px; }
 
-.crop-box {
+.edit-preview-stage { position: relative; display: inline-flex; }
+
+#edit-canvas {
+  display: block;
+  max-width: calc(100vw - 420px);
+  max-height: 86vh;
+}
+
+/* Crop box dans la modal */
+.edit-crop-box {
   position: absolute;
   border: 1.5px solid var(--accent);
   box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
   cursor: move; will-change: transform; touch-action: none;
+  display: none;
 }
+.edit-crop-box.visible { display: block; }
+
 .crop-handle {
   position: absolute; width: 9px; height: 9px;
   background: var(--accent); border: 1px solid rgba(0,0,0,0.3);
@@ -365,28 +288,79 @@ input[type=range].tol-slider::-moz-range-thumb {
 .crop-handle.ml { top:calc(50% - 4px); left:-5px; cursor:w-resize; }
 .crop-handle.mr { top:calc(50% - 4px); right:-5px; cursor:e-resize; }
 
-.crop-dims-row {
-  display: flex; align-items: center; justify-content: space-between;
+.edit-sidebar {
+  border-left: 1px solid var(--border);
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 20px;
+  overflow-y: auto;
 }
+
+.sidebar-section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-3);
+  margin-bottom: 10px;
+}
+
+/* Sliders dans la sidebar */
+.sidebar-slider-group { display: flex; flex-direction: column; gap: 8px; }
+.sidebar-slider-header { display: flex; align-items: center; justify-content: space-between; }
+.sidebar-slider-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
+}
+.sidebar-slider-val {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--accent); min-width: 28px; text-align: right;
+}
+
+input[type=range].tol-slider {
+  -webkit-appearance: none; width: 100%; height: 4px;
+  background: var(--surface-3); border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type=range].tol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0c0c0b;
+  box-shadow: 0 0 6px rgba(212,255,78,0.35); transition: box-shadow .15s;
+}
+input[type=range].tol-slider:hover::-webkit-slider-thumb { box-shadow: 0 0 12px rgba(212,255,78,0.55); }
+input[type=range].tol-slider::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0c0c0b; cursor: pointer;
+}
+
+.panel-sep { height: 0.5px; background: var(--border-md); }
+
+/* Crop dans la sidebar */
+.crop-toggle-btn {
+  height: 30px; padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md);
+  background: transparent; color: var(--text-3);
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: all .15s; width: 100%; justify-content: center;
+}
+.crop-toggle-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.crop-toggle-btn.active { border-color: var(--accent-border); background: var(--accent-dim); color: var(--accent); }
+
 .crop-dims {
   font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3);
+  text-align: center; min-height: 16px;
 }
 .crop-reset-btn {
   font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3);
   background: transparent; border: 0.5px solid var(--border);
-  border-radius: var(--radius-sm); padding: 3px 8px; cursor: pointer;
-  transition: border-color .15s, color .15s;
+  border-radius: var(--radius-sm); padding: 4px 10px; cursor: pointer;
+  transition: border-color .15s, color .15s; width: 100%; margin-top: 4px;
 }
 .crop-reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
-/* ─── VALIDER TOUT ─── */
-.edit-panel-footer {
-  padding: 12px 16px;
-  border-top: 0.5px solid var(--border);
-  display: flex; gap: 8px;
+.edit-actions {
+  margin-top: auto; display: flex; gap: 8px;
 }
 .edit-cancel-btn {
-  flex: 1; height: 36px; border-radius: var(--radius);
+  flex: 1; height: 38px; border-radius: var(--radius);
   border: 0.5px solid var(--border-md); background: transparent;
   color: var(--text-2); font-family: 'Syne', sans-serif;
   font-size: 13px; font-weight: 600; cursor: pointer;
@@ -394,7 +368,7 @@ input[type=range].tol-slider::-moz-range-thumb {
 }
 .edit-cancel-btn:hover { border-color: var(--border-hi); color: var(--text); }
 .edit-confirm-btn {
-  flex: 1; height: 36px; border-radius: var(--radius);
+  flex: 1; height: 38px; border-radius: var(--radius);
   border: none; background: var(--accent); color: #0c0c0b;
   font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
   cursor: pointer; transition: background .15s;
@@ -433,76 +407,9 @@ input[type=range].tol-slider::-moz-range-thumb {
   .canvas-wrap.dual { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
   .run-btn, .dl-btn { width: 100%; justify-content: center; }
+  .edit-window { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  #edit-canvas { max-width: 100vw; max-height: 50vh; }
 }
-
-.edit-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.82);
-  backdrop-filter: blur(10px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 2rem;
-}
-.edit-modal.visible { display:flex; }
-
-.edit-window{
-  width:min(1300px,100%);
-  height:min(850px,92vh);
-  background:var(--surface);
-  border:1px solid var(--border-md);
-  border-radius:18px;
-  overflow:hidden;
-  display:grid;
-  grid-template-columns:1fr 320px;
-}
-
-.edit-preview-wrap{
-  background:#0f0f0f;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-}
-
-.edit-preview-stage{
-  position:relative;
-  display:inline-flex;
-}
-
-#edit-canvas{
-  display:block;
-  max-width:calc(100vw - 420px);
-  max-height:86vh;
-}
-
-.edit-sidebar{
-  border-left:1px solid var(--border);
-  padding:24px;
-  display:flex;
-  flex-direction:column;
-  gap:24px;
-}
-
-.sidebar-label{
-  font-size:11px;
-  margin-bottom:8px;
-}
-
-.editor-slider{ width:100%; }
-
-.crop-info{
-  font-size:12px;
-}
-
-.edit-actions{
-  margin-top:auto;
-  display:flex;
-  gap:10px;
-}
-
 </style>
 </head>
 <body>
@@ -542,7 +449,7 @@ input[type=range].tol-slider::-moz-range-thumb {
 
   <input type="file" id="file-in" accept="image/*" style="display:none">
 
-  <!-- Aperçus — une ou deux colonnes selon l'état -->
+  <!-- Aperçus -->
   <div class="canvas-wrap single" id="canvas-wrap">
 
     <!-- Colonne Original -->
@@ -560,7 +467,7 @@ input[type=range].tol-slider::-moz-range-thumb {
       <img id="img-original" class="preview-img original" alt="Image originale">
     </div>
 
-    <!-- Colonne Détouré (cachée tant qu'il n'y a pas de résultat) -->
+    <!-- Colonne Détouré -->
     <div class="canvas-col" id="result-col" style="display:none">
       <div class="canvas-label-row">
         <span class="canvas-label">Détouré</span>
@@ -601,66 +508,24 @@ input[type=range].tol-slider::-moz-range-thumb {
   <div class="progress-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
   <div class="status" id="status"></div>
 
-  <!-- ══════════════════════════════════════════
-       PANNEAU D'ÉDITION INLINE
-       Apparaît sous les aperçus quand on clique "Modifier"
-  ══════════════════════════════════════════ -->
-  <div class="edit-panel" id="edit-panel">
+  <div class="info-box">
+    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
+    <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
+  </div>
 
-    <div class="edit-panel-header">
-      <span class="edit-panel-title">Réglages &amp; Recadrage</span>
-      <button class="edit-panel-close" id="edit-panel-close" aria-label="Fermer">✕</button>
-    </div>
+</div><!-- /container -->
 
-    <div class="edit-panel-body">
+<!-- ══════════════════════════════════════════
+     MODAL D'ÉDITION (unique, hors container)
+══════════════════════════════════════════ -->
+<div class="edit-modal" id="edit-modal" role="dialog" aria-modal="true" aria-label="Éditeur d'image">
+  <div class="edit-window">
 
-      <!-- Tolérance -->
-      <div class="slider-group">
-        <div class="slider-header">
-          <span class="slider-label">Tolérance</span>
-          <span class="slider-val" id="tol-value">0</span>
-        </div>
-        <div class="slider-track">
-          <span class="slider-hint">Faible</span>
-          <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="0">
-          <span class="slider-hint">Max</span>
-          <button class="reset-btn" id="reset-tol" aria-label="Réinitialiser">✕</button>
-        </div>
-      </div>
-
-      <div class="panel-sep"></div>
-
-      <!-- Lissage -->
-      <div class="slider-group">
-        <div class="slider-header">
-          <span class="slider-label">Lissage des bords</span>
-          <span class="slider-val" id="feather-value">0</span>
-        </div>
-        <div class="slider-track">
-          <span class="slider-hint">Aucun</span>
-          <input type="range" class="tol-slider" id="feather-slider" min="0" max="100" value="0">
-          <span class="slider-hint">Max</span>
-          <button class="reset-btn" id="reset-feather" aria-label="Réinitialiser">✕</button>
-        </div>
-      </div>
-
-      <div class="panel-sep"></div>
-
-      <!-- Recadrage -->
-      <div class="crop-toggle-row">
-        <span class="slider-label">Recadrer</span>
-        <button class="crop-toggle-btn" id="crop-toggle-btn">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-          </svg>
-          Afficher le cadre
-        </button>
-      </div>
-
-      <div class="crop-canvas-wrap" id="crop-canvas-wrap">
-        <canvas id="inline-crop-canvas"></canvas>
-        <div class="crop-box" id="crop-box">
+    <!-- Zone de prévisualisation -->
+    <div class="edit-preview-wrap">
+      <div class="edit-preview-stage" id="edit-preview-stage">
+        <canvas id="edit-canvas"></canvas>
+        <div class="edit-crop-box" id="edit-crop-box">
           <div class="crop-handle tl" data-h="tl"></div>
           <div class="crop-handle tr" data-h="tr"></div>
           <div class="crop-handle bl" data-h="bl"></div>
@@ -671,27 +536,57 @@ input[type=range].tol-slider::-moz-range-thumb {
           <div class="crop-handle mr" data-h="mr"></div>
         </div>
       </div>
-
-      <div class="crop-dims-row" id="crop-dims-row" style="display:none">
-        <span class="crop-dims" id="crop-dims">— × — px</span>
-        <button class="crop-reset-btn" id="crop-reset-btn">Réinitialiser</button>
-      </div>
-
-    </div><!-- /edit-panel-body -->
-
-    <div class="edit-panel-footer">
-      <button class="edit-cancel-btn" id="edit-cancel-btn">Annuler</button>
-      <button class="edit-confirm-btn" id="edit-confirm-btn">Valider</button>
     </div>
 
-  </div><!-- /edit-panel -->
+    <!-- Sidebar -->
+    <div class="edit-sidebar">
 
-  <div class="info-box">
-    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
-    <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
+      <div>
+        <div class="sidebar-section-title">Réglages</div>
+        <div class="sidebar-slider-group">
+          <div class="sidebar-slider-header">
+            <span class="sidebar-slider-label">Tolérance</span>
+            <span class="sidebar-slider-val" id="modal-tol-val">0</span>
+          </div>
+          <input type="range" class="tol-slider" id="modal-tol-slider" min="0" max="100" value="0">
+        </div>
+      </div>
+
+      <div class="panel-sep"></div>
+
+      <div>
+        <div class="sidebar-slider-group">
+          <div class="sidebar-slider-header">
+            <span class="sidebar-slider-label">Lissage des bords</span>
+            <span class="sidebar-slider-val" id="modal-feather-val">0</span>
+          </div>
+          <input type="range" class="tol-slider" id="modal-feather-slider" min="0" max="100" value="0">
+        </div>
+      </div>
+
+      <div class="panel-sep"></div>
+
+      <div>
+        <div class="sidebar-section-title">Recadrage</div>
+        <button class="crop-toggle-btn" id="modal-crop-toggle">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+          Afficher le cadre
+        </button>
+        <div class="crop-dims" id="modal-crop-dims" style="margin-top:8px"></div>
+        <button class="crop-reset-btn" id="modal-crop-reset" style="display:none">Réinitialiser le recadrage</button>
+      </div>
+
+      <div class="edit-actions">
+        <button class="edit-cancel-btn" id="modal-cancel-btn">Annuler</button>
+        <button class="edit-confirm-btn" id="modal-confirm-btn">Valider</button>
+      </div>
+
+    </div>
   </div>
-
-</div><!-- /container -->
+</div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -699,52 +594,87 @@ input[type=range].tol-slider::-moz-range-thumb {
 import { pipeline, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
 // ─── État global ───
-let srcFile    = null;
-let resultBlob = null;
-let segmenter  = null;
-let rawPixels  = null;
-let origPixels = null;
+let srcFile       = null;
+let resultBlob    = null;
+let segmenter     = null;
+let rawPixels     = null;   // Uint8ClampedArray brute sortie du modèle
+let origPixels    = null;   // Uint8ClampedArray couleurs originales
 let rawW = 0, rawH = 0;
-let appliedTol     = 0;
+let appliedTol    = 0;
 let appliedFeather = 0;
-let appliedCrop    = null; // {x,y,w,h} en fractions 0-1, ou null
+let appliedCrop   = null;   // {x,y,w,h} en fractions 0-1
+
+// Crop en cours dans la modal (fractions)
+let modalCrop     = null;
+let cropActive    = false;
 
 // Charger le modèle en arrière-plan
 pipeline('background-removal', 'briaai/RMBG-1.4')
-  .then(p => { segmenter = p; })
+  .then(p  => { segmenter = p; })
   .catch(e => { console.error('Erreur modèle:', e); segmenter = 'error'; });
 
 // ─── Refs DOM ───
-const dz          = document.getElementById('drop-zone');
+const dropZone    = document.getElementById('drop-zone');
+const fileInput   = document.getElementById('file-in');
 const canvasWrap  = document.getElementById('canvas-wrap');
 const resultCol   = document.getElementById('result-col');
+const imgOriginal = document.getElementById('img-original');
 const imgResult   = document.getElementById('img-result');
 const editBtn     = document.getElementById('edit-btn');
-const editPanel   = document.getElementById('edit-panel');
-const tolSlider   = document.getElementById('tol-slider');
-const tolValue    = document.getElementById('tol-value');
-const featherSlider = document.getElementById('feather-slider');
-const featherValue  = document.getElementById('feather-value');
+const actionsEl   = document.getElementById('actions');
+const runBtn      = document.getElementById('run-btn');
+const dlBtn       = document.getElementById('dl-btn');
+const changeBtn   = document.getElementById('change-btn');
+const statusEl    = document.getElementById('status');
+const progressWrap = document.getElementById('progress-wrap');
+const progressBar  = document.getElementById('progress-bar');
+
+// Modal
+const editModal       = document.getElementById('edit-modal');
+const editCanvas      = document.getElementById('edit-canvas');
+const editCtx         = editCanvas.getContext('2d');
+const editCropBox     = document.getElementById('edit-crop-box');
+const modalTolSlider  = document.getElementById('modal-tol-slider');
+const modalTolVal     = document.getElementById('modal-tol-val');
+const modalFeatherSlider = document.getElementById('modal-feather-slider');
+const modalFeatherVal    = document.getElementById('modal-feather-val');
+const modalCropToggle = document.getElementById('modal-crop-toggle');
+const modalCropDims   = document.getElementById('modal-crop-dims');
+const modalCropReset  = document.getElementById('modal-crop-reset');
+const modalCancelBtn  = document.getElementById('modal-cancel-btn');
+const modalConfirmBtn = document.getElementById('modal-confirm-btn');
 
 // ─── Drag & drop ───
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('over'));
-dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
-document.getElementById('file-in').addEventListener('change', e => loadFile(e.target.files[0]));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
-document.getElementById('run-btn').addEventListener('click', runDetourage);
-document.getElementById('dl-btn').addEventListener('click', downloadResult);
-document.getElementById('change-btn').addEventListener('click', resetAll);
+// ─── Boutons principaux ───
+runBtn.addEventListener('click', runDetourage);
+dlBtn.addEventListener('click', downloadResult);
+changeBtn.addEventListener('click', resetAll);
+editBtn.addEventListener('click', openEditModal);
 
-// ─── Panneau d'édition ───
-editBtn.addEventListener('click', openEditPanel);
-document.getElementById('edit-panel-close').addEventListener('click', closeEditPanel);
-document.getElementById('edit-cancel-btn').addEventListener('click', closeEditPanel);
-document.getElementById('edit-confirm-btn').addEventListener('click', confirmEdit);
+// ─── Modal : boutons ───
+modalCancelBtn.addEventListener('click', closeEditModal);
+modalConfirmBtn.addEventListener('click', confirmEdit);
+modalCropToggle.addEventListener('click', toggleCrop);
+modalCropReset.addEventListener('click', resetCrop);
 
-// Fermer avec Échap
+// Sliders modal
+modalTolSlider.addEventListener('input', () => {
+  modalTolVal.textContent = modalTolSlider.value;
+  refreshModalPreview();
+});
+modalFeatherSlider.addEventListener('input', () => {
+  modalFeatherVal.textContent = modalFeatherSlider.value;
+  refreshModalPreview();
+});
+
+// Fermeture Échap
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && editPanel.classList.contains('visible')) closeEditPanel();
+  if (e.key === 'Escape' && editModal.classList.contains('visible')) closeEditModal();
 });
 
 // ─── Pixel processing ───
@@ -805,20 +735,23 @@ function cropPixels(src, srcW, sx, sy, sw, sh) {
     for (let x = 0; x < sw; x++) {
       const si = ((sy + y) * srcW + (sx + x)) * 4;
       const di = (y * sw + x) * 4;
-      out[di] = src[si]; out[di+1] = src[si+1]; out[di+2] = src[si+2]; out[di+3] = src[si+3];
+      out[di]   = src[si];   out[di+1] = src[si+1];
+      out[di+2] = src[si+2]; out[di+3] = src[si+3];
     }
   }
   return out;
 }
 
 async function buildPixelsWithCrop(tol, feather, crop) {
-  if (!crop || (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1)) {
+  const isFull = !crop || (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1);
+  if (isFull) {
     let px = applySharpen(rawPixels, tol);
     px = applyEdgeFeathering(px, origPixels, rawW, rawH, feather);
     return { data: px, w: rawW, h: rawH };
   }
   const sx = Math.round(crop.x * rawW), sy = Math.round(crop.y * rawH);
-  const sw = Math.round(crop.w * rawW), sh = Math.round(crop.h * rawH);
+  const sw = Math.max(1, Math.round(crop.w * rawW));
+  const sh = Math.max(1, Math.round(crop.h * rawH));
   const croppedRaw  = cropPixels(rawPixels,  rawW, sx, sy, sw, sh);
   const croppedOrig = cropPixels(origPixels, rawW, sx, sy, sw, sh);
   let px = applySharpen(croppedRaw, tol);
@@ -829,25 +762,30 @@ async function buildPixelsWithCrop(tol, feather, crop) {
 // ─── Détourage ───
 async function runDetourage() {
   if (!srcFile) return;
-  const btn = document.getElementById('run-btn');
-  btn.disabled = true; btn.classList.add('loading');
-  document.getElementById('dl-btn').classList.remove('visible');
-  showProgress(10); setStatus('Chargement du modèle…');
+  runBtn.disabled = true;
+  runBtn.classList.add('loading');
+  dlBtn.classList.remove('visible');
+  showProgress(10);
+  setStatus('Chargement du modèle…');
 
   let waited = 0;
   while (!segmenter) {
-    if (waited > 60000) { setStatus('Délai dépassé.', 'error'); hideProgress(); btn.disabled = false; btn.classList.remove('loading'); return; }
+    if (waited > 60000) {
+      setStatus('Délai dépassé.', 'error');
+      hideProgress(); runBtn.disabled = false; runBtn.classList.remove('loading');
+      return;
+    }
     await new Promise(r => setTimeout(r, 200)); waited += 200;
   }
-  if (segmenter === 'error') { setStatus('Erreur de chargement du modèle.', 'error'); hideProgress(); btn.disabled = false; btn.classList.remove('loading'); return; }
+  if (segmenter === 'error') {
+    setStatus('Erreur de chargement du modèle.', 'error');
+    hideProgress(); runBtn.disabled = false; runBtn.classList.remove('loading');
+    return;
+  }
 
   try {
     showProgress(40); setStatus('Segmentation en cours…');
-    const dataUrl = await new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = e => resolve(e.target.result);
-      reader.readAsDataURL(srcFile);
-    });
+    const dataUrl = await fileToDataUrl(srcFile);
 
     showProgress(60);
     const output = await segmenter(dataUrl);
@@ -862,7 +800,8 @@ async function runDetourage() {
       htmlCanvas = srcCanvas;
     } else {
       htmlCanvas = document.createElement('canvas');
-      htmlCanvas.width = srcCanvas.width; htmlCanvas.height = srcCanvas.height;
+      htmlCanvas.width  = srcCanvas.width;
+      htmlCanvas.height = srcCanvas.height;
       htmlCanvas.getContext('2d').drawImage(srcCanvas, 0, 0);
     }
 
@@ -887,23 +826,204 @@ async function runDetourage() {
     const url = URL.createObjectURL(blob);
     imgResult.src = url;
 
-    // Afficher la colonne résultat + passer en 2 colonnes
     resultCol.style.display = 'block';
     canvasWrap.classList.remove('single');
     canvasWrap.classList.add('dual');
 
     editBtn.classList.add('visible');
-    document.getElementById('dl-btn').classList.add('visible');
+    dlBtn.classList.add('visible');
     setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100);
     setTimeout(hideProgress, 800);
-    btn.disabled = false; btn.classList.remove('loading');
+    runBtn.disabled = false; runBtn.classList.remove('loading');
 
   } catch(e) {
     console.error(e);
     setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
-    hideProgress(); btn.disabled = false; btn.classList.remove('loading');
+    hideProgress(); runBtn.disabled = false; runBtn.classList.remove('loading');
   }
+}
+
+// ─── Modal d'édition ───
+function openEditModal() {
+  if (!imgResult.src) return;
+
+  // Sync les sliders avec les valeurs appliquées
+  modalTolSlider.value     = appliedTol;
+  modalTolVal.textContent  = appliedTol;
+  modalFeatherSlider.value = appliedFeather;
+  modalFeatherVal.textContent = appliedFeather;
+  modalCrop = appliedCrop ? { ...appliedCrop } : null;
+
+  editModal.classList.add('visible');
+  drawEditCanvas();
+
+  if (cropActive) {
+    updateCropBoxFromModal();
+    editCropBox.classList.add('visible');
+  } else {
+    editCropBox.classList.remove('visible');
+  }
+}
+
+function closeEditModal() {
+  editModal.classList.remove('visible');
+}
+
+async function confirmEdit() {
+  const tol     = parseInt(modalTolSlider.value, 10);
+  const feather = parseInt(modalFeatherSlider.value, 10);
+  const crop    = cropActive ? modalCrop : null;
+
+  appliedTol     = tol;
+  appliedFeather = feather;
+  appliedCrop    = crop;
+
+  const { data, w, h } = await buildPixelsWithCrop(tol, feather, crop);
+  const blob = await blobFromPixels(data, w, h);
+  resultBlob = blob;
+
+  const url = URL.createObjectURL(blob);
+  imgResult.src = url;
+  dlBtn.classList.add('visible');
+  closeEditModal();
+  showToast('Modifications appliquées ✓');
+}
+
+// ─── Aperçu dans la modal ───
+function drawEditCanvas() {
+  if (!imgResult.src) return;
+  const img = new Image();
+  img.onload = () => {
+    const maxW = editCanvas.parentElement.offsetWidth  || (window.innerWidth - 420);
+    const maxH = editCanvas.parentElement.offsetHeight || (window.innerHeight - 80);
+    const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+    editCanvas.width  = Math.round(img.width  * ratio);
+    editCanvas.height = Math.round(img.height * ratio);
+    editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
+    editCtx.drawImage(img, 0, 0, editCanvas.width, editCanvas.height);
+    if (cropActive) updateCropBoxFromModal();
+  };
+  img.src = imgResult.src;
+}
+
+function refreshModalPreview() {
+  // Mise à jour légère : ré-dessine simplement le canvas courant
+  // (le vrai recalcul pixel n'est fait qu'au Valider)
+  drawEditCanvas();
+}
+
+// ─── Crop dans la modal ───
+function toggleCrop() {
+  cropActive = !cropActive;
+  if (cropActive) {
+    if (!modalCrop) modalCrop = { x: 0.05, y: 0.05, w: 0.9, h: 0.9 };
+    editCropBox.classList.add('visible');
+    modalCropToggle.classList.add('active');
+    modalCropToggle.textContent = '✕ Masquer le cadre';
+    modalCropReset.style.display = 'block';
+    updateCropBoxFromModal();
+    updateCropDims();
+    initCropDrag();
+  } else {
+    editCropBox.classList.remove('visible');
+    modalCropToggle.classList.remove('active');
+    modalCropToggle.innerHTML = `
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+        <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+      </svg>
+      Afficher le cadre`;
+    modalCropDims.textContent = '';
+    modalCropReset.style.display = 'none';
+  }
+}
+
+function resetCrop() {
+  modalCrop = { x: 0, y: 0, w: 1, h: 1 };
+  updateCropBoxFromModal();
+  updateCropDims();
+}
+
+function updateCropBoxFromModal() {
+  if (!modalCrop || !editCanvas.width) return;
+  const cw = editCanvas.width, ch = editCanvas.height;
+  editCropBox.style.left   = Math.round(modalCrop.x * cw) + 'px';
+  editCropBox.style.top    = Math.round(modalCrop.y * ch) + 'px';
+  editCropBox.style.width  = Math.round(modalCrop.w * cw) + 'px';
+  editCropBox.style.height = Math.round(modalCrop.h * ch) + 'px';
+}
+
+function updateCropDims() {
+  if (!modalCrop) { modalCropDims.textContent = ''; return; }
+  const pw = Math.round(modalCrop.w * rawW);
+  const ph = Math.round(modalCrop.h * rawH);
+  modalCropDims.textContent = pw + ' × ' + ph + ' px';
+}
+
+// Drag du crop box
+let _cropDragging = false;
+let _cropHandle   = null;
+let _cropStart    = null;
+
+function initCropDrag() {
+  // On (re)branche une fois, guard avec _cropDragBound
+  if (editCropBox._cropDragBound) return;
+  editCropBox._cropDragBound = true;
+
+  editCropBox.addEventListener('pointerdown', onCropPointerDown);
+  document.addEventListener('pointermove', onCropPointerMove);
+  document.addEventListener('pointerup',   onCropPointerUp);
+}
+
+function onCropPointerDown(e) {
+  e.preventDefault();
+  _cropDragging = true;
+  _cropHandle   = e.target.dataset.h || 'move';
+  const rect    = editCanvas.getBoundingClientRect();
+  _cropStart    = {
+    mx: e.clientX, my: e.clientY,
+    crop: { ...modalCrop },
+    cw: editCanvas.width, ch: editCanvas.height,
+    rect
+  };
+  editCropBox.setPointerCapture(e.pointerId);
+}
+
+function onCropPointerMove(e) {
+  if (!_cropDragging || !_cropStart) return;
+  const dx = (e.clientX - _cropStart.mx) / _cropStart.cw;
+  const dy = (e.clientY - _cropStart.my) / _cropStart.ch;
+  const c  = { ..._cropStart.crop };
+  const h  = _cropHandle;
+  const MIN = 0.02;
+
+  if (h === 'move') {
+    c.x = Math.min(Math.max(c.x + dx, 0), 1 - c.w);
+    c.y = Math.min(Math.max(c.y + dy, 0), 1 - c.h);
+  } else {
+    if (h.includes('l')) { const nx = c.x + dx; if (c.x + c.w - nx > MIN) { c.w = c.x + c.w - nx; c.x = nx; } }
+    if (h.includes('r')) { c.w = Math.min(Math.max(c.w + dx, MIN), 1 - c.x); }
+    if (h.includes('t')) { const ny = c.y + dy; if (c.y + c.h - ny > MIN) { c.h = c.y + c.h - ny; c.y = ny; } }
+    if (h.includes('b')) { c.h = Math.min(Math.max(c.h + dy, MIN), 1 - c.y); }
+  }
+  c.x = Math.max(0, Math.min(c.x, 1 - c.w));
+  c.y = Math.max(0, Math.min(c.y, 1 - c.h));
+  modalCrop = c;
+  updateCropBoxFromModal();
+  updateCropDims();
+}
+
+function onCropPointerUp() { _cropDragging = false; }
+
+// ─── Helpers ───
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result);
+    r.onerror = () => reject(new Error('Lecture fichier impossible'));
+    r.readAsDataURL(file);
+  });
 }
 
 function downloadResult() {
@@ -919,20 +1039,20 @@ function downloadResult() {
 function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
-  srcFile = file;
+  srcFile    = file;
   resultBlob = null; rawPixels = null; origPixels = null;
   const reader = new FileReader();
   reader.onload = ev => {
-    document.getElementById('img-original').src = ev.target.result;
-    imgResult.src = '';
+    imgOriginal.src = ev.target.result;
+    imgResult.src   = '';
     resultCol.style.display = 'none';
     canvasWrap.classList.remove('dual');
     canvasWrap.classList.add('single');
     canvasWrap.style.display = 'block';
-    document.getElementById('actions').style.display = 'flex';
-    document.getElementById('dl-btn').classList.remove('visible');
+    actionsEl.style.display  = 'flex';
+    dlBtn.classList.remove('visible');
     editBtn.classList.remove('visible');
-        document.getElementById('drop-zone').style.display = 'none';
+    dropZone.style.display = 'none';
     setStatus(''); hideProgress();
   };
   reader.readAsDataURL(file);
@@ -941,144 +1061,38 @@ function loadFile(file) {
 function resetAll() {
   srcFile = null; resultBlob = null; rawPixels = null; origPixels = null;
   appliedTol = 0; appliedFeather = 0; appliedCrop = null;
-  document.getElementById('drop-zone').style.display = '';
+  dropZone.style.display = '';
   canvasWrap.style.display = 'none';
   canvasWrap.classList.remove('dual'); canvasWrap.classList.add('single');
-  document.getElementById('actions').style.display = 'none';
-  document.getElementById('dl-btn').classList.remove('visible');
-  document.getElementById('img-original').src = '';
-  imgResult.src = '';
+  actionsEl.style.display = 'none';
+  dlBtn.classList.remove('visible');
+  imgOriginal.src = ''; imgResult.src = '';
   resultCol.style.display = 'none';
   editBtn.classList.remove('visible');
-    document.getElementById('file-in').value = '';
+  fileInput.value = '';
   setStatus(''); hideProgress();
-  const btn = document.getElementById('run-btn');
-  btn.disabled = false; btn.classList.remove('loading');
+  runBtn.disabled = false; runBtn.classList.remove('loading');
 }
 
 function setStatus(msg, type) {
-  const el = document.getElementById('status');
-  el.textContent = msg;
-  el.className = 'status' + (type ? ' ' + type : '');
+  statusEl.textContent = msg;
+  statusEl.className   = 'status' + (type ? ' ' + type : '');
 }
 function showProgress(pct) {
-  document.getElementById('progress-wrap').style.display = 'block';
-  document.getElementById('progress-bar').style.width = pct + '%';
+  progressWrap.style.display = 'block';
+  progressBar.style.width    = pct + '%';
 }
 function hideProgress() {
-  document.getElementById('progress-wrap').style.display = 'none';
-  document.getElementById('progress-bar').style.width = '0%';
+  progressWrap.style.display = 'none';
+  progressBar.style.width    = '0%';
 }
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast show' + (type ? ' ' + type : '');
+  t.className   = 'toast show' + (type ? ' ' + type : '');
   clearTimeout(t._timer);
   t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
-
-
-const editBtn = document.getElementById('edit-btn');
-const imgResult = document.getElementById('img-result');
-const resultCol = document.getElementById('result-col');
-const canvasWrap = document.getElementById('canvas-wrap');
-
-const editModal = document.getElementById('edit-modal');
-const editCanvas = document.getElementById('edit-canvas');
-const editCtx = editCanvas.getContext('2d');
-
-editBtn.addEventListener('click', openEditor);
-
-document.getElementById('edit-cancel-btn').addEventListener('click', () => {
-  editModal.classList.remove('visible');
-});
-
-document.getElementById('edit-confirm-btn').addEventListener('click', () => {
-  editModal.classList.remove('visible');
-  showToast('Modifications appliquées ✓');
-});
-
-async function openEditor() {
-
-  editModal.classList.add('visible');
-
-  if (!imgResult.src) return;
-
-  const img = new Image();
-
-  img.onload = () => {
-
-    const maxW = window.innerWidth - 500;
-    const maxH = window.innerHeight - 140;
-
-    const ratio = Math.min(
-      maxW / img.width,
-      maxH / img.height,
-      1
-    );
-
-    editCanvas.width = Math.round(img.width * ratio);
-    editCanvas.height = Math.round(img.height * ratio);
-
-    editCtx.clearRect(0,0,editCanvas.width,editCanvas.height);
-    editCtx.drawImage(img,0,0,editCanvas.width,editCanvas.height);
-  };
-
-  img.src = imgResult.src;
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    editModal.classList.remove('visible');
-  }
-});
-
-
-// Affichage initial correct du canvas-wrap (caché)
-canvasWrap.style.display = 'none';
 </script>
-
-<div class="edit-modal" id="edit-modal">
-  <div class="edit-window">
-
-    <div class="edit-preview-wrap">
-      <div class="edit-preview-stage">
-        <canvas id="edit-canvas"></canvas>
-
-        <div class="crop-box" id="crop-box">
-          <div class="crop-handle tl" data-h="tl"></div>
-          <div class="crop-handle tr" data-h="tr"></div>
-          <div class="crop-handle bl" data-h="bl"></div>
-          <div class="crop-handle br" data-h="br"></div>
-          <div class="crop-handle tc" data-h="tc"></div>
-          <div class="crop-handle bc" data-h="bc"></div>
-          <div class="crop-handle ml" data-h="ml"></div>
-          <div class="crop-handle mr" data-h="mr"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="edit-sidebar">
-      <div>
-        <div class="sidebar-label">Tolérance</div>
-        <input type="range" class="editor-slider" id="tol-slider" min="0" max="100" value="0">
-      </div>
-
-      <div>
-        <div class="sidebar-label">Lissage</div>
-        <input type="range" class="editor-slider" id="feather-slider" min="0" max="100" value="0">
-      </div>
-
-      <div class="crop-info" id="crop-info">— × — px</div>
-
-      <div class="edit-actions">
-        <button class="edit-cancel-btn" id="edit-cancel-btn">Annuler</button>
-        <button class="edit-confirm-btn" id="edit-confirm-btn">Valider</button>
-      </div>
-    </div>
-
-  </div>
-</div>
-
 </body>
 </html>
