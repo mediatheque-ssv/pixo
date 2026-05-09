@@ -384,7 +384,20 @@ input[type=range].tol-slider::-moz-range-thumb {
   border: 2px solid #0c0c0b;
   cursor: pointer;
 }
-.tolerance-sep {
+.reset-btn {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-md);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 9px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s;
+  font-family: sans-serif;
+}
+.reset-btn:hover { border-color: var(--border-hi); color: var(--text); }
   height: 0.5px;
   background: var(--border-md);
   margin: 2px 0;
@@ -520,12 +533,13 @@ input[type=range].tol-slider::-moz-range-thumb {
   <div class="tolerance-wrap" id="tolerance-wrap">
     <div class="tolerance-header">
       <span class="tolerance-label">Tolérance</span>
-      <span class="tolerance-value" id="tol-value">50</span>
+      <span class="tolerance-value" id="tol-value">0</span>
     </div>
     <div class="tolerance-track">
       <span class="tolerance-hint">Faible</span>
-      <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="50">
+      <input type="range" class="tol-slider" id="tol-slider" min="0" max="100" value="0">
       <span class="tolerance-hint">Max</span>
+      <button class="reset-btn" id="reset-tol" aria-label="Annuler">✕</button>
     </div>
     <div class="tolerance-sep"></div>
     <div class="tolerance-header">
@@ -536,6 +550,7 @@ input[type=range].tol-slider::-moz-range-thumb {
       <span class="tolerance-hint">Aucun</span>
       <input type="range" class="tol-slider" id="feather-slider" min="0" max="100" value="0">
       <span class="tolerance-hint">Max</span>
+      <button class="reset-btn" id="reset-feather" aria-label="Annuler">✕</button>
     </div>
   </div>
 
@@ -591,6 +606,17 @@ function onSliderChange() {
 tolSlider.addEventListener('input', onSliderChange);
 featherSlider.addEventListener('input', onSliderChange);
 
+document.getElementById('reset-tol').addEventListener('click', () => {
+  tolSlider.value = 0; tolValue.textContent = '0';
+  clearTimeout(sliderTimer);
+  sliderTimer = setTimeout(() => applyEffects(), 80);
+});
+document.getElementById('reset-feather').addEventListener('click', () => {
+  featherSlider.value = 0; featherValue.textContent = '0';
+  clearTimeout(sliderTimer);
+  sliderTimer = setTimeout(() => applyEffects(), 80);
+});
+
 function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
@@ -624,7 +650,7 @@ function resetAll() {
   document.getElementById('img-result').src = '';
   document.getElementById('img-result').style.display = 'none';
   document.getElementById('file-in').value = '';
-  tolSlider.value = 50; tolValue.textContent = '50';
+  tolSlider.value = 0; tolValue.textContent = '0';
   featherSlider.value = 0; featherValue.textContent = '0';
   setStatus(''); hideProgress();
   const btn = document.getElementById('run-btn');
@@ -653,27 +679,16 @@ function showToast(msg, type) {
 }
 
 // ─── Curseur 1 : Tolérance (seuil de coupure sur l'alpha) ───
-// 50 = neutre (masque brut), 0 = tout opaque, 100 = tout transparent
-// Principe : un seuil bas → seuls les pixels très transparents sont coupés
-//            un seuil haut → les pixels semi-transparents sont aussi coupés
+// 0 = masque brut du modèle, aucune modification
+// 1→100 = seuil croissant : les pixels dont l'alpha < seuil sont mis à 0
+//         threshold linéaire : tolerance 100 → threshold 255 (tout coupé sauf opaque pur)
 function applySharpen(pixels, tolerance) {
   const data = new Uint8ClampedArray(pixels);
-  if (tolerance === 50) return data;
+  if (tolerance === 0) return data;
 
-  if (tolerance > 50) {
-    // Augmente le seuil : les pixels sous le seuil → 0, au-dessus → inchangés
-    // tolerance 50→100 donne threshold 0→200
-    const threshold = ((tolerance - 50) / 50) * 200;
-    for (let i = 3; i < data.length; i += 4) {
-      if (data[i] < threshold) data[i] = 0;
-    }
-  } else {
-    // Réduit le seuil : récupère des pixels semi-transparents → opaques
-    // tolerance 50→0 donne un boost : les pixels > seuil deviennent 255
-    const threshold = ((50 - tolerance) / 50) * 200;
-    for (let i = 3; i < data.length; i += 4) {
-      if (data[i] > 0 && data[i] >= threshold) data[i] = 255;
-    }
+  const threshold = Math.round((tolerance / 100) * 255);
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < threshold) data[i] = 0;
   }
   return data;
 }
@@ -839,7 +854,7 @@ async function runDetourage() {
     });
 
     // Réinitialiser les curseurs et afficher le résultat brut
-    tolSlider.value = 50; tolValue.textContent = '50';
+    tolSlider.value = 0; tolValue.textContent = '0';
     featherSlider.value = 0; featherValue.textContent = '0';
     const blob = await blobFromPixels(new Uint8ClampedArray(rawPixels), rawW, rawH);
     resultBlob = blob;
