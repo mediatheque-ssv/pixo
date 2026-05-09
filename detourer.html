@@ -375,7 +375,7 @@ body::before {
     </a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.7</span>
+      <span class="header-tag">v2.6</span>
     </div>
   </div>
 
@@ -447,49 +447,36 @@ body::before {
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<!-- Transformers.js v2 — version CDN éprouvée -->
 <script type="module">
-  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-  try {
-    const seg = await pipeline('image-segmentation', 'Xenova/selfie-segmentation', { quantized: true });
-    // Wrapper pour préserver le contexte du pipeline
-    window._segmenter = (input) => seg(input);
-    window._bgRemovalReady = true;
-  } catch(e) {
-    console.error('Erreur chargement modèle:', e);
-    window._bgRemovalReady = 'error';
-  }
-</script>
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
-<script>
-var srcFile = null;
-var resultBlob = null;
+// ─── État ───
+let srcFile = null;
+let resultBlob = null;
+let segmenter = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-  var dz = document.getElementById('drop-zone');
-  dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('over'); });
-  dz.addEventListener('dragleave', function() { dz.classList.remove('over'); });
-  dz.addEventListener('drop', function(e) {
-    e.preventDefault();
-    dz.classList.remove('over');
-    loadFile(e.dataTransfer.files[0]);
-  });
-  document.getElementById('file-in').onchange = function(e) { loadFile(e.target.files[0]); };
-  document.getElementById('run-btn').addEventListener('click', runDetourage);
-  document.getElementById('dl-btn').addEventListener('click', downloadResult);
-  document.querySelector('.change-btn').addEventListener('click', resetAll);
-});
+// Charger le modèle en arrière-plan dès le départ
+pipeline('image-segmentation', 'Xenova/selfie-segmentation', { quantized: true })
+  .then(p => { segmenter = p; })
+  .catch(e => { console.error('Erreur modèle:', e); segmenter = 'error'; });
+
+// ─── DOM ───
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
+document.getElementById('file-in').addEventListener('change', e => loadFile(e.target.files[0]));
+document.getElementById('run-btn').addEventListener('click', runDetourage);
+document.getElementById('dl-btn').addEventListener('click', downloadResult);
+document.querySelector('.change-btn').addEventListener('click', resetAll);
 
 function loadFile(file) {
   if (!file) return;
-  if (!file.type.startsWith('image/')) {
-    showToast('Format non supporté. Utilisez JPG, PNG ou WEBP.', 'error');
-    return;
-  }
+  if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
   resultBlob = null;
-  var reader = new FileReader();
-  reader.onload = function(ev) {
+  const reader = new FileReader();
+  reader.onload = ev => {
     document.getElementById('img-original').src = ev.target.result;
     document.getElementById('img-result').src = '';
     document.getElementById('img-result').style.display = 'none';
@@ -497,15 +484,13 @@ function loadFile(file) {
     document.getElementById('actions').style.display = 'flex';
     document.getElementById('dl-btn').classList.remove('visible');
     document.getElementById('drop-zone').style.display = 'none';
-    setStatus('');
-    hideProgress();
+    setStatus(''); hideProgress();
   };
   reader.readAsDataURL(file);
 }
 
 function resetAll() {
-  srcFile = null;
-  resultBlob = null;
+  srcFile = null; resultBlob = null;
   document.getElementById('drop-zone').style.display = '';
   document.getElementById('canvas-wrap').style.display = 'none';
   document.getElementById('actions').style.display = 'none';
@@ -514,15 +499,13 @@ function resetAll() {
   document.getElementById('img-result').src = '';
   document.getElementById('img-result').style.display = 'none';
   document.getElementById('file-in').value = '';
-  setStatus('');
-  hideProgress();
-  var btn = document.getElementById('run-btn');
-  btn.disabled = false;
-  btn.classList.remove('loading');
+  setStatus(''); hideProgress();
+  const btn = document.getElementById('run-btn');
+  btn.disabled = false; btn.classList.remove('loading');
 }
 
 function setStatus(msg, type) {
-  var el = document.getElementById('status');
+  const el = document.getElementById('status');
   el.textContent = msg;
   el.className = 'status' + (type ? ' ' + type : '');
 }
@@ -535,148 +518,118 @@ function hideProgress() {
   document.getElementById('progress-bar').style.width = '0%';
 }
 function showToast(msg, type) {
-  var t = document.getElementById('toast');
+  const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show' + (type ? ' ' + type : '');
   clearTimeout(t._timer);
-  t._timer = setTimeout(function() { t.className = 'toast'; }, 2500);
+  t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
 
 async function runDetourage() {
   if (!srcFile) return;
-
-  var btn = document.getElementById('run-btn');
-  btn.disabled = true;
-  btn.classList.add('loading');
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.classList.add('loading');
   document.getElementById('dl-btn').classList.remove('visible');
   document.getElementById('img-result').style.display = 'none';
-  showProgress(10);
-  setStatus('Chargement du modèle…');
+  showProgress(10); setStatus('Chargement du modèle…');
 
   // Attendre que le modèle soit prêt (max 60s)
-  var waited = 0;
-  while (!window._bgRemovalReady) {
-    if (waited > 60000) {
-      setStatus('Délai dépassé pour le chargement du modèle.', 'error');
-      hideProgress(); btn.disabled = false; btn.classList.remove('loading');
-      return;
-    }
-    if (window._bgRemovalReady === 'error') {
-      setStatus('Erreur de chargement du modèle. Vérifiez la console.', 'error');
-      hideProgress(); btn.disabled = false; btn.classList.remove('loading');
-      return;
-    }
-    await new Promise(function(r) { setTimeout(r, 200); });
+  let waited = 0;
+  while (!segmenter) {
+    if (waited > 60000) { setStatus('Délai dépassé.', 'error'); hideProgress(); btn.disabled = false; btn.classList.remove('loading'); return; }
+    await new Promise(r => setTimeout(r, 200));
     waited += 200;
   }
+  if (segmenter === 'error') { setStatus('Erreur de chargement du modèle.', 'error'); hideProgress(); btn.disabled = false; btn.classList.remove('loading'); return; }
 
   try {
-    showProgress(40);
-    setStatus('Segmentation en cours…');
+    showProgress(40); setStatus('Segmentation en cours…');
 
-    // Récupérer les dimensions natives de l'image
-    var originalImg = await new Promise(function(resolve) {
-      var img = new Image();
-      var url = URL.createObjectURL(srcFile);
-      img.onload = function() { resolve(img); URL.revokeObjectURL(url); };
+    // Dimensions natives
+    const originalImg = await new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(srcFile);
+      img.onload = () => { resolve(img); URL.revokeObjectURL(url); };
       img.src = url;
     });
-    var W = originalImg.naturalWidth;
-    var H = originalImg.naturalHeight;
+    const W = originalImg.naturalWidth;
+    const H = originalImg.naturalHeight;
 
-    // Lire en base64 pour Transformers.js
-    var dataUrl = await new Promise(function(resolve) {
-      var reader = new FileReader();
-      reader.onload = function(e) { resolve(e.target.result); };
+    // data URL pour le modèle
+    const dataUrl = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
       reader.readAsDataURL(srcFile);
     });
 
     showProgress(60);
-    var results = await window._segmenter(dataUrl);
+    const results = await segmenter(dataUrl);  // appel direct, pas via window
+    showProgress(80); setStatus('Application du masque…');
 
-    showProgress(80);
-    setStatus('Application du masque…');
+    const bgResult = results.find(r => r.label === 'background');
+    const maskResult = bgResult || results[0];
+    const isBackground = !!bgResult;
+    if (!maskResult?.mask) throw new Error('Masque introuvable.');
 
-    // Trouver le masque background (ou prendre le premier label non-background)
-    var bgResult = results.find(function(r) { return r.label === 'background'; });
-    var fgResult = results.find(function(r) { return r.label !== 'background'; }) || results[0];
-    var maskResult = bgResult || fgResult;
-    var isBackground = !!bgResult;
-
-    if (!maskResult || !maskResult.mask) throw new Error('Masque introuvable.');
-
-    // Canvas principal à la résolution native
-    var canvas = document.createElement('canvas');
-    canvas.width = W;
-    canvas.height = H;
-    var ctx = canvas.getContext('2d');
+    // Canvas natif
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
     ctx.drawImage(originalImg, 0, 0, W, H);
-    var imageData = ctx.getImageData(0, 0, W, H);
-    var pixels = imageData.data;
+    const imageData = ctx.getImageData(0, 0, W, H);
+    const pixels = imageData.data;
 
-    // Redimensionner le masque à la résolution native
-    var maskRaw = maskResult.mask;
-    var maskCanvas = document.createElement('canvas');
-    maskCanvas.width = maskRaw.width;
-    maskCanvas.height = maskRaw.height;
-    var maskCtx = maskCanvas.getContext('2d');
-    var maskImageData = maskCtx.createImageData(maskRaw.width, maskRaw.height);
-    for (var i = 0; i < maskRaw.data.length; i++) {
-      maskImageData.data[i * 4]     = maskRaw.data[i];
-      maskImageData.data[i * 4 + 1] = maskRaw.data[i];
-      maskImageData.data[i * 4 + 2] = maskRaw.data[i];
-      maskImageData.data[i * 4 + 3] = 255;
+    // Upscale du masque
+    const maskRaw = maskResult.mask;
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = maskRaw.width; maskCanvas.height = maskRaw.height;
+    const maskCtx = maskCanvas.getContext('2d');
+    const mId = maskCtx.createImageData(maskRaw.width, maskRaw.height);
+    for (let i = 0; i < maskRaw.data.length; i++) {
+      mId.data[i*4] = mId.data[i*4+1] = mId.data[i*4+2] = maskRaw.data[i];
+      mId.data[i*4+3] = 255;
     }
-    maskCtx.putImageData(maskImageData, 0, 0);
+    maskCtx.putImageData(mId, 0, 0);
 
-    var scaledCanvas = document.createElement('canvas');
-    scaledCanvas.width = W;
-    scaledCanvas.height = H;
-    var scaledCtx = scaledCanvas.getContext('2d');
-    scaledCtx.drawImage(maskCanvas, 0, 0, W, H);
-    var scaledMask = scaledCtx.getImageData(0, 0, W, H);
+    const sc = document.createElement('canvas');
+    sc.width = W; sc.height = H;
+    const sCtx = sc.getContext('2d');
+    sCtx.drawImage(maskCanvas, 0, 0, W, H);
+    const scaledMask = sCtx.getImageData(0, 0, W, H);
 
-    // Appliquer la transparence
-    for (var j = 0; j < pixels.length / 4; j++) {
-      var val = scaledMask.data[j * 4];
-      pixels[j * 4 + 3] = isBackground ? (val > 128 ? 0 : 255) : (val > 128 ? 255 : 0);
+    for (let j = 0; j < pixels.length / 4; j++) {
+      const v = scaledMask.data[j*4];
+      pixels[j*4+3] = isBackground ? (v > 128 ? 0 : 255) : (v > 128 ? 255 : 0);
     }
     ctx.putImageData(imageData, 0, 0);
 
     showProgress(100);
-    canvas.toBlob(function(blob) {
+    canvas.toBlob(blob => {
       resultBlob = blob;
-      var url = URL.createObjectURL(blob);
-      var resultImg = document.getElementById('img-result');
-      resultImg.src = url;
-      resultImg.style.display = 'block';
+      const url = URL.createObjectURL(blob);
+      const ri = document.getElementById('img-result');
+      ri.src = url; ri.style.display = 'block';
       document.getElementById('dl-btn').classList.add('visible');
       setStatus('✓ Fond supprimé avec succès.', 'success');
       setTimeout(hideProgress, 800);
-      btn.disabled = false;
-      btn.classList.remove('loading');
+      btn.disabled = false; btn.classList.remove('loading');
     }, 'image/png');
 
   } catch(e) {
     console.error(e);
-    setStatus('Erreur : ' + (e.message || 'impossible de détourer l\'image.'), 'error');
-    hideProgress();
-    btn.disabled = false;
-    btn.classList.remove('loading');
+    setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
+    hideProgress(); btn.disabled = false; btn.classList.remove('loading');
   }
 }
 
 function downloadResult() {
   if (!resultBlob) return;
-  var name = srcFile
-    ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png'
-    : 'image_detoure.png';
-  var a = document.createElement('a');
+  const name = srcFile ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png' : 'image_detoure.png';
+  const a = document.createElement('a');
   a.href = URL.createObjectURL(resultBlob);
   a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(function() { document.body.removeChild(a); }, 100);
+  document.body.appendChild(a); a.click();
+  setTimeout(() => document.body.removeChild(a), 100);
 }
 </script>
 </body>
