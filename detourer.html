@@ -447,19 +447,25 @@ body::before {
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<!-- Chargement de la lib imgly en ESM -->
+<!-- Transformers.js — fonctionne nativement en CDN, pas de bundler requis -->
 <script type="module">
-  import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.mjs';
-  window._removeBackground = removeBackground;
-  // Signaler que la lib est prête
-  window.dispatchEvent(new Event('imgly-ready'));
+  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2/dist/transformers.min.js';
+  window._bgRemovalReady = false;
+  pipeline('image-segmentation', 'Xenova/selfie-segmentation', { quantized: true })
+    .then(function(seg) {
+      window._segmenter = seg;
+      window._bgRemovalReady = true;
+    })
+    .catch(function(e) {
+      console.error('Erreur chargement modèle:', e);
+      window._bgRemovalReady = 'error';
+    });
 </script>
 
 <script>
 var srcFile = null;
 var resultBlob = null;
 
-// ─── DROP ZONE ───
 document.addEventListener('DOMContentLoaded', function() {
   var dz = document.getElementById('drop-zone');
   dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('over'); });
@@ -470,8 +476,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadFile(e.dataTransfer.files[0]);
   });
   document.getElementById('file-in').onchange = function(e) { loadFile(e.target.files[0]); };
-
-  // Boutons
   document.getElementById('run-btn').addEventListener('click', runDetourage);
   document.getElementById('dl-btn').addEventListener('click', downloadResult);
   document.querySelector('.change-btn').addEventListener('click', resetAll);
@@ -485,7 +489,6 @@ function loadFile(file) {
   }
   srcFile = file;
   resultBlob = null;
-
   var reader = new FileReader();
   reader.onload = function(ev) {
     document.getElementById('img-original').src = ev.target.result;
@@ -519,23 +522,19 @@ function resetAll() {
   btn.classList.remove('loading');
 }
 
-// ─── STATUS & PROGRESS ───
 function setStatus(msg, type) {
   var el = document.getElementById('status');
   el.textContent = msg;
   el.className = 'status' + (type ? ' ' + type : '');
 }
-
 function showProgress(pct) {
   document.getElementById('progress-wrap').style.display = 'block';
   document.getElementById('progress-bar').style.width = pct + '%';
 }
-
 function hideProgress() {
   document.getElementById('progress-wrap').style.display = 'none';
   document.getElementById('progress-bar').style.width = '0%';
 }
-
 function showToast(msg, type) {
   var t = document.getElementById('toast');
   t.textContent = msg;
@@ -544,20 +543,8 @@ function showToast(msg, type) {
   t._timer = setTimeout(function() { t.className = 'toast'; }, 2500);
 }
 
-// ─── DETOURAGE via @imgly/background-removal (100% client-side) ───
 async function runDetourage() {
   if (!srcFile) return;
-
-  // Attendre que la lib soit chargée (max 10s)
-  var waited = 0;
-  while (!window._removeBackground) {
-    if (waited > 10000) {
-      showToast('Impossible de charger la librairie.', 'error');
-      return;
-    }
-    await new Promise(function(r) { setTimeout(r, 100); });
-    waited += 100;
-  }
 
   var btn = document.getElementById('run-btn');
   btn.disabled = true;
@@ -567,45 +554,119 @@ async function runDetourage() {
   showProgress(10);
   setStatus('Chargement du modèle…');
 
-  try {
-    showProgress(30);
-    setStatus('Analyse de l\'image en cours…');
+  // Attendre que le modèle soit prêt (max 60s)
+  var waited = 0;
+  while (!window._bgRemovalReady) {
+    if (waited > 60000) {
+      setStatus('Délai dépassé pour le chargement du modèle.', 'error');
+      hideProgress(); btn.disabled = false; btn.classList.remove('loading');
+      return;
+    }
+    if (window._bgRemovalReady === 'error') {
+      setStatus('Erreur de chargement du modèle. Vérifiez la console.', 'error');
+      hideProgress(); btn.disabled = false; btn.classList.remove('loading');
+      return;
+    }
+    await new Promise(function(r) { setTimeout(r, 200); });
+    waited += 200;
+  }
 
-    var blob = await window._removeBackground(srcFile, {
-      progress: function(key, current, total) {
-        if (total > 0) {
-          var pct = key === 'compute:inference'
-            ? 70 + Math.round((current / total) * 25)
-            : 30 + Math.round((current / total) * 40);
-          showProgress(Math.min(pct, 95));
-          if (key === 'compute:inference') setStatus('Suppression du fond…');
-        }
-      }
+  try {
+    showProgress(40);
+    setStatus('Segmentation en cours…');
+
+    // Récupérer les dimensions natives de l'image
+    var originalImg = await new Promise(function(resolve) {
+      var img = new Image();
+      var url = URL.createObjectURL(srcFile);
+      img.onload = function() { resolve(img); URL.revokeObjectURL(url); };
+      img.src = url;
+    });
+    var W = originalImg.naturalWidth;
+    var H = originalImg.naturalHeight;
+
+    // Lire en base64 pour Transformers.js
+    var dataUrl = await new Promise(function(resolve) {
+      var reader = new FileReader();
+      reader.onload = function(e) { resolve(e.target.result); };
+      reader.readAsDataURL(srcFile);
     });
 
-    resultBlob = blob;
+    showProgress(60);
+    var results = await window._segmenter(dataUrl);
+
+    showProgress(80);
+    setStatus('Application du masque…');
+
+    // Trouver le masque background (ou prendre le premier label non-background)
+    var bgResult = results.find(function(r) { return r.label === 'background'; });
+    var fgResult = results.find(function(r) { return r.label !== 'background'; }) || results[0];
+    var maskResult = bgResult || fgResult;
+    var isBackground = !!bgResult;
+
+    if (!maskResult || !maskResult.mask) throw new Error('Masque introuvable.');
+
+    // Canvas principal à la résolution native
+    var canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(originalImg, 0, 0, W, H);
+    var imageData = ctx.getImageData(0, 0, W, H);
+    var pixels = imageData.data;
+
+    // Redimensionner le masque à la résolution native
+    var maskRaw = maskResult.mask;
+    var maskCanvas = document.createElement('canvas');
+    maskCanvas.width = maskRaw.width;
+    maskCanvas.height = maskRaw.height;
+    var maskCtx = maskCanvas.getContext('2d');
+    var maskImageData = maskCtx.createImageData(maskRaw.width, maskRaw.height);
+    for (var i = 0; i < maskRaw.data.length; i++) {
+      maskImageData.data[i * 4]     = maskRaw.data[i];
+      maskImageData.data[i * 4 + 1] = maskRaw.data[i];
+      maskImageData.data[i * 4 + 2] = maskRaw.data[i];
+      maskImageData.data[i * 4 + 3] = 255;
+    }
+    maskCtx.putImageData(maskImageData, 0, 0);
+
+    var scaledCanvas = document.createElement('canvas');
+    scaledCanvas.width = W;
+    scaledCanvas.height = H;
+    var scaledCtx = scaledCanvas.getContext('2d');
+    scaledCtx.drawImage(maskCanvas, 0, 0, W, H);
+    var scaledMask = scaledCtx.getImageData(0, 0, W, H);
+
+    // Appliquer la transparence
+    for (var j = 0; j < pixels.length / 4; j++) {
+      var val = scaledMask.data[j * 4];
+      pixels[j * 4 + 3] = isBackground ? (val > 128 ? 0 : 255) : (val > 128 ? 255 : 0);
+    }
+    ctx.putImageData(imageData, 0, 0);
+
     showProgress(100);
-
-    var url = URL.createObjectURL(blob);
-    var resultImg = document.getElementById('img-result');
-    resultImg.src = url;
-    resultImg.style.display = 'block';
-
-    document.getElementById('dl-btn').classList.add('visible');
-    setStatus('✓ Fond supprimé avec succès.', 'success');
-    setTimeout(hideProgress, 800);
+    canvas.toBlob(function(blob) {
+      resultBlob = blob;
+      var url = URL.createObjectURL(blob);
+      var resultImg = document.getElementById('img-result');
+      resultImg.src = url;
+      resultImg.style.display = 'block';
+      document.getElementById('dl-btn').classList.add('visible');
+      setStatus('✓ Fond supprimé avec succès.', 'success');
+      setTimeout(hideProgress, 800);
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }, 'image/png');
 
   } catch(e) {
     console.error(e);
     setStatus('Erreur : ' + (e.message || 'impossible de détourer l\'image.'), 'error');
     hideProgress();
+    btn.disabled = false;
+    btn.classList.remove('loading');
   }
-
-  btn.disabled = false;
-  btn.classList.remove('loading');
 }
 
-// ─── TÉLÉCHARGEMENT ───
 function downloadResult() {
   if (!resultBlob) return;
   var name = srcFile
