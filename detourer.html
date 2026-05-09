@@ -448,7 +448,7 @@ body::before {
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
+import { pipeline, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
 // ─── État ───
 let srcFile = null;
@@ -553,12 +553,15 @@ async function runDetourage() {
     });
 
     showProgress(60);
-    // background-removal retourne directement [{output: Blob}]
-    const results = await segmenter(dataUrl);
+    const output = await segmenter(dataUrl);
     showProgress(90);
 
-    const blob = results[0].output;
-    if (!blob) throw new Error('Résultat vide.');
+    // output[0] est une RawImage — on la convertit en blob via canvas
+    const rawImage = output[0];
+    if (!rawImage) throw new Error('Résultat vide.');
+
+    const canvas = rawImage.toCanvas();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 
     resultBlob = blob;
     const url = URL.createObjectURL(blob);
