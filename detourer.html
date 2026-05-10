@@ -293,7 +293,7 @@ input[type=range].rng::-moz-range-thumb {
 
   <nav class="nav" role="tablist">
     <a class="nav-btn" href="index.html" role="tab">Redimensionner</a>
-    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer <span style="font-size:9px;opacity:0.6;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">bêta</span></a>
+    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer <span style="font-size:9px;opacity:0.6;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em"> (bêta)</span></a>
   </nav>
 
   <!-- Drop zone -->
@@ -425,13 +425,12 @@ let origPixels = null;   // Uint8ClampedArray RGBA couleurs originales
 let rawW = 0, rawH = 0;
 
 // Pré-charger BiRefNet lite en arrière-plan (MIT, ~60 Mo, pas d'auth)
-// Note : l'id correct est sans le suffixe -ONNX
 const MODEL_ID = 'onnx-community/BiRefNet_lite';
 Promise.all([
   AutoModel.from_pretrained(MODEL_ID, { dtype: 'fp32' }),
   AutoProcessor.from_pretrained(MODEL_ID),
-]).then(([m, p]) => { model = m; processor = p; })
-  .catch(e => { console.error('Erreur chargement modèle:', e); model = 'error'; });
+]).then(([m, p]) => { model = m; processor = p; console.log('✅ Modèle prêt'); })
+  .catch(e => { console.error('❌ Erreur chargement modèle:', e); model = 'error'; });
 
 // ── Refs DOM ───────────────────────────────────────────────────
 const dropZone     = document.getElementById('drop-zone');
@@ -697,21 +696,35 @@ async function runDetourage() {
 
     showProgress(65);
 
-    // RawImage.fromURL ne gère pas les data URLs — on convertit en Blob d'abord
+    // Charger l'image via RawImage (supporte blob URLs)
     const srcBlob = await (await fetch(dataUrl)).blob();
     const srcBlobUrl = URL.createObjectURL(srcBlob);
-    const image = await RawImage.fromURL(srcBlobUrl);
-    URL.revokeObjectURL(srcBlobUrl);
+    let image;
+    try {
+      image = await RawImage.fromURL(srcBlobUrl);
+    } finally {
+      URL.revokeObjectURL(srcBlobUrl);
+    }
 
     const { pixel_values } = await processor(image);
-    const { output_image } = await model({ input_image: pixel_values });
+
+    // Inférence — on inspecte les clés de sortie pour être robuste
+    const rawOutput = await model({ input_image: pixel_values });
+    console.log('🔍 Clés de sortie du modèle:', Object.keys(rawOutput));
+
+    // BiRefNet peut sortir sous "output_image", "logits", ou la première clé dispo
+    const outTensor = rawOutput.output_image
+      ?? rawOutput.logits
+      ?? Object.values(rawOutput)[0];
+
+    if (!outTensor) throw new Error('Aucune sortie valide du modèle.');
 
     showProgress(85);
 
-    // Le modèle sort un tenseur logit — on applique sigmoid pour obtenir 0–1,
-    // puis on redimensionne au format original et on extrait le masque
+    // Appliquer sigmoid, quantiser en uint8, redimensionner à la taille originale
+    const maskRaw = outTensor[0] ?? outTensor;
     const mask = await RawImage.fromTensor(
-      output_image[0].sigmoid().mul(255).to('uint8')
+      maskRaw.sigmoid().mul(255).to('uint8')
     ).resize(image.width, image.height);
 
     rawW = image.width; rawH = image.height;
@@ -768,7 +781,7 @@ async function runDetourage() {
     endRun();
 
   } catch(e) {
-    console.error(e);
+    console.error('❌ Erreur détourage:', e);
     setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
     hideProgress(); endRun();
   }
