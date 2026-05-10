@@ -191,6 +191,15 @@ input[type=range].rng::-moz-range-thumb {
   background: var(--accent); border: 2px solid #0c0c0b; cursor: pointer; border: none;
 }
 
+.reset-slider-btn {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  border: 0.5px solid var(--border-md); background: transparent;
+  color: var(--text-3); font-size: 13px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s;
+}
+.reset-slider-btn:hover { border-color: var(--border-hi); color: var(--text); }
+
 .panel-sep { height: 0.5px; background: var(--border-md); }
 
 /* ACTIONS */
@@ -348,6 +357,7 @@ input[type=range].rng::-moz-range-thumb {
             <span class="slider-hint">Faible</span>
             <input type="range" class="rng" id="tol-slider" min="0" max="100" value="0">
             <span class="slider-hint">Max</span>
+            <button class="reset-slider-btn" id="reset-tol" aria-label="Réinitialiser la tolérance">↺</button>
           </div>
         </div>
 
@@ -362,6 +372,7 @@ input[type=range].rng::-moz-range-thumb {
             <span class="slider-hint">Aucun</span>
             <input type="range" class="rng" id="feather-slider" min="0" max="100" value="0">
             <span class="slider-hint">Max</span>
+            <button class="reset-slider-btn" id="reset-feather" aria-label="Réinitialiser le lissage des bords">↺</button>
           </div>
         </div>
 
@@ -461,6 +472,13 @@ function onSliderInput(el, display) {
     dlBtn.classList.add('visible');
   }, DEBOUNCE_MS);
 }
+
+document.getElementById('reset-tol').addEventListener('click', () => {
+  tolSlider.value = 0; onSliderInput(tolSlider, tolVal);
+});
+document.getElementById('reset-feather').addEventListener('click', () => {
+  featherSlider.value = 0; onSliderInput(featherSlider, featherVal);
+});
 
 tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal));
 featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
