@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pixo — Détourer (bêta)</title>
+<title>Pixo — Détourer</title>
 <meta name="description" content="Pixo — Supprimez le fond de vos images automatiquement, directement dans le navigateur.">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -103,7 +103,7 @@ body::before {
   gap: 16px;
   align-items: start;
 }
-.preview-grid.single { grid-template-columns: 1fr; max-width: 380px; }
+.preview-grid.single { display: grid; grid-template-columns: 1fr; max-width: 380px; }
 .preview-grid.dual   { display: grid; grid-template-columns: 1fr 1fr; }
 
 .preview-col { display: flex; flex-direction: column; gap: 7px; }
@@ -293,7 +293,7 @@ input[type=range].rng::-moz-range-thumb {
 
   <nav class="nav" role="tablist">
     <a class="nav-btn" href="index.html" role="tab">Redimensionner</a>
-    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer <span style="font-size:9px;opacity:0.6;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">bêta</span></a>
+    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer</a>
   </nav>
 
   <!-- Drop zone -->
@@ -315,7 +315,7 @@ input[type=range].rng::-moz-range-thumb {
   <input type="file" id="file-in" accept="image/*" style="display:none">
 
   <!-- Grille d'aperçus -->
-  <div class="preview-grid single" id="preview-grid" style="display:none">
+  <div class="preview-grid single" id="preview-grid">
 
     <!-- Colonne Original -->
     <div class="preview-col">
@@ -405,7 +405,7 @@ input[type=range].rng::-moz-range-thumb {
   <div class="status" id="status"></div>
 
   <div class="info-box">
-    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle BiRefNet lite chargé via CDN (~60 Mo, mis en cache).<br>
+    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
     <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
   </div>
 
@@ -413,54 +413,37 @@ input[type=range].rng::-moz-range-thumb {
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-// ── Worker BiRefNet lite ───────────────────────────────────────
-// detourer-worker.js doit être dans le même dossier que ce fichier.
-const worker = new Worker('./detourer-worker.js', { type: 'module' });
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
 // ── État global ────────────────────────────────────────────────
-let srcFile     = null;
-let resultBlob  = null;
-let workerReady = false;
-let rawPixels   = null;   // Float32Array masque 0–255
-let origPixels  = null;   // Uint8ClampedArray RGBA originaux
+let srcFile    = null;
+let resultBlob = null;
+let segmenter  = null;
+let rawPixels  = null;  // canal alpha brut sorti du modèle (RGBA, alpha = masque)
+let origPixels = null;  // couleurs originales pleine résolution (RGBA)
 let rawW = 0, rawH = 0;
 
-// ── Messages du worker ─────────────────────────────────────────
-worker.onmessage = (ev) => {
-  const { type, msg, maskF32, origData, width, height } = ev.data;
-  if (type === 'ready') {
-    workerReady = true;
-    console.log('✅ BiRefNet lite prêt');
-  } else if (type === 'result') {
-    onSegmentResult(maskF32, new Uint8ClampedArray(origData), width, height);
-  } else if (type === 'error') {
-    console.error('❌ Worker:', msg);
-    setStatus('Erreur : ' + msg, 'error');
-    hideProgress(); endRun();
-  }
-};
-worker.onerror = (ev) => {
-  console.error('❌ Worker crash:', ev.message);
-  setStatus('Erreur worker : ' + ev.message, 'error');
-  hideProgress(); endRun();
-};
+// Pré-charger le modèle en arrière-plan
+pipeline('background-removal', 'briaai/RMBG-1.4')
+  .then(p  => { segmenter = p; })
+  .catch(() => { segmenter = 'error'; });
 
 // ── Refs DOM ───────────────────────────────────────────────────
-const dropZone      = document.getElementById('drop-zone');
-const fileInput     = document.getElementById('file-in');
-const previewGrid   = document.getElementById('preview-grid');
-const colResult     = document.getElementById('col-result');
-const imgOriginal   = document.getElementById('img-original');
-const imgResult     = document.getElementById('img-result');
-const actionsEl     = document.getElementById('actions');
-const runBtn        = document.getElementById('run-btn');
-const dlBtn         = document.getElementById('dl-btn');
-const changeBtn     = document.getElementById('change-btn');
-const slidersPanel  = document.getElementById('sliders-panel');
-const tolSlider     = document.getElementById('tol-slider');
-const tolVal        = document.getElementById('tol-val');
-const featherSlider = document.getElementById('feather-slider');
-const featherVal    = document.getElementById('feather-val');
+const dropZone     = document.getElementById('drop-zone');
+const fileInput    = document.getElementById('file-in');
+const previewGrid  = document.getElementById('preview-grid');
+const colResult    = document.getElementById('col-result');
+const imgOriginal  = document.getElementById('img-original');
+const imgResult    = document.getElementById('img-result');
+const actionsEl    = document.getElementById('actions');
+const runBtn       = document.getElementById('run-btn');
+const dlBtn        = document.getElementById('dl-btn');
+const changeBtn    = document.getElementById('change-btn');
+const slidersPanel = document.getElementById('sliders-panel');
+const tolSlider    = document.getElementById('tol-slider');
+const tolVal       = document.getElementById('tol-val');
+const featherSlider= document.getElementById('feather-slider');
+const featherVal   = document.getElementById('feather-val');
 const processingOverlay = document.getElementById('processing-overlay');
 
 // ── Drag & drop / import ───────────────────────────────────────
@@ -469,28 +452,27 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
+// ── Boutons ────────────────────────────────────────────────────
 runBtn.addEventListener('click', runDetourage);
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
 
-// ── Sliders live avec debounce ─────────────────────────────────
+// ── Sliders : aperçu live avec debounce ───────────────────────
 let debounceTimer = null;
-const DEBOUNCE_MS = 350;
+const DEBOUNCE_MS = 350; // délai après lequel on recalcule
 
 function onSliderInput(el, display) {
   display.textContent = el.value;
+  // Afficher l'overlay immédiatement pour signaler le chargement en cours
   processingOverlay.classList.add('visible');
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(async () => {
-    if (!rawPixels) { processingOverlay.classList.remove('visible'); return; }
     await rebuild(parseInt(tolSlider.value, 10), parseInt(featherSlider.value, 10));
     processingOverlay.classList.remove('visible');
     dlBtn.classList.add('visible');
   }, DEBOUNCE_MS);
 }
 
-tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal));
-featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
 document.getElementById('reset-tol').addEventListener('click', () => {
   tolSlider.value = 0; onSliderInput(tolSlider, tolVal);
 });
@@ -498,89 +480,71 @@ document.getElementById('reset-feather').addEventListener('click', () => {
   featherSlider.value = 0; onSliderInput(featherSlider, featherVal);
 });
 
-// ── Pixel processing (thread principal) ───────────────────────
+tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal));
+featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
 
-function applySharpen(mask, tolerance) {
-  const out = new Float32Array(mask);
-  if (tolerance === 0) return out;
-  const threshold = (tolerance / 100) * 200;
-  for (let i = 0; i < out.length; i++) {
-    if (out[i] < threshold) out[i] = 0;
+// ── Traitement pixel ───────────────────────────────────────────
+
+// Seuille le canal alpha : les semi-transparences sous le seuil passent à 0
+function applySharpen(src, tolerance) {
+  const data = new Uint8ClampedArray(src);
+  if (tolerance === 0) return data;
+  const threshold = Math.round((1 - tolerance / 100) * 255);
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < threshold) data[i] = 0;
   }
-  return out;
+  return data;
 }
 
-function applyFeather(mask, w, h, amount) {
-  if (amount === 0) return new Float32Array(mask);
+// Flou gaussien sur le canal alpha uniquement (lissage des bords)
+function applyFeather(src, w, h, amount) {
+  if (amount === 0) return new Uint8ClampedArray(src);
   const radius = Math.round((amount / 100) * 8) + 1;
   const sigma  = radius / 2;
+  const data   = new Uint8ClampedArray(src);
+
+  // Kernel gaussien
   const k = []; let ksum = 0;
   for (let i = -radius; i <= radius; i++) {
     const v = Math.exp(-(i * i) / (2 * sigma * sigma));
     k.push(v); ksum += v;
   }
   for (let i = 0; i < k.length; i++) k[i] /= ksum;
+
+  // Extraire l'alpha
+  const alpha = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3];
+
+  // Passe H
   const tmp = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let s = 0;
-      for (let ki = -radius; ki <= radius; ki++) s += mask[y*w + Math.min(Math.max(x+ki,0),w-1)] * k[ki+radius];
-      tmp[y*w+x] = s;
+      for (let ki = -radius; ki <= radius; ki++) {
+        s += alpha[y * w + Math.min(Math.max(x + ki, 0), w - 1)] * k[ki + radius];
+      }
+      tmp[y * w + x] = s;
     }
   }
-  const out = new Float32Array(w * h);
+  // Passe V → réinjecte dans data
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let s = 0;
-      for (let ki = -radius; ki <= radius; ki++) s += tmp[Math.min(Math.max(y+ki,0),h-1)*w+x] * k[ki+radius];
-      out[y*w+x] = s;
-    }
-  }
-  return out;
-}
-
-function applyMatting(mask, orig, w, h) {
-  const ERODE_R=4, DILATE_R=8, SEARCH_R=12, THRESH_HI=240, THRESH_LO=15;
-  function morphRect(src, r, isErode) {
-    const tmp = new Float32Array(w*h), out = new Float32Array(w*h);
-    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
-      let v=isErode?255:0;
-      for (let dx=-r;dx<=r;dx++) { const s=src[y*w+Math.min(Math.max(x+dx,0),w-1)]; v=isErode?Math.min(v,s):Math.max(v,s); }
-      tmp[y*w+x]=v;
-    }
-    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
-      let v=isErode?255:0;
-      for (let dy=-r;dy<=r;dy++) { const s=tmp[Math.min(Math.max(y+dy,0),h-1)*w+x]; v=isErode?Math.min(v,s):Math.max(v,s); }
-      out[y*w+x]=v;
-    }
-    return out;
-  }
-  const eroded=morphRect(mask,ERODE_R,true), dilated=morphRect(mask,DILATE_R,false);
-  const out=new Float32Array(mask);
-  for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
-    const i=y*w+x;
-    if (eroded[i]>=THRESH_HI||dilated[i]<=THRESH_LO) continue;
-    const cr=orig[i*4],cg=orig[i*4+1],cb=orig[i*4+2];
-    let fgR=0,fgG=0,fgB=0,fgN=0,bgR=0,bgG=0,bgB=0,bgN=0;
-    for (let dy=-SEARCH_R;dy<=SEARCH_R;dy++) {
-      const ny=Math.min(Math.max(y+dy,0),h-1);
-      for (let dx=-SEARCH_R;dx<=SEARCH_R;dx++) {
-        const ni=ny*w+Math.min(Math.max(x+dx,0),w-1);
-        if (eroded[ni]>=THRESH_HI)      {fgR+=orig[ni*4];fgG+=orig[ni*4+1];fgB+=orig[ni*4+2];fgN++;}
-        else if(dilated[ni]<=THRESH_LO) {bgR+=orig[ni*4];bgG+=orig[ni*4+1];bgB+=orig[ni*4+2];bgN++;}
+      for (let ki = -radius; ki <= radius; ki++) {
+        s += tmp[Math.min(Math.max(y + ki, 0), h - 1) * w + x] * k[ki + radius];
       }
+      data[(y * w + x) * 4 + 3] = Math.round(s);
     }
-    if (!fgN||!bgN) continue;
-    fgR/=fgN;fgG/=fgN;fgB/=fgN; bgR/=bgN;bgG/=bgN;bgB/=bgN;
-    const dR=fgR-bgR,dG=fgG-bgG,dB=fgB-bgB,denom=dR*dR+dG*dG+dB*dB;
-    out[i]=(denom<1e-4?mask[i]/255:Math.min(1,Math.max(0,((cr-bgR)*dR+(cg-bgG)*dG+(cb-bgB)*dB)/denom)))*255;
   }
-  return out;
+  return data;
 }
 
-function mergeWithOrig(mask, orig) {
-  const out = new Uint8ClampedArray(orig);
-  for (let i=0;i<mask.length;i++) out[i*4+3]=Math.round(Math.min(255,Math.max(0,mask[i])));
+// Remplace les RGB du masque par ceux de l'original (pour garder les vraies couleurs)
+function mergeWithOrig(masked, orig) {
+  const out = new Uint8ClampedArray(orig);   // copie les couleurs originales
+  for (let i = 3; i < out.length; i += 4) {
+    out[i] = masked[i];                       // applique l'alpha du masque traité
+  }
   return out;
 }
 
@@ -590,9 +554,9 @@ async function pixelsToBlob(data, w, h) {
   return oc.convertToBlob({ type: 'image/png' });
 }
 
+// Recalcule et affiche le résultat avec les réglages courants
 async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
-  px = applyMatting(px, origPixels, rawW, rawH);
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
   const blob = await pixelsToBlob(px, rawW, rawH);
@@ -602,48 +566,86 @@ async function rebuild(tol, feather) {
   if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
 }
 
-// ── Réception résultat du worker ──────────────────────────────
-async function onSegmentResult(maskF32, origData, width, height) {
-  rawW = width; rawH = height;
-  rawPixels  = maskF32;
-  origPixels = origData;
-  tolSlider.value = 0;     tolVal.textContent     = '0';
-  featherSlider.value = 0; featherVal.textContent = '0';
-  showProgress(95);
-  await rebuild(0, 0);
-  colResult.style.display = 'block';
-  previewGrid.classList.remove('single');
-  previewGrid.classList.add('dual');
-  slidersPanel.classList.add('visible');
-  dlBtn.classList.add('visible');
-  runBtn.style.display = 'none';
-  setStatus('✓ Fond supprimé avec succès.', 'success');
-  showProgress(100); setTimeout(hideProgress, 800);
-  endRun();
-}
-
-// ── Détourage — envoie le fichier au worker ───────────────────
+// ── Détourage ──────────────────────────────────────────────────
 async function runDetourage() {
   if (!srcFile) return;
-  runBtn.disabled = true; runBtn.classList.add('loading');
+  runBtn.disabled = true;
+  runBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
-  showProgress(10);
+  showProgress(10); setStatus('Chargement du modèle…');
 
-  if (!workerReady) {
-    setStatus('Chargement du modèle…');
-    let waited = 0;
-    while (!workerReady) {
-      await sleep(300); waited += 300;
-      if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(); hideProgress(); return; }
-    }
+  // Attendre le modèle (chargé en parallèle dès l'ouverture de la page)
+  let waited = 0;
+  while (!segmenter) {
+    if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(); return; }
+    await sleep(300); waited += 300;
+  }
+  if (segmenter === 'error') {
+    setStatus('Erreur de chargement du modèle.', 'error'); endRun(); return;
   }
 
-  setStatus('Segmentation en cours…');
-  showProgress(50);
+  try {
+    showProgress(40); setStatus('Segmentation en cours…');
+    const dataUrl = await fileToDataUrl(srcFile);
 
-  // Lire le fichier et l'envoyer au worker comme ArrayBuffer transférable
-  const buffer = await srcFile.arrayBuffer();
-  worker.postMessage({ type: 'segment', buffer, mime: srcFile.type }, [buffer]);
+    showProgress(65);
+    const output = await segmenter(dataUrl);
+    showProgress(85);
+
+    if (!output || !output[0]) throw new Error('Résultat vide.');
+
+    // Canvas de sortie du modèle
+    const srcCanvas = output[0].toCanvas();
+    let mc;
+    if (srcCanvas instanceof HTMLCanvasElement) {
+      mc = srcCanvas;
+    } else {
+      mc = document.createElement('canvas');
+      mc.width = srcCanvas.width; mc.height = srcCanvas.height;
+      mc.getContext('2d').drawImage(srcCanvas, 0, 0);
+    }
+
+    rawW = mc.width; rawH = mc.height;
+
+    // Stocker le masque alpha brut
+    rawPixels = mc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+
+    // Stocker les couleurs originales à la même résolution
+    origPixels = await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const oc = document.createElement('canvas');
+        oc.width = rawW; oc.height = rawH;
+        oc.getContext('2d').drawImage(img, 0, 0, rawW, rawH);
+        resolve(oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice());
+      };
+      img.src = dataUrl;
+    });
+
+    // Remettre les sliders à zéro
+    tolSlider.value = 0;     tolVal.textContent     = '0';
+    featherSlider.value = 0; featherVal.textContent = '0';
+
+    showProgress(95);
+    await rebuild(0, 0);
+
+    // Révéler la colonne résultat et passer en 2 colonnes
+    colResult.style.display = 'block';
+    previewGrid.classList.remove('single');
+    previewGrid.classList.add('dual');
+    slidersPanel.classList.add('visible');
+    dlBtn.classList.add('visible');
+    runBtn.style.display = 'none'; // caché jusqu'au prochain reset
+
+    setStatus('✓ Fond supprimé avec succès.', 'success');
+    showProgress(100); setTimeout(hideProgress, 800);
+    endRun();
+
+  } catch(e) {
+    console.error(e);
+    setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
+    hideProgress(); endRun();
+  }
 }
 
 // ── Téléchargement ─────────────────────────────────────────────
@@ -663,6 +665,7 @@ function loadFile(file) {
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
   rawPixels = null; origPixels = null; resultBlob = null;
+
   const reader = new FileReader();
   reader.onload = ev => {
     imgOriginal.src = ev.target.result;
@@ -671,7 +674,7 @@ function loadFile(file) {
     colResult.style.display = 'none';
     previewGrid.classList.remove('dual');
     previewGrid.classList.add('single');
-    previewGrid.style.display = 'grid';
+    previewGrid.style.display = '';
     slidersPanel.classList.remove('visible');
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
@@ -682,7 +685,7 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
-// ── Reset ──────────────────────────────────────────────────────
+// ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
   srcFile = null; rawPixels = null; origPixels = null; resultBlob = null;
   dropZone.style.display = '';
@@ -702,7 +705,18 @@ function resetAll() {
 }
 
 // ── Utils ──────────────────────────────────────────────────────
-function endRun() { runBtn.disabled = false; runBtn.classList.remove('loading'); }
+function endRun() {
+  runBtn.disabled = false;
+  runBtn.classList.remove('loading');
+}
+function fileToDataUrl(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Lecture impossible'));
+    r.readAsDataURL(file);
+  });
+}
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function setStatus(msg, type) {
   const el = document.getElementById('status');
