@@ -134,6 +134,27 @@ body::before {
   background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
 }
 
+/* Wrap relatif pour l'overlay */
+.result-wrap { position: relative; display: block; }
+
+/* Overlay de chargement sur l'image résultat */
+.processing-overlay {
+  position: absolute; inset: 0;
+  border-radius: var(--radius-lg);
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(2px);
+  display: none; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.processing-overlay.visible { display: flex; }
+.processing-spinner {
+  width: 28px; height: 28px;
+  border: 2.5px solid rgba(212,255,78,0.25);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
 /* SLIDERS PANEL — sous l'image résultat */
 .sliders-panel {
   display: none;
@@ -171,24 +192,6 @@ input[type=range].rng::-moz-range-thumb {
 }
 
 .panel-sep { height: 0.5px; background: var(--border-md); }
-
-.apply-btn {
-  align-self: flex-end; height: 32px; padding: 0 16px;
-  border-radius: var(--radius); border: none;
-  background: var(--accent); color: #0c0c0b;
-  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
-  cursor: pointer; transition: background .15s;
-  display: flex; align-items: center; gap: 6px;
-}
-.apply-btn:hover:not(:disabled) { background: #dcff6a; }
-.apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.apply-btn .spinner {
-  width: 12px; height: 12px;
-  border: 2px solid rgba(12,12,11,0.3); border-top-color: #0c0c0b;
-  border-radius: 50%; animation: spin .6s linear infinite; display: none;
-}
-.apply-btn.loading .spinner { display: block; }
-.apply-btn.loading .apply-label { display: none; }
 
 /* ACTIONS */
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
@@ -275,7 +278,7 @@ input[type=range].rng::-moz-range-thumb {
     <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.7</span>
+      <span class="header-tag">v2.6</span>
     </div>
   </div>
 
@@ -325,8 +328,13 @@ input[type=range].rng::-moz-range-thumb {
       <div class="col-label-row">
         <span class="col-label">Détouré</span>
       </div>
-      <!-- Image résultat -->
-      <img id="img-result" class="preview-img result" alt="Image détourée">
+      <!-- Image résultat + overlay de traitement -->
+      <div class="result-wrap" id="result-wrap">
+        <img id="img-result" class="preview-img result" alt="Image détourée">
+        <div class="processing-overlay" id="processing-overlay">
+          <div class="processing-spinner"></div>
+        </div>
+      </div>
 
       <!-- Sliders juste en dessous de l'image résultat -->
       <div class="sliders-panel" id="sliders-panel">
@@ -356,11 +364,6 @@ input[type=range].rng::-moz-range-thumb {
             <span class="slider-hint">Max</span>
           </div>
         </div>
-
-        <button class="apply-btn" id="apply-btn">
-          <div class="spinner"></div>
-          <span class="apply-label">Appliquer</span>
-        </button>
 
       </div><!-- /sliders-panel -->
 
@@ -430,7 +433,7 @@ const tolSlider    = document.getElementById('tol-slider');
 const tolVal       = document.getElementById('tol-val');
 const featherSlider= document.getElementById('feather-slider');
 const featherVal   = document.getElementById('feather-val');
-const applyBtn     = document.getElementById('apply-btn');
+const processingOverlay = document.getElementById('processing-overlay');
 
 // ── Drag & drop / import ───────────────────────────────────────
 dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
@@ -442,11 +445,25 @@ fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 runBtn.addEventListener('click', runDetourage);
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
-applyBtn.addEventListener('click', applySliders);
 
-// Affichage live des valeurs
-tolSlider.addEventListener('input',     () => { tolVal.textContent     = tolSlider.value; });
-featherSlider.addEventListener('input', () => { featherVal.textContent = featherSlider.value; });
+// ── Sliders : aperçu live avec debounce ───────────────────────
+let debounceTimer = null;
+const DEBOUNCE_MS = 350; // délai après lequel on recalcule
+
+function onSliderInput(el, display) {
+  display.textContent = el.value;
+  // Afficher l'overlay immédiatement pour signaler le chargement en cours
+  processingOverlay.classList.add('visible');
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(async () => {
+    await rebuild(parseInt(tolSlider.value, 10), parseInt(featherSlider.value, 10));
+    processingOverlay.classList.remove('visible');
+    dlBtn.classList.add('visible');
+  }, DEBOUNCE_MS);
+}
+
+tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal));
+featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
 
 // ── Traitement pixel ───────────────────────────────────────────
 
@@ -529,23 +546,6 @@ async function rebuild(tol, feather) {
   const prev = imgResult.src;
   imgResult.src = URL.createObjectURL(blob);
   if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
-}
-
-// ── Appliquer les curseurs ─────────────────────────────────────
-async function applySliders() {
-  if (!rawPixels) return;
-  applyBtn.classList.add('loading');
-  applyBtn.disabled = true;
-  try {
-    await rebuild(parseInt(tolSlider.value, 10), parseInt(featherSlider.value, 10));
-    dlBtn.classList.add('visible');
-    showToast('Réglages appliqués ✓');
-  } catch(e) {
-    showToast('Erreur lors de l\'application.', 'error');
-    console.error(e);
-  }
-  applyBtn.classList.remove('loading');
-  applyBtn.disabled = false;
 }
 
 // ── Détourage ──────────────────────────────────────────────────
