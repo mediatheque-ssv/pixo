@@ -287,7 +287,7 @@ input[type=range].rng::-moz-range-thumb {
     <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.6.1</span>
+      <span class="header-tag">v2.6.2</span>
     </div>
   </div>
 
@@ -405,7 +405,7 @@ input[type=range].rng::-moz-range-thumb {
   <div class="status" id="status"></div>
 
   <div class="info-box">
-    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
+    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle BiRefNet lite chargé via CDN (~60 Mo, mis en cache).<br>
     <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
   </div>
 
@@ -413,20 +413,24 @@ input[type=range].rng::-moz-range-thumb {
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
+import { AutoModel, AutoProcessor, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
 // ── État global ────────────────────────────────────────────────
 let srcFile    = null;
 let resultBlob = null;
-let segmenter  = null;
-let rawPixels  = null;  // canal alpha brut sorti du modèle (RGBA, alpha = masque)
-let origPixels = null;  // couleurs originales pleine résolution (RGBA)
+let model      = null;   // BiRefNet lite
+let processor  = null;
+let rawPixels  = null;   // Float32Array masque 0–255, un scalaire par pixel
+let origPixels = null;   // Uint8ClampedArray RGBA couleurs originales
 let rawW = 0, rawH = 0;
 
-// Pré-charger le modèle en arrière-plan
-pipeline('background-removal', 'briaai/RMBG-1.4')
-  .then(p  => { segmenter = p; })
-  .catch(() => { segmenter = 'error'; });
+// Pré-charger BiRefNet lite en arrière-plan (MIT, ~60 Mo, pas d'auth)
+const MODEL_ID = 'onnx-community/BiRefNet_lite-ONNX';
+Promise.all([
+  AutoModel.from_pretrained(MODEL_ID, { dtype: 'fp32' }),
+  AutoProcessor.from_pretrained(MODEL_ID),
+]).then(([m, p]) => { model = m; processor = p; })
+  .catch(() => { model = 'error'; });
 
 // ── Refs DOM ───────────────────────────────────────────────────
 const dropZone     = document.getElementById('drop-zone');
@@ -484,15 +488,17 @@ tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVa
 featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
 
 // ── Traitement pixel ───────────────────────────────────────────
-// rawPixels = Float32Array de luminances (0–255), une valeur par pixel.
-// Le modèle RMBG sort le masque en niveaux de gris dans les canaux RGB
-// (alpha = 255 partout, inutilisable). On lit la luminance perceptuelle.
+// rawPixels = Float32Array de valeurs 0–255, une par pixel (masque BiRefNet).
 
-// Seuille le masque : valeurs sous le seuil → 0
+// Seuille le masque : supprime les pixels de fond résiduels (valeurs basses).
+// Tolérance haute = on garde uniquement les pixels très opaques → contour plus net.
 function applySharpen(mask, tolerance) {
   const out = new Float32Array(mask);
   if (tolerance === 0) return out;
-  const threshold = (1 - tolerance / 100) * 255;
+  // Seuil bas : on efface les pixels dont l'opacité est inférieure à ce seuil.
+  // À tolerance=100 : seuil=255 (tout disparaît sauf blanc pur) — trop agressif,
+  // on plafonne à 200 pour garder quelque chose d'utilisable.
+  const threshold = (tolerance / 100) * 200;
   for (let i = 0; i < out.length; i++) {
     if (out[i] < threshold) out[i] = 0;
   }
@@ -504,15 +510,12 @@ function applyFeather(mask, w, h, amount) {
   if (amount === 0) return new Float32Array(mask);
   const radius = Math.round((amount / 100) * 8) + 1;
   const sigma  = radius / 2;
-
   const k = []; let ksum = 0;
   for (let i = -radius; i <= radius; i++) {
     const v = Math.exp(-(i * i) / (2 * sigma * sigma));
     k.push(v); ksum += v;
   }
   for (let i = 0; i < k.length; i++) k[i] /= ksum;
-
-  // Passe H
   const tmp = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -523,7 +526,6 @@ function applyFeather(mask, w, h, amount) {
       tmp[y * w + x] = s;
     }
   }
-  // Passe V
   const out = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -534,6 +536,111 @@ function applyFeather(mask, w, h, amount) {
       out[y * w + x] = s;
     }
   }
+  return out;
+}
+
+// ── Alpha matting ──────────────────────────────────────────────
+// Raffine la transparence dans la zone de transition du masque.
+// Principe :
+//   1. Éroder le masque → zone sûre "premier plan" (FG)
+//   2. Dilater le masque → zone sûre "fond" (BG)
+//   3. La bande entre les deux = zone incertaine ("trimap")
+//   4. Pour chaque pixel incertain, estimer la vraie opacité α
+//      en cherchant les couleurs FG/BG les plus proches dans un voisinage
+//      et en résolvant : C = α·FG + (1-α)·BG
+function applyMatting(mask, orig, w, h) {
+  const ERODE_R  = 4;   // rayon érosion  (zone FG sûre)
+  const DILATE_R = 8;   // rayon dilatation (zone BG sûre)
+  const SEARCH_R = 12;  // rayon de recherche des échantillons FG/BG
+  const THRESH_HI = 240; // seuil masque "sûrement FG"
+  const THRESH_LO = 15;  // seuil masque "sûrement BG"
+
+  // Morphologie : min/max dans un carré de rayon r
+  function morphRect(src, w, h, r, isErode) {
+    const tmp = new Float32Array(w * h);
+    const out = new Float32Array(w * h);
+    // Passe H
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let v = isErode ? 255 : 0;
+        for (let dx = -r; dx <= r; dx++) {
+          const nx = Math.min(Math.max(x + dx, 0), w - 1);
+          const s = src[y * w + nx];
+          v = isErode ? Math.min(v, s) : Math.max(v, s);
+        }
+        tmp[y * w + x] = v;
+      }
+    }
+    // Passe V
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let v = isErode ? 255 : 0;
+        for (let dy = -r; dy <= r; dy++) {
+          const ny = Math.min(Math.max(y + dy, 0), h - 1);
+          const s = tmp[ny * w + x];
+          v = isErode ? Math.min(v, s) : Math.max(v, s);
+        }
+        out[y * w + x] = v;
+      }
+    }
+    return out;
+  }
+
+  const eroded  = morphRect(mask, w, h, ERODE_R,  true);   // FG sûr si > THRESH_HI
+  const dilated = morphRect(mask, w, h, DILATE_R, false);  // BG sûr si < THRESH_LO
+
+  const out = new Float32Array(mask);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const inFG = eroded[i]  >= THRESH_HI;
+      const inBG = dilated[i] <= THRESH_LO;
+
+      // Pixel sûr → on ne touche pas
+      if (inFG || inBG) continue;
+
+      // Pixel incertain : chercher des échantillons FG et BG proches
+      const cr = orig[i * 4], cg = orig[i * 4 + 1], cb = orig[i * 4 + 2];
+
+      let fgR = 0, fgG = 0, fgB = 0, fgN = 0;
+      let bgR = 0, bgG = 0, bgB = 0, bgN = 0;
+
+      for (let dy = -SEARCH_R; dy <= SEARCH_R; dy++) {
+        const ny = Math.min(Math.max(y + dy, 0), h - 1);
+        for (let dx = -SEARCH_R; dx <= SEARCH_R; dx++) {
+          const nx = Math.min(Math.max(x + dx, 0), w - 1);
+          const ni = ny * w + nx;
+          if (eroded[ni] >= THRESH_HI) {
+            fgR += orig[ni * 4]; fgG += orig[ni * 4 + 1]; fgB += orig[ni * 4 + 2]; fgN++;
+          } else if (dilated[ni] <= THRESH_LO) {
+            bgR += orig[ni * 4]; bgG += orig[ni * 4 + 1]; bgB += orig[ni * 4 + 2]; bgN++;
+          }
+        }
+      }
+
+      // Pas assez d'échantillons → garder la valeur brute du masque
+      if (fgN === 0 || bgN === 0) continue;
+
+      fgR /= fgN; fgG /= fgN; fgB /= fgN;
+      bgR /= bgN; bgG /= bgN; bgB /= bgN;
+
+      // Résoudre α via moindres carrés : C ≈ α·FG + (1-α)·BG
+      const dR = fgR - bgR, dG = fgG - bgG, dB = fgB - bgB;
+      const denom = dR * dR + dG * dG + dB * dB;
+      let alpha;
+      if (denom < 1e-4) {
+        // FG et BG presque identiques → utiliser la valeur brute normalisée
+        alpha = mask[i] / 255;
+      } else {
+        alpha = ((cr - bgR) * dR + (cg - bgG) * dG + (cb - bgB) * dB) / denom;
+        alpha = Math.min(1, Math.max(0, alpha));
+      }
+
+      out[i] = alpha * 255;
+    }
+  }
+
   return out;
 }
 
@@ -552,9 +659,10 @@ async function pixelsToBlob(data, w, h) {
   return oc.convertToBlob({ type: 'image/png' });
 }
 
-// Recalcule et affiche le résultat avec les réglages courants
+// Recalcule et affiche le résultat
 async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
+  px = applyMatting(px, origPixels, rawW, rawH);  // matting sur zone de transition
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
   const blob = await pixelsToBlob(px, rawW, rawH);
@@ -574,11 +682,11 @@ async function runDetourage() {
 
   // Attendre le modèle (chargé en parallèle dès l'ouverture de la page)
   let waited = 0;
-  while (!segmenter) {
+  while (!model) {
     if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(); return; }
     await sleep(300); waited += 300;
   }
-  if (segmenter === 'error') {
+  if (model === 'error') {
     setStatus('Erreur de chargement du modèle.', 'error'); endRun(); return;
   }
 
@@ -587,33 +695,40 @@ async function runDetourage() {
     const dataUrl = await fileToDataUrl(srcFile);
 
     showProgress(65);
-    const output = await segmenter(dataUrl);
+
+    // BiRefNet lite : chargement manuel via AutoModel + AutoProcessor
+    const image = await RawImage.fromURL(dataUrl);
+    const { pixel_values } = await processor(image);
+    const { output_image } = await model({ input_image: pixel_values });
+
     showProgress(85);
 
-    if (!output || !output[0]) throw new Error('Résultat vide.');
+    // Le modèle sort un tenseur logit — on applique sigmoid pour obtenir 0–1,
+    // puis on redimensionne au format original et on extrait le masque
+    const mask = await RawImage.fromTensor(
+      output_image[0].sigmoid().mul(255).to('uint8')
+    ).resize(image.width, image.height);
 
-    // Canvas de sortie du modèle
-    const srcCanvas = output[0].toCanvas();
+    rawW = image.width; rawH = image.height;
+
+    // Extraire le masque comme Float32Array (une valeur 0–255 par pixel)
+    // BiRefNet sort une image en niveaux de gris, on lit le canal rouge
+    const maskCanvas = mask.toCanvas();
     let mc;
-    if (srcCanvas instanceof HTMLCanvasElement) {
-      mc = srcCanvas;
+    if (maskCanvas instanceof HTMLCanvasElement) {
+      mc = maskCanvas;
     } else {
       mc = document.createElement('canvas');
-      mc.width = srcCanvas.width; mc.height = srcCanvas.height;
-      mc.getContext('2d').drawImage(srcCanvas, 0, 0);
+      mc.width = maskCanvas.width; mc.height = maskCanvas.height;
+      mc.getContext('2d').drawImage(maskCanvas, 0, 0);
     }
-
-    rawW = mc.width; rawH = mc.height;
-
-    // Le modèle RMBG sort un masque en niveaux de gris dans les canaux RGB
-    // (l'alpha vaut 255 partout — inutilisable directement).
-    // On lit la luminance perceptuelle R*0.299 + G*0.587 + B*0.114 comme masque.
-    const modelData = mc.getContext('2d').getImageData(0, 0, rawW, rawH).data;
-    rawPixels = new Float32Array(rawW * rawH); // valeurs 0–255
+    const maskData = mc.getContext('2d').getImageData(0, 0, rawW, rawH).data;
+    rawPixels = new Float32Array(rawW * rawH);
     for (let i = 0; i < rawW * rawH; i++) {
-      rawPixels[i] = modelData[i * 4] * 0.299
-                   + modelData[i * 4 + 1] * 0.587
-                   + modelData[i * 4 + 2] * 0.114;
+      // Luminance perceptuelle depuis les canaux RGB du masque niveaux de gris
+      rawPixels[i] = maskData[i * 4] * 0.299
+                   + maskData[i * 4 + 1] * 0.587
+                   + maskData[i * 4 + 2] * 0.114;
     }
 
     // Stocker les couleurs originales à la même résolution
