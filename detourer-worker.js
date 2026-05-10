@@ -9,16 +9,25 @@ const MODEL_ID = 'onnx-community/BiRefNet_lite';
 let model = null, processor = null;
 
 // Charger le modèle dès le démarrage du worker
+// On essaie fp16 d'abord (moitié moins de RAM que fp32),
+// puis q8 en fallback si fp16 échoue aussi.
 (async () => {
-  try {
-    [model, processor] = await Promise.all([
-      AutoModel.from_pretrained(MODEL_ID, { dtype: 'fp32' }),
-      AutoProcessor.from_pretrained(MODEL_ID),
-    ]);
-    self.postMessage({ type: 'ready' });
-  } catch (e) {
-    self.postMessage({ type: 'error', msg: 'Chargement modèle : ' + (e.message ?? e) });
+  const dtypes = ['fp16', 'q8'];
+  let lastErr = null;
+  for (const dtype of dtypes) {
+    try {
+      [model, processor] = await Promise.all([
+        AutoModel.from_pretrained(MODEL_ID, { dtype }),
+        AutoProcessor.from_pretrained(MODEL_ID),
+      ]);
+      self.postMessage({ type: 'ready', dtype });
+      return;
+    } catch (e) {
+      console.warn(`BiRefNet lite dtype=${dtype} échoué:`, e.message ?? e);
+      lastErr = e;
+    }
   }
+  self.postMessage({ type: 'error', msg: 'Chargement modèle : ' + (lastErr?.message ?? lastErr) });
 })();
 
 self.onmessage = async (ev) => {
