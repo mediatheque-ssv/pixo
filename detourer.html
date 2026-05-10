@@ -287,13 +287,13 @@ input[type=range].rng::-moz-range-thumb {
     <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.6</span>
+      <span class="header-tag">v2.6.1</span>
     </div>
   </div>
 
   <nav class="nav" role="tablist">
     <a class="nav-btn" href="index.html" role="tab">Redimensionner</a>
-    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer</a>
+    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer (bêta)</a>
   </nav>
 
   <!-- Drop zone -->
@@ -484,26 +484,27 @@ tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVa
 featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
 
 // ── Traitement pixel ───────────────────────────────────────────
+// rawPixels = Float32Array de luminances (0–255), une valeur par pixel.
+// Le modèle RMBG sort le masque en niveaux de gris dans les canaux RGB
+// (alpha = 255 partout, inutilisable). On lit la luminance perceptuelle.
 
-// Seuille le canal alpha : les semi-transparences sous le seuil passent à 0
-function applySharpen(src, tolerance) {
-  const data = new Uint8ClampedArray(src);
-  if (tolerance === 0) return data;
-  const threshold = Math.round((1 - tolerance / 100) * 255);
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] < threshold) data[i] = 0;
+// Seuille le masque : valeurs sous le seuil → 0
+function applySharpen(mask, tolerance) {
+  const out = new Float32Array(mask);
+  if (tolerance === 0) return out;
+  const threshold = (1 - tolerance / 100) * 255;
+  for (let i = 0; i < out.length; i++) {
+    if (out[i] < threshold) out[i] = 0;
   }
-  return data;
+  return out;
 }
 
-// Flou gaussien sur le canal alpha uniquement (lissage des bords)
-function applyFeather(src, w, h, amount) {
-  if (amount === 0) return new Uint8ClampedArray(src);
+// Flou gaussien sur le masque 1D (lissage des bords)
+function applyFeather(mask, w, h, amount) {
+  if (amount === 0) return new Float32Array(mask);
   const radius = Math.round((amount / 100) * 8) + 1;
   const sigma  = radius / 2;
-  const data   = new Uint8ClampedArray(src);
 
-  // Kernel gaussien
   const k = []; let ksum = 0;
   for (let i = -radius; i <= radius; i++) {
     const v = Math.exp(-(i * i) / (2 * sigma * sigma));
@@ -511,39 +512,36 @@ function applyFeather(src, w, h, amount) {
   }
   for (let i = 0; i < k.length; i++) k[i] /= ksum;
 
-  // Extraire l'alpha
-  const alpha = new Float32Array(w * h);
-  for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3];
-
   // Passe H
   const tmp = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let s = 0;
       for (let ki = -radius; ki <= radius; ki++) {
-        s += alpha[y * w + Math.min(Math.max(x + ki, 0), w - 1)] * k[ki + radius];
+        s += mask[y * w + Math.min(Math.max(x + ki, 0), w - 1)] * k[ki + radius];
       }
       tmp[y * w + x] = s;
     }
   }
-  // Passe V → réinjecte dans data
+  // Passe V
+  const out = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let s = 0;
       for (let ki = -radius; ki <= radius; ki++) {
         s += tmp[Math.min(Math.max(y + ki, 0), h - 1) * w + x] * k[ki + radius];
       }
-      data[(y * w + x) * 4 + 3] = Math.round(s);
+      out[y * w + x] = s;
     }
   }
-  return data;
+  return out;
 }
 
-// Remplace les RGB du masque par ceux de l'original (pour garder les vraies couleurs)
-function mergeWithOrig(masked, orig) {
-  const out = new Uint8ClampedArray(orig);   // copie les couleurs originales
-  for (let i = 3; i < out.length; i += 4) {
-    out[i] = masked[i];                       // applique l'alpha du masque traité
+// Applique le masque Float32Array (0–255) sur les pixels RGBA originaux
+function mergeWithOrig(mask, orig) {
+  const out = new Uint8ClampedArray(orig);
+  for (let i = 0; i < mask.length; i++) {
+    out[i * 4 + 3] = Math.round(Math.min(255, Math.max(0, mask[i])));
   }
   return out;
 }
@@ -607,8 +605,16 @@ async function runDetourage() {
 
     rawW = mc.width; rawH = mc.height;
 
-    // Stocker le masque alpha brut
-    rawPixels = mc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+    // Le modèle RMBG sort un masque en niveaux de gris dans les canaux RGB
+    // (l'alpha vaut 255 partout — inutilisable directement).
+    // On lit la luminance perceptuelle R*0.299 + G*0.587 + B*0.114 comme masque.
+    const modelData = mc.getContext('2d').getImageData(0, 0, rawW, rawH).data;
+    rawPixels = new Float32Array(rawW * rawH); // valeurs 0–255
+    for (let i = 0; i < rawW * rawH; i++) {
+      rawPixels[i] = modelData[i * 4] * 0.299
+                   + modelData[i * 4 + 1] * 0.587
+                   + modelData[i * 4 + 2] * 0.114;
+    }
 
     // Stocker les couleurs originales à la même résolution
     origPixels = await new Promise(resolve => {
