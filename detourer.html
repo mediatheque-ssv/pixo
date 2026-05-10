@@ -412,42 +412,155 @@ input[type=range].rng::-moz-range-thumb {
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script type="module">
+<script>
+// ══════════════════════════════════════════════════════════════
+// Web Worker inline — chargement modèle + inférence BiRefNet
+// Tourne dans un thread séparé pour ne pas bloquer l'UI
+// ══════════════════════════════════════════════════════════════
+const WORKER_CODE = `
 import { AutoModel, AutoProcessor, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
+
+const MODEL_ID = 'onnx-community/BiRefNet_lite';
+let model = null, processor = null;
+
+// Charger le modèle dès que le worker démarre
+async function loadModel() {
+  try {
+    [model, processor] = await Promise.all([
+      AutoModel.from_pretrained(MODEL_ID, { dtype: 'fp32' }),
+      AutoProcessor.from_pretrained(MODEL_ID),
+    ]);
+    self.postMessage({ type: 'ready' });
+  } catch(e) {
+    self.postMessage({ type: 'error', msg: 'Chargement modèle : ' + e.message });
+  }
+}
+loadModel();
+
+self.onmessage = async (e) => {
+  if (e.data.type !== 'segment') return;
+  try {
+    // Recevoir l'image comme ArrayBuffer et la convertir en RawImage
+    const blob = new Blob([e.data.buffer], { type: e.data.mime });
+    const url  = URL.createObjectURL(blob);
+    const image = await RawImage.fromURL(url);
+    URL.revokeObjectURL(url);
+
+    const { pixel_values } = await processor(image);
+    const output = await model({ input_image: pixel_values });
+
+    // Récupérer le tenseur de sortie (clé variable selon la version)
+    const outTensor = output.output_image ?? output.logits ?? Object.values(output)[0];
+    if (!outTensor) throw new Error('Aucune sortie valide du modèle');
+
+    const maskImg = await RawImage.fromTensor(
+      (outTensor[0] ?? outTensor).sigmoid().mul(255).to('uint8')
+    ).resize(image.width, image.height);
+
+    // Extraire le masque en Float32Array (luminance, 1 valeur par pixel)
+    const mc = new OffscreenCanvas(image.width, image.height);
+    const mctx = mc.getContext('2d');
+    // maskImg.toCanvas() retourne un ImageBitmap ou OffscreenCanvas selon l'env
+    const maskCanvas = maskImg.toCanvas();
+    if (maskCanvas instanceof OffscreenCanvas || maskCanvas instanceof HTMLCanvasElement) {
+      mctx.drawImage(maskCanvas, 0, 0);
+    } else {
+      // Fallback : données brutes depuis les pixels du RawImage
+      const id = new ImageData(
+        new Uint8ClampedArray(maskImg.data.buffer),
+        image.width, image.height
+      );
+      mctx.putImageData(id, 0, 0);
+    }
+    const maskData = mctx.getImageData(0, 0, image.width, image.height).data;
+    const maskF32  = new Float32Array(image.width * image.height);
+    for (let i = 0; i < maskF32.length; i++) {
+      maskF32[i] = maskData[i * 4] * 0.299
+                 + maskData[i * 4 + 1] * 0.587
+                 + maskData[i * 4 + 2] * 0.114;
+    }
+
+    // Extraire aussi les pixels originaux (RGBA)
+    const origC = new OffscreenCanvas(image.width, image.height);
+    const octx  = origC.getContext('2d');
+    octx.drawImage(maskCanvas, 0, 0); // on va refaire depuis le blob
+    // Reconstruire l'original depuis les données de l'image source
+    const origImg = await RawImage.fromURL(URL.createObjectURL(blob));
+    // (blob déjà révoqué — on le recrée depuis le buffer transférable)
+    const origBlob = new Blob([e.data.buffer], { type: e.data.mime });
+    const origUrl  = URL.createObjectURL(origBlob);
+    const origRaw  = await RawImage.fromURL(origUrl);
+    URL.revokeObjectURL(origUrl);
+    const origC2   = new OffscreenCanvas(image.width, image.height);
+    const octx2    = origC2.getContext('2d');
+    const origCanvas = origRaw.toCanvas();
+    if (origCanvas.width) {
+      octx2.drawImage(origCanvas, 0, 0, image.width, image.height);
+    }
+    const origData = octx2.getImageData(0, 0, image.width, image.height).data;
+
+    self.postMessage({
+      type: 'result',
+      maskF32,
+      origData: origData.buffer,
+      width: image.width,
+      height: image.height,
+    }, [maskF32.buffer, origData.buffer]);
+
+  } catch(e) {
+    self.postMessage({ type: 'error', msg: e.message || 'Inférence échouée' });
+  }
+};
+`;
+
+// Créer le worker depuis le code inline
+const workerBlob = new Blob([WORKER_CODE], { type: 'application/javascript' });
+const worker = new Worker(URL.createObjectURL(workerBlob), { type: 'module' });
 
 // ── État global ────────────────────────────────────────────────
 let srcFile    = null;
 let resultBlob = null;
-let model      = null;   // BiRefNet lite
-let processor  = null;
-let rawPixels  = null;   // Float32Array masque 0–255, un scalaire par pixel
-let origPixels = null;   // Uint8ClampedArray RGBA couleurs originales
+let workerReady = false;
+let rawPixels  = null;   // Float32Array masque 0–255
+let origPixels = null;   // Uint8ClampedArray RGBA originaux
 let rawW = 0, rawH = 0;
 
-// Pré-charger BiRefNet lite en arrière-plan (MIT, ~60 Mo, pas d'auth)
-const MODEL_ID = 'onnx-community/BiRefNet_lite';
-Promise.all([
-  AutoModel.from_pretrained(MODEL_ID, { dtype: 'fp32' }),
-  AutoProcessor.from_pretrained(MODEL_ID),
-]).then(([m, p]) => { model = m; processor = p; console.log('✅ Modèle prêt'); })
-  .catch(e => { console.error('❌ Erreur chargement modèle:', e); model = 'error'; });
+// Écouter les messages du worker
+worker.onmessage = (e) => {
+  const { type, msg, maskF32, origData, width, height } = e.data;
+  if (type === 'ready') {
+    workerReady = true;
+    console.log('✅ Modèle BiRefNet lite prêt');
+  } else if (type === 'result') {
+    onSegmentResult(maskF32, new Uint8ClampedArray(origData), width, height);
+  } else if (type === 'error') {
+    console.error('❌ Worker:', msg);
+    setStatus('Erreur : ' + msg, 'error');
+    hideProgress(); endRun();
+  }
+};
+worker.onerror = (e) => {
+  console.error('❌ Worker crash:', e);
+  setStatus('Erreur worker : ' + e.message, 'error');
+  hideProgress(); endRun();
+};
 
 // ── Refs DOM ───────────────────────────────────────────────────
-const dropZone     = document.getElementById('drop-zone');
-const fileInput    = document.getElementById('file-in');
-const previewGrid  = document.getElementById('preview-grid');
-const colResult    = document.getElementById('col-result');
-const imgOriginal  = document.getElementById('img-original');
-const imgResult    = document.getElementById('img-result');
-const actionsEl    = document.getElementById('actions');
-const runBtn       = document.getElementById('run-btn');
-const dlBtn        = document.getElementById('dl-btn');
-const changeBtn    = document.getElementById('change-btn');
-const slidersPanel = document.getElementById('sliders-panel');
-const tolSlider    = document.getElementById('tol-slider');
-const tolVal       = document.getElementById('tol-val');
-const featherSlider= document.getElementById('feather-slider');
-const featherVal   = document.getElementById('feather-val');
+const dropZone      = document.getElementById('drop-zone');
+const fileInput     = document.getElementById('file-in');
+const previewGrid   = document.getElementById('preview-grid');
+const colResult     = document.getElementById('col-result');
+const imgOriginal   = document.getElementById('img-original');
+const imgResult     = document.getElementById('img-result');
+const actionsEl     = document.getElementById('actions');
+const runBtn        = document.getElementById('run-btn');
+const dlBtn         = document.getElementById('dl-btn');
+const changeBtn     = document.getElementById('change-btn');
+const slidersPanel  = document.getElementById('sliders-panel');
+const tolSlider     = document.getElementById('tol-slider');
+const tolVal        = document.getElementById('tol-val');
+const featherSlider = document.getElementById('feather-slider');
+const featherVal    = document.getElementById('feather-val');
 const processingOverlay = document.getElementById('processing-overlay');
 
 // ── Drag & drop / import ───────────────────────────────────────
@@ -456,26 +569,28 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
-// ── Boutons ────────────────────────────────────────────────────
 runBtn.addEventListener('click', runDetourage);
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
 
-// ── Sliders : aperçu live avec debounce ───────────────────────
+// ── Sliders live avec debounce ─────────────────────────────────
 let debounceTimer = null;
-const DEBOUNCE_MS = 350; // délai après lequel on recalcule
+const DEBOUNCE_MS = 350;
 
 function onSliderInput(el, display) {
   display.textContent = el.value;
-  // Afficher l'overlay immédiatement pour signaler le chargement en cours
   processingOverlay.classList.add('visible');
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(async () => {
+    if (!rawPixels) { processingOverlay.classList.remove('visible'); return; }
     await rebuild(parseInt(tolSlider.value, 10), parseInt(featherSlider.value, 10));
     processingOverlay.classList.remove('visible');
     dlBtn.classList.add('visible');
   }, DEBOUNCE_MS);
 }
+
+tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal));
+featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
 
 document.getElementById('reset-tol').addEventListener('click', () => {
   tolSlider.value = 0; onSliderInput(tolSlider, tolVal);
@@ -484,20 +599,11 @@ document.getElementById('reset-feather').addEventListener('click', () => {
   featherSlider.value = 0; onSliderInput(featherSlider, featherVal);
 });
 
-tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal));
-featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
+// ── Pixel processing (thread principal) ───────────────────────
 
-// ── Traitement pixel ───────────────────────────────────────────
-// rawPixels = Float32Array de valeurs 0–255, une par pixel (masque BiRefNet).
-
-// Seuille le masque : supprime les pixels de fond résiduels (valeurs basses).
-// Tolérance haute = on garde uniquement les pixels très opaques → contour plus net.
 function applySharpen(mask, tolerance) {
   const out = new Float32Array(mask);
   if (tolerance === 0) return out;
-  // Seuil bas : on efface les pixels dont l'opacité est inférieure à ce seuil.
-  // À tolerance=100 : seuil=255 (tout disparaît sauf blanc pur) — trop agressif,
-  // on plafonne à 200 pour garder quelque chose d'utilisable.
   const threshold = (tolerance / 100) * 200;
   for (let i = 0; i < out.length; i++) {
     if (out[i] < threshold) out[i] = 0;
@@ -505,7 +611,6 @@ function applySharpen(mask, tolerance) {
   return out;
 }
 
-// Flou gaussien sur le masque 1D (lissage des bords)
 function applyFeather(mask, w, h, amount) {
   if (amount === 0) return new Float32Array(mask);
   const radius = Math.round((amount / 100) * 8) + 1;
@@ -539,27 +644,16 @@ function applyFeather(mask, w, h, amount) {
   return out;
 }
 
-// ── Alpha matting ──────────────────────────────────────────────
-// Raffine la transparence dans la zone de transition du masque.
-// Principe :
-//   1. Éroder le masque → zone sûre "premier plan" (FG)
-//   2. Dilater le masque → zone sûre "fond" (BG)
-//   3. La bande entre les deux = zone incertaine ("trimap")
-//   4. Pour chaque pixel incertain, estimer la vraie opacité α
-//      en cherchant les couleurs FG/BG les plus proches dans un voisinage
-//      et en résolvant : C = α·FG + (1-α)·BG
 function applyMatting(mask, orig, w, h) {
-  const ERODE_R  = 4;   // rayon érosion  (zone FG sûre)
-  const DILATE_R = 8;   // rayon dilatation (zone BG sûre)
-  const SEARCH_R = 12;  // rayon de recherche des échantillons FG/BG
-  const THRESH_HI = 240; // seuil masque "sûrement FG"
-  const THRESH_LO = 15;  // seuil masque "sûrement BG"
+  const ERODE_R  = 4;
+  const DILATE_R = 8;
+  const SEARCH_R = 12;
+  const THRESH_HI = 240;
+  const THRESH_LO = 15;
 
-  // Morphologie : min/max dans un carré de rayon r
   function morphRect(src, w, h, r, isErode) {
     const tmp = new Float32Array(w * h);
     const out = new Float32Array(w * h);
-    // Passe H
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         let v = isErode ? 255 : 0;
@@ -571,7 +665,6 @@ function applyMatting(mask, orig, w, h) {
         tmp[y * w + x] = v;
       }
     }
-    // Passe V
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         let v = isErode ? 255 : 0;
@@ -586,65 +679,45 @@ function applyMatting(mask, orig, w, h) {
     return out;
   }
 
-  const eroded  = morphRect(mask, w, h, ERODE_R,  true);   // FG sûr si > THRESH_HI
-  const dilated = morphRect(mask, w, h, DILATE_R, false);  // BG sûr si < THRESH_LO
-
+  const eroded  = morphRect(mask, w, h, ERODE_R,  true);
+  const dilated = morphRect(mask, w, h, DILATE_R, false);
   const out = new Float32Array(mask);
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
-      const inFG = eroded[i]  >= THRESH_HI;
-      const inBG = dilated[i] <= THRESH_LO;
-
-      // Pixel sûr → on ne touche pas
-      if (inFG || inBG) continue;
-
-      // Pixel incertain : chercher des échantillons FG et BG proches
+      if (eroded[i] >= THRESH_HI || dilated[i] <= THRESH_LO) continue;
       const cr = orig[i * 4], cg = orig[i * 4 + 1], cb = orig[i * 4 + 2];
-
-      let fgR = 0, fgG = 0, fgB = 0, fgN = 0;
-      let bgR = 0, bgG = 0, bgB = 0, bgN = 0;
-
+      let fgR=0,fgG=0,fgB=0,fgN=0, bgR=0,bgG=0,bgB=0,bgN=0;
       for (let dy = -SEARCH_R; dy <= SEARCH_R; dy++) {
         const ny = Math.min(Math.max(y + dy, 0), h - 1);
         for (let dx = -SEARCH_R; dx <= SEARCH_R; dx++) {
           const nx = Math.min(Math.max(x + dx, 0), w - 1);
           const ni = ny * w + nx;
           if (eroded[ni] >= THRESH_HI) {
-            fgR += orig[ni * 4]; fgG += orig[ni * 4 + 1]; fgB += orig[ni * 4 + 2]; fgN++;
+            fgR+=orig[ni*4]; fgG+=orig[ni*4+1]; fgB+=orig[ni*4+2]; fgN++;
           } else if (dilated[ni] <= THRESH_LO) {
-            bgR += orig[ni * 4]; bgG += orig[ni * 4 + 1]; bgB += orig[ni * 4 + 2]; bgN++;
+            bgR+=orig[ni*4]; bgG+=orig[ni*4+1]; bgB+=orig[ni*4+2]; bgN++;
           }
         }
       }
-
-      // Pas assez d'échantillons → garder la valeur brute du masque
       if (fgN === 0 || bgN === 0) continue;
-
-      fgR /= fgN; fgG /= fgN; fgB /= fgN;
-      bgR /= bgN; bgG /= bgN; bgB /= bgN;
-
-      // Résoudre α via moindres carrés : C ≈ α·FG + (1-α)·BG
-      const dR = fgR - bgR, dG = fgG - bgG, dB = fgB - bgB;
-      const denom = dR * dR + dG * dG + dB * dB;
+      fgR/=fgN; fgG/=fgN; fgB/=fgN;
+      bgR/=bgN; bgG/=bgN; bgB/=bgN;
+      const dR=fgR-bgR, dG=fgG-bgG, dB=fgB-bgB;
+      const denom = dR*dR + dG*dG + dB*dB;
       let alpha;
-      if (denom < 1e-4) {
-        // FG et BG presque identiques → utiliser la valeur brute normalisée
-        alpha = mask[i] / 255;
-      } else {
-        alpha = ((cr - bgR) * dR + (cg - bgG) * dG + (cb - bgB) * dB) / denom;
+      if (denom < 1e-4) { alpha = mask[i] / 255; }
+      else {
+        alpha = ((cr-bgR)*dR + (cg-bgG)*dG + (cb-bgB)*dB) / denom;
         alpha = Math.min(1, Math.max(0, alpha));
       }
-
       out[i] = alpha * 255;
     }
   }
-
   return out;
 }
 
-// Applique le masque Float32Array (0–255) sur les pixels RGBA originaux
 function mergeWithOrig(mask, orig) {
   const out = new Uint8ClampedArray(orig);
   for (let i = 0; i < mask.length; i++) {
@@ -659,10 +732,9 @@ async function pixelsToBlob(data, w, h) {
   return oc.convertToBlob({ type: 'image/png' });
 }
 
-// Recalcule et affiche le résultat
 async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
-  px = applyMatting(px, origPixels, rawW, rawH);  // matting sur zone de transition
+  px = applyMatting(px, origPixels, rawW, rawH);
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
   const blob = await pixelsToBlob(px, rawW, rawH);
@@ -672,119 +744,54 @@ async function rebuild(tol, feather) {
   if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
 }
 
-// ── Détourage ──────────────────────────────────────────────────
+// ── Réception du résultat worker ──────────────────────────────
+async function onSegmentResult(maskF32, origData, width, height) {
+  rawW = width; rawH = height;
+  rawPixels  = maskF32;
+  origPixels = origData;
+
+  tolSlider.value = 0;     tolVal.textContent     = '0';
+  featherSlider.value = 0; featherVal.textContent = '0';
+
+  showProgress(95);
+  await rebuild(0, 0);
+
+  colResult.style.display = 'block';
+  previewGrid.classList.remove('single');
+  previewGrid.classList.add('dual');
+  slidersPanel.classList.add('visible');
+  dlBtn.classList.add('visible');
+  runBtn.style.display = 'none';
+
+  setStatus('✓ Fond supprimé avec succès.', 'success');
+  showProgress(100); setTimeout(hideProgress, 800);
+  endRun();
+}
+
+// ── Détourage — envoie le fichier au worker ───────────────────
 async function runDetourage() {
   if (!srcFile) return;
   runBtn.disabled = true;
   runBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
-  showProgress(10); setStatus('Chargement du modèle…');
+  showProgress(10);
 
-  // Attendre le modèle (chargé en parallèle dès l'ouverture de la page)
-  let waited = 0;
-  while (!model) {
-    if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(); return; }
-    await sleep(300); waited += 300;
-  }
-  if (model === 'error') {
-    setStatus('Erreur de chargement du modèle.', 'error'); endRun(); return;
-  }
-
-  try {
-    showProgress(40); setStatus('Segmentation en cours…');
-    const dataUrl = await fileToDataUrl(srcFile);
-
-    showProgress(65);
-
-    // Charger l'image via RawImage (supporte blob URLs)
-    const srcBlob = await (await fetch(dataUrl)).blob();
-    const srcBlobUrl = URL.createObjectURL(srcBlob);
-    let image;
-    try {
-      image = await RawImage.fromURL(srcBlobUrl);
-    } finally {
-      URL.revokeObjectURL(srcBlobUrl);
+  if (!workerReady) {
+    setStatus('Chargement du modèle…');
+    let waited = 0;
+    while (!workerReady) {
+      await sleep(300); waited += 300;
+      if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(); hideProgress(); return; }
     }
-
-    const { pixel_values } = await processor(image);
-
-    // Inférence — on inspecte les clés de sortie pour être robuste
-    const rawOutput = await model({ input_image: pixel_values });
-    console.log('🔍 Clés de sortie du modèle:', Object.keys(rawOutput));
-
-    // BiRefNet peut sortir sous "output_image", "logits", ou la première clé dispo
-    const outTensor = rawOutput.output_image
-      ?? rawOutput.logits
-      ?? Object.values(rawOutput)[0];
-
-    if (!outTensor) throw new Error('Aucune sortie valide du modèle.');
-
-    showProgress(85);
-
-    // Appliquer sigmoid, quantiser en uint8, redimensionner à la taille originale
-    const maskRaw = outTensor[0] ?? outTensor;
-    const mask = await RawImage.fromTensor(
-      maskRaw.sigmoid().mul(255).to('uint8')
-    ).resize(image.width, image.height);
-
-    rawW = image.width; rawH = image.height;
-
-    // Extraire le masque comme Float32Array (une valeur 0–255 par pixel)
-    // BiRefNet sort une image en niveaux de gris, on lit le canal rouge
-    const maskCanvas = mask.toCanvas();
-    let mc;
-    if (maskCanvas instanceof HTMLCanvasElement) {
-      mc = maskCanvas;
-    } else {
-      mc = document.createElement('canvas');
-      mc.width = maskCanvas.width; mc.height = maskCanvas.height;
-      mc.getContext('2d').drawImage(maskCanvas, 0, 0);
-    }
-    const maskData = mc.getContext('2d').getImageData(0, 0, rawW, rawH).data;
-    rawPixels = new Float32Array(rawW * rawH);
-    for (let i = 0; i < rawW * rawH; i++) {
-      // Luminance perceptuelle depuis les canaux RGB du masque niveaux de gris
-      rawPixels[i] = maskData[i * 4] * 0.299
-                   + maskData[i * 4 + 1] * 0.587
-                   + maskData[i * 4 + 2] * 0.114;
-    }
-
-    // Stocker les couleurs originales à la même résolution
-    origPixels = await new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const oc = document.createElement('canvas');
-        oc.width = rawW; oc.height = rawH;
-        oc.getContext('2d').drawImage(img, 0, 0, rawW, rawH);
-        resolve(oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice());
-      };
-      img.src = dataUrl;
-    });
-
-    // Remettre les sliders à zéro
-    tolSlider.value = 0;     tolVal.textContent     = '0';
-    featherSlider.value = 0; featherVal.textContent = '0';
-
-    showProgress(95);
-    await rebuild(0, 0);
-
-    // Révéler la colonne résultat et passer en 2 colonnes
-    colResult.style.display = 'block';
-    previewGrid.classList.remove('single');
-    previewGrid.classList.add('dual');
-    slidersPanel.classList.add('visible');
-    dlBtn.classList.add('visible');
-    runBtn.style.display = 'none'; // caché jusqu'au prochain reset
-
-    setStatus('✓ Fond supprimé avec succès.', 'success');
-    showProgress(100); setTimeout(hideProgress, 800);
-    endRun();
-
-  } catch(e) {
-    console.error('❌ Erreur détourage:', e);
-    setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
-    hideProgress(); endRun();
   }
+
+  setStatus('Segmentation en cours…');
+  showProgress(40);
+
+  // Lire le fichier comme ArrayBuffer et l'envoyer au worker (transferable)
+  const buffer = await srcFile.arrayBuffer();
+  showProgress(60);
+  worker.postMessage({ type: 'segment', buffer, mime: srcFile.type }, [buffer]);
 }
 
 // ── Téléchargement ─────────────────────────────────────────────
@@ -824,7 +831,7 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
-// ── Reset complet ──────────────────────────────────────────────
+// ── Reset ──────────────────────────────────────────────────────
 function resetAll() {
   srcFile = null; rawPixels = null; origPixels = null; resultBlob = null;
   dropZone.style.display = '';
@@ -844,18 +851,7 @@ function resetAll() {
 }
 
 // ── Utils ──────────────────────────────────────────────────────
-function endRun() {
-  runBtn.disabled = false;
-  runBtn.classList.remove('loading');
-}
-function fileToDataUrl(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = e => res(e.target.result);
-    r.onerror = () => rej(new Error('Lecture impossible'));
-    r.readAsDataURL(file);
-  });
-}
+function endRun() { runBtn.disabled = false; runBtn.classList.remove('loading'); }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function setStatus(msg, type) {
   const el = document.getElementById('status');
@@ -877,6 +873,7 @@ function showToast(msg, type) {
   clearTimeout(t._tid);
   t._tid = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
+
 </script>
 </body>
 </html>
