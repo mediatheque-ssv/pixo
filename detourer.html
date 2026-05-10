@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pixo — Détourer</title>
+<title>Pixo — Détourer (bêta)</title>
 <meta name="description" content="Pixo — Supprimez le fond de vos images automatiquement, directement dans le navigateur.">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -103,7 +103,7 @@ body::before {
   gap: 16px;
   align-items: start;
 }
-.preview-grid.single { display: grid; grid-template-columns: 1fr; max-width: 380px; }
+.preview-grid.single { grid-template-columns: 1fr; max-width: 380px; }
 .preview-grid.dual   { display: grid; grid-template-columns: 1fr 1fr; }
 
 .preview-col { display: flex; flex-direction: column; gap: 7px; }
@@ -287,13 +287,13 @@ input[type=range].rng::-moz-range-thumb {
     <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.6.2</span>
+      <span class="header-tag">v2.6</span>
     </div>
   </div>
 
   <nav class="nav" role="tablist">
     <a class="nav-btn" href="index.html" role="tab">Redimensionner</a>
-    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer (bêta)</a>
+    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer <span style="font-size:9px;opacity:0.6;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">bêta</span></a>
   </nav>
 
   <!-- Drop zone -->
@@ -315,7 +315,7 @@ input[type=range].rng::-moz-range-thumb {
   <input type="file" id="file-in" accept="image/*" style="display:none">
 
   <!-- Grille d'aperçus -->
-  <div class="preview-grid single" id="preview-grid">
+  <div class="preview-grid single" id="preview-grid" style="display:none">
 
     <!-- Colonne Original -->
     <div class="preview-col">
@@ -425,12 +425,13 @@ let origPixels = null;   // Uint8ClampedArray RGBA couleurs originales
 let rawW = 0, rawH = 0;
 
 // Pré-charger BiRefNet lite en arrière-plan (MIT, ~60 Mo, pas d'auth)
-const MODEL_ID = 'onnx-community/BiRefNet_lite-ONNX';
+// Note : l'id correct est sans le suffixe -ONNX
+const MODEL_ID = 'onnx-community/BiRefNet_lite';
 Promise.all([
   AutoModel.from_pretrained(MODEL_ID, { dtype: 'fp32' }),
   AutoProcessor.from_pretrained(MODEL_ID),
 ]).then(([m, p]) => { model = m; processor = p; })
-  .catch(() => { model = 'error'; });
+  .catch(e => { console.error('Erreur chargement modèle:', e); model = 'error'; });
 
 // ── Refs DOM ───────────────────────────────────────────────────
 const dropZone     = document.getElementById('drop-zone');
@@ -696,8 +697,12 @@ async function runDetourage() {
 
     showProgress(65);
 
-    // BiRefNet lite : chargement manuel via AutoModel + AutoProcessor
-    const image = await RawImage.fromURL(dataUrl);
+    // RawImage.fromURL ne gère pas les data URLs — on convertit en Blob d'abord
+    const srcBlob = await (await fetch(dataUrl)).blob();
+    const srcBlobUrl = URL.createObjectURL(srcBlob);
+    const image = await RawImage.fromURL(srcBlobUrl);
+    URL.revokeObjectURL(srcBlobUrl);
+
     const { pixel_values } = await processor(image);
     const { output_image } = await model({ input_image: pixel_values });
 
@@ -795,7 +800,7 @@ function loadFile(file) {
     colResult.style.display = 'none';
     previewGrid.classList.remove('dual');
     previewGrid.classList.add('single');
-    previewGrid.style.display = '';
+    previewGrid.style.display = 'grid';
     slidersPanel.classList.remove('visible');
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
