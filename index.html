@@ -2219,7 +2219,11 @@ updateQuality();
 </script>
 <script>
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-  window.addEventListener('load', () => window.scrollTo(0, 0));
+  window.addEventListener('load', () => {
+    window.scrollTo(0, 0);
+    document.getElementById('quality').value     = 85;
+    document.getElementById('txt-opacity').value = 75;
+  });
 </script>
 </body>
 </html>
