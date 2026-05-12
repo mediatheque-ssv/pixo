@@ -619,13 +619,39 @@ function eraserErase(pos) {
   resultCtx.fillStyle = 'rgba(0,0,0,1)';
   resultCtx.fill();
   resultCtx.restore();
+  const prevLast = eraserLast;
   eraserLast = pos;
 
-  // Mettre à jour le masque de gomme
+  // Mettre à jour le masque de gomme géométriquement (sans relire le canvas)
   if (!eraserMask) eraserMask = new Uint8Array(rawW * rawH);
-  const imgData = resultCtx.getImageData(0, 0, rawW, rawH);
-  for (let i = 0; i < eraserMask.length; i++) {
-    if (imgData.data[i * 4 + 3] === 0) eraserMask[i] = 1;
+  const rr = r * r;
+  // Cercle courant
+  const x0 = Math.round(pos.x), y0 = Math.round(pos.y);
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      if (dx*dx + dy*dy <= rr) {
+        const px = x0 + dx, py = y0 + dy;
+        if (px >= 0 && px < rawW && py >= 0 && py < rawH) eraserMask[py * rawW + px] = 1;
+      }
+    }
+  }
+  // Segment depuis le dernier point (combler les trous entre deux événements touch)
+  if (prevLast) {
+    const x1 = Math.round(prevLast.x), y1 = Math.round(prevLast.y);
+    const dist = Math.hypot(x0 - x1, y0 - y1);
+    const steps = Math.ceil(dist);
+    for (let s = 1; s < steps; s++) {
+      const t = s / steps;
+      const ix = Math.round(x1 + (x0 - x1) * t), iy = Math.round(y1 + (y0 - y1) * t);
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (dx*dx + dy*dy <= rr) {
+            const px = ix + dx, py = iy + dy;
+            if (px >= 0 && px < rawW && py >= 0 && py < rawH) eraserMask[py * rawW + px] = 1;
+          }
+        }
+      }
+    }
   }
 
   resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
