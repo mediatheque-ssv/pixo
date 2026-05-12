@@ -166,6 +166,11 @@ body::before {
 .sliders-panel.visible { display: flex; }
 
 .slider-row { display: flex; flex-direction: column; gap: 6px; }
+.slider-row.inactive .slider-label,
+.slider-row.inactive .slider-hint { color: var(--border-md); }
+.slider-row.inactive .slider-val { color: var(--border-md); }
+.slider-row.inactive input[type=range].rng { opacity: 0.3; }
+.slider-row.inactive .reset-slider-btn { opacity: 0.3; pointer-events: none; }
 .slider-header { display: flex; align-items: center; justify-content: space-between; }
 .slider-label {
   font-family: 'JetBrains Mono', monospace; font-size: 10px;
@@ -462,8 +467,13 @@ changeBtn.addEventListener('click', resetAll);
 let debounceTimer = null;
 const DEBOUNCE_MS = 350; // délai après lequel on recalcule
 
-function onSliderInput(el, display) {
+function updateSliderState(el, row) {
+  row.classList.toggle('inactive', parseInt(el.value, 10) === 0);
+}
+
+function onSliderInput(el, display, row) {
   display.textContent = el.value;
+  updateSliderState(el, row);
   // Afficher l'overlay immédiatement pour signaler le chargement en cours
   processingOverlay.classList.add('visible');
   clearTimeout(debounceTimer);
@@ -474,15 +484,18 @@ function onSliderInput(el, display) {
   }, DEBOUNCE_MS);
 }
 
+const tolRow     = tolSlider.closest('.slider-row');
+const featherRow = featherSlider.closest('.slider-row');
+
 document.getElementById('reset-tol').addEventListener('click', () => {
-  tolSlider.value = 0; onSliderInput(tolSlider, tolVal);
+  tolSlider.value = 0; onSliderInput(tolSlider, tolVal, tolRow);
 });
 document.getElementById('reset-feather').addEventListener('click', () => {
-  featherSlider.value = 0; onSliderInput(featherSlider, featherVal);
+  featherSlider.value = 0; onSliderInput(featherSlider, featherVal, featherRow);
 });
 
-tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal));
-featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal));
+tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal,     tolRow));
+featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal, featherRow));
 
 // ── Traitement pixel ───────────────────────────────────────────
 
@@ -624,8 +637,8 @@ async function runDetourage() {
     });
 
     // Remettre les sliders à zéro
-    tolSlider.value = 0;     tolVal.textContent     = '0';
-    featherSlider.value = 0; featherVal.textContent = '0';
+    tolSlider.value = 0;     tolVal.textContent     = '0'; updateSliderState(tolSlider, tolRow);
+    featherSlider.value = 0; featherVal.textContent = '0'; updateSliderState(featherSlider, featherRow);
 
     showProgress(95);
     await rebuild(0, 0);
