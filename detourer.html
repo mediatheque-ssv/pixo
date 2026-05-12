@@ -909,14 +909,16 @@ document.addEventListener('keydown', async e => {
 function applySharpen(src, tolerance) {
   const data = new Uint8ClampedArray(src);
   if (tolerance === 0) return data;
-  // Courbe en S (sigmoïde) : pousse les alphas faibles vers 0, les forts vers 255
-  // Plus la tolérance est élevée, plus la courbe est prononcée
-  const strength = 0.05 + (tolerance / 100) * 0.25; // 0.05 → 0.30
+  // "Niveaux" sur le canal alpha :
+  // - en dessous du point noir (low) → 0
+  // - au dessus → étiré vers 255
+  // Plus la tolérance est forte, plus le point noir monte (élimine plus de gris)
+  const low  = Math.round((tolerance / 100) * 180); // 0 → 180
+  const high = 255;
   for (let i = 3; i < data.length; i += 4) {
-    const a = data[i] / 255;           // normalise 0-1
-    const x = (a - 0.5) * strength * 40; // centre et échelle
-    const s = 1 / (1 + Math.exp(-x));    // sigmoïde
-    data[i] = Math.round(s * 255);
+    const a = data[i];
+    if (a <= low) { data[i] = 0; }
+    else { data[i] = Math.min(255, Math.round((a - low) / (high - low) * 255)); }
   }
   return data;
 }
