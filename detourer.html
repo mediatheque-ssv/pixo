@@ -225,9 +225,9 @@ input[type=range].rng::-moz-range-thumb {
 #eraser-cursor {
   position: fixed; pointer-events: none; z-index: 9998;
   border: 1.5px solid var(--accent); border-radius: 50%;
-  display: none; transform: translate(-50%, -50%);
+  display: none; top: 0; left: 0;
   box-shadow: 0 0 6px rgba(212,255,78,0.3);
-  transition: width .1s, height .1s;
+  will-change: transform;
 }
 #eraser-cursor.visible { display: block; }
 
@@ -590,12 +590,39 @@ function getCanvasDisplayRect() {
 }
 
 function getCanvasPos(e) {
-  const { drawW, drawH, offsetX, offsetY } = getCanvasDisplayRect();
+  const { drawW, drawH, offsetX, offsetY } = getCachedDisplayRect();
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
   const scaleX = resultCanvas.width  / drawW;
   const scaleY = resultCanvas.height / drawH;
   return { x: (clientX - offsetX) * scaleX, y: (clientY - offsetY) * scaleY, cx: clientX, cy: clientY };
+}
+
+let _displayRectCache = null;
+function getCanvasDisplayRect() {
+  const rect = resultCanvas.getBoundingClientRect();
+  const canvasAspect = resultCanvas.width / resultCanvas.height;
+  const boxAspect    = rect.width / rect.height;
+  let drawW, drawH;
+  if (canvasAspect > boxAspect) {
+    drawW = rect.width;
+    drawH = rect.width / canvasAspect;
+  } else {
+    drawH = rect.height;
+    drawW = rect.height * canvasAspect;
+  }
+  const offsetX = rect.left + (rect.width  - drawW) / 2;
+  const offsetY = rect.top  + (rect.height - drawH) / 2;
+  return { drawW, drawH, offsetX, offsetY };
+}
+
+// Invalide le cache quand la page est redimensionnée
+window.addEventListener('resize', () => { _displayRectCache = null; });
+window.addEventListener('scroll', () => { _displayRectCache = null; }, true);
+
+function getCachedDisplayRect() {
+  if (!_displayRectCache) _displayRectCache = getCanvasDisplayRect();
+  return _displayRectCache;
 }
 
 // Rayon en pixels canvas : slider 1–100 → 0.5% à 15% de rawW
@@ -604,15 +631,22 @@ function getEraserRadius() {
   return Math.round((0.005 + pct * 0.145) * (rawW || 800));
 }
 
+let _eraserSizePx = null; // cache de la taille visuelle en px
+function getEraserSizePx() {
+  if (_eraserSizePx === null) {
+    const { drawW } = getCachedDisplayRect();
+    _eraserSizePx = getEraserRadius() * (drawW / resultCanvas.width) * 2;
+  }
+  return _eraserSizePx;
+}
+eraserSize.addEventListener('input', () => { _eraserSizePx = null; _displayRectCache = null; });
+
 function updateEraserCursor(cx, cy) {
-  const { drawW } = getCanvasDisplayRect();
-  // Taille visuelle : rayon canvas → pixels écran
-  const scale = drawW / resultCanvas.width;
-  const size = getEraserRadius() * scale * 2;
+  const size = getEraserSizePx();
+  const half = size / 2;
   eraserCursor.style.width  = size + 'px';
   eraserCursor.style.height = size + 'px';
-  eraserCursor.style.left = cx + 'px';
-  eraserCursor.style.top  = cy + 'px';
+  eraserCursor.style.transform = `translate(${cx - half}px, ${cy - half}px)`;
 }
 
 function eraserErase(pos) {
@@ -702,13 +736,6 @@ eraserSize.addEventListener('input', () => {
     eraserToggle.textContent = 'Désactiver';
     document.getElementById('eraser-row').classList.remove('inactive');
     resultCanvas.classList.add('erasing');
-  }
-  if (eraserCursor.classList.contains('visible')) {
-    const { drawW } = getCanvasDisplayRect();
-    const scale = drawW / resultCanvas.width;
-    const size = getEraserRadius() * scale * 2;
-    eraserCursor.style.width  = size + 'px';
-    eraserCursor.style.height = size + 'px';
   }
 });
 
@@ -839,6 +866,8 @@ async function rebuild(tol, feather) {
   resultCanvas.height = rawH;
   resultCtx.putImageData(new ImageData(px, rawW, rawH), 0, 0);
   resultBlob = await new Promise(res => resultCanvas.toBlob(res, 'image/png'));
+  _displayRectCache = null;
+  _eraserSizePx = null;
 }
 
 // ── Détourage ──────────────────────────────────────────────────
