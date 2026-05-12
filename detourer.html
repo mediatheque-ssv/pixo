@@ -571,24 +571,6 @@ featherSlider.addEventListener('input', () => {
 });
 
 // ── Gomme ──────────────────────────────────────────────────────
-// Calcule la zone réellement dessinée du canvas (object-fit:contain peut laisser des marges)
-function getCanvasDisplayRect() {
-  const rect = resultCanvas.getBoundingClientRect();
-  const canvasAspect = resultCanvas.width / resultCanvas.height;
-  const boxAspect    = rect.width / rect.height;
-  let drawW, drawH;
-  if (canvasAspect > boxAspect) {
-    drawW = rect.width;
-    drawH = rect.width / canvasAspect;
-  } else {
-    drawH = rect.height;
-    drawW = rect.height * canvasAspect;
-  }
-  const offsetX = rect.left + (rect.width  - drawW) / 2;
-  const offsetY = rect.top  + (rect.height - drawH) / 2;
-  return { drawW, drawH, offsetX, offsetY };
-}
-
 function getCanvasPos(e) {
   const { drawW, drawH, offsetX, offsetY } = getCachedDisplayRect();
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
