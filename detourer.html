@@ -343,7 +343,7 @@ input[type=range].rng::-moz-range-thumb {
   <input type="file" id="file-in" accept="image/*" style="display:none">
 
   <!-- Grille d'aperçus -->
-  <div class="preview-grid" id="preview-grid" style="display:none">
+  <div class="preview-grid" id="preview-grid">
 
     <!-- Colonne Original -->
     <div class="preview-col">
@@ -849,7 +849,6 @@ function resetAll() {
   srcFile = null; rawPixels = null; origPixels = null; resultBlob = null;
   dropZone.style.display = '';
   previewGrid.className = 'preview-grid';
-  previewGrid.style.display = 'none';
   colResult.style.display = 'none';
   slidersPanel.classList.remove('visible');
   actionsEl.style.display = 'none';
