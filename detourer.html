@@ -643,6 +643,13 @@ resultCanvas.addEventListener('mousedown', e => {
 resultCanvas.addEventListener('mouseup', () => { eraserDrawing = false; eraserLast = null; });
 
 eraserSize.addEventListener('input', () => {
+  if (!eraserActive) {
+    eraserActive = true;
+    eraserToggle.classList.add('active');
+    eraserToggle.textContent = 'Désactiver';
+    document.getElementById('eraser-row').classList.remove('inactive');
+    resultCanvas.classList.add('erasing');
+  }
   if (eraserCursor.classList.contains('visible')) {
     const { drawW } = getCanvasDisplayRect();
     const scale = drawW / resultCanvas.width;
