@@ -715,13 +715,25 @@ eraserSize.addEventListener('input', () => {
 resultCanvas.addEventListener('touchstart', e => {
   if (!eraserActive) return;
   e.preventDefault();
+  const pos = getCanvasPos(e);
+  eraserCursor.classList.add('visible');
+  updateEraserCursor(pos.cx, pos.cy);
   eraserHistory.push(eraserMask ? eraserMask.slice() : null);
   if (eraserHistory.length > 20) eraserHistory.shift();
   updateUndoBtn();
-  eraserDrawing = true; eraserLast = null; eraserErase(getCanvasPos(e));
+  eraserDrawing = true; eraserLast = null; eraserErase(pos);
 }, { passive: false });
-resultCanvas.addEventListener('touchmove',  e => { if (!eraserActive || !eraserDrawing) return; e.preventDefault(); eraserErase(getCanvasPos(e)); }, { passive: false });
-resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; eraserLast = null; });
+resultCanvas.addEventListener('touchmove', e => {
+  if (!eraserActive || !eraserDrawing) return;
+  e.preventDefault();
+  const pos = getCanvasPos(e);
+  updateEraserCursor(pos.cx, pos.cy);
+  eraserErase(pos);
+}, { passive: false });
+resultCanvas.addEventListener('touchend', () => {
+  eraserDrawing = false; eraserLast = null;
+  eraserCursor.classList.remove('visible');
+});
 
 // ── Annuler (Ctrl+Z + bouton) ───────────────────────────────────
 function updateUndoBtn() {
