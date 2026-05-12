@@ -691,13 +691,7 @@ function eraserErase(pos) {
   resultCtx.globalCompositeOperation = 'destination-out';
   drawBrush(resultCtx, pos, eraserLast, r, 'rgba(0,0,0,1)');
   resultCtx.restore();
-  const prevLast = eraserLast;
   eraserLast = pos;
-
-  if (!eraserMask) eraserMask = new Uint8Array(rawW * rawH);
-  updateMaskFromBrush(eraserMask, pos, prevLast, r, 1);
-
-  resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
 }
 
 function eraserRestore(pos) {
@@ -750,11 +744,22 @@ function eraserRestore(pos) {
 
   // Coller sur le canvas principal
   resultCtx.drawImage(clipOC, bx0, by0);
+}
 
-  // Mettre à jour les masques
-  updateMaskFromBrush(restoreMask, pos, prevLast, r, 1);
-  if (eraserMask) updateMaskFromBrush(eraserMask, pos, prevLast, r, 0);
-
+// Appelé une seule fois à la fin du trait — met à jour les masques et le blob
+function finalizeStroke() {
+  if (!rawW) return;
+  if (!eraserMask)  eraserMask  = new Uint8Array(rawW * rawH);
+  if (!restoreMask) restoreMask = new Uint8Array(rawW * rawH);
+  // Lire le canvas en une seule passe pour reconstruire les deux masques
+  const cur = resultCtx.getImageData(0, 0, rawW, rawH).data;
+  for (let i = 0; i < rawW * rawH; i++) {
+    const a  = cur[i * 4 + 3];
+    const oa = origPixels[i * 4 + 3];
+    if (a === 0 && oa > 0 && !restoreMask[i]) eraserMask[i]  = 1;
+    if (a > 0   && !eraserMask[i])            restoreMask[i] = (a > 0 && oa === 0) ? 1 : 0;
+    if (a > 0   && eraserMask[i])             eraserMask[i]  = 0;
+  }
   resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
 }
 
@@ -770,6 +775,7 @@ resultCanvas.addEventListener('mouseenter', e => {
 });
 resultCanvas.addEventListener('mouseleave', () => {
   eraserCursor.classList.remove('visible');
+  if (eraserDrawing) finalizeStroke();
   eraserDrawing = false; eraserLast = null;
 });
 resultCanvas.addEventListener('mousemove', e => {
@@ -785,7 +791,7 @@ resultCanvas.addEventListener('mousedown', e => {
   updateUndoBtn();
   eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
 });
-resultCanvas.addEventListener('mouseup', () => { eraserDrawing = false; eraserLast = null; });
+resultCanvas.addEventListener('mouseup', () => { eraserDrawing = false; eraserLast = null; finalizeStroke(); });
 
 eraserSize.addEventListener('input', () => {
   if (!eraserActive && !restoreActive) {
@@ -812,7 +818,7 @@ resultCanvas.addEventListener('touchstart', e => {
   eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
 }, { passive: false });
 resultCanvas.addEventListener('touchmove',  e => { if ((!eraserActive && !restoreActive) || !eraserDrawing) return; e.preventDefault(); onCanvasDraw(e); }, { passive: false });
-resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; eraserLast = null; });
+resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; eraserLast = null; finalizeStroke(); });
 
 // ── Annuler (Ctrl+Z + bouton) ───────────────────────────────────
 function updateUndoBtn() {
