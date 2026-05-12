@@ -417,7 +417,7 @@ input[type=range].rng::-moz-range-thumb {
           </div>
           <div class="slider-track">
             <span class="slider-hint">Petite</span>
-            <input type="range" class="rng" id="eraser-size" min="5" max="80" value="20">
+            <input type="range" class="rng" id="eraser-size" min="1" max="100" value="20">
             <span class="slider-hint">Grande</span>
           </div>
         </div>
@@ -598,11 +598,17 @@ function getCanvasPos(e) {
   return { x: (clientX - offsetX) * scaleX, y: (clientY - offsetY) * scaleY, cx: clientX, cy: clientY };
 }
 
+// Rayon en pixels canvas : slider 1–100 → 0.5% à 15% de rawW
+function getEraserRadius() {
+  const pct = parseInt(eraserSize.value, 10) / 100;
+  return Math.round((0.005 + pct * 0.145) * (rawW || 800));
+}
+
 function updateEraserCursor(cx, cy) {
   const { drawW } = getCanvasDisplayRect();
   // Taille visuelle : rayon canvas → pixels écran
   const scale = drawW / resultCanvas.width;
-  const size = parseInt(eraserSize.value, 10) * scale * 2;
+  const size = getEraserRadius() * scale * 2;
   eraserCursor.style.width  = size + 'px';
   eraserCursor.style.height = size + 'px';
   eraserCursor.style.left = cx + 'px';
@@ -610,7 +616,7 @@ function updateEraserCursor(cx, cy) {
 }
 
 function eraserErase(pos) {
-  const r = parseInt(eraserSize.value, 10);
+  const r = getEraserRadius();
   resultCtx.save();
   resultCtx.globalCompositeOperation = 'destination-out';
   if (eraserLast) {
@@ -700,7 +706,7 @@ eraserSize.addEventListener('input', () => {
   if (eraserCursor.classList.contains('visible')) {
     const { drawW } = getCanvasDisplayRect();
     const scale = drawW / resultCanvas.width;
-    const size = parseInt(eraserSize.value, 10) * scale * 2;
+    const size = getEraserRadius() * scale * 2;
     eraserCursor.style.width  = size + 'px';
     eraserCursor.style.height = size + 'px';
   }
