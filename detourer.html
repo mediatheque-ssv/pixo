@@ -412,7 +412,8 @@ input[type=range].rng::-moz-range-thumb {
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
                 Annuler
               </button>
-              <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Activer</button>
+              <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Gomme</button>
+              <button class="eraser-toggle" id="restore-toggle" aria-pressed="false">Restaurer</button>
             </div>
           </div>
           <div class="slider-track">
@@ -493,6 +494,7 @@ const featherSlider= document.getElementById('feather-slider');
 const featherToggle= document.getElementById('feather-toggle');
 const processingOverlay = document.getElementById('processing-overlay');
 const eraserToggle  = document.getElementById('eraser-toggle');
+const restoreToggle = document.getElementById('restore-toggle');
 const undoBtn       = document.getElementById('undo-btn');
 const eraserSize    = document.getElementById('eraser-size');
 const resultCanvas  = document.getElementById('img-result');
@@ -505,6 +507,7 @@ let featherActive = false;
 
 // ── État gomme ─────────────────────────────────────────────────
 let eraserActive = false;
+let restoreActive = false;
 let eraserDrawing = false;
 let eraserLast = null;
 let eraserMask = null; // Uint8Array des pixels mis à 0 par la gomme (1 = effacé)
@@ -522,11 +525,20 @@ dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
 eraserToggle.addEventListener('click', () => {
   eraserActive = !eraserActive;
+  if (eraserActive) { restoreActive = false; restoreToggle.classList.remove('active'); }
   eraserToggle.classList.toggle('active', eraserActive);
-  eraserToggle.textContent = eraserActive ? 'Désactiver' : 'Activer';
-  document.getElementById('eraser-row').classList.toggle('inactive', !eraserActive);
-  resultCanvas.classList.toggle('erasing', eraserActive);
-  if (!eraserActive) eraserCursor.classList.remove('visible');
+  document.getElementById('eraser-row').classList.toggle('inactive', !eraserActive && !restoreActive);
+  resultCanvas.classList.toggle('erasing', eraserActive || restoreActive);
+  if (!eraserActive && !restoreActive) eraserCursor.classList.remove('visible');
+});
+
+restoreToggle.addEventListener('click', () => {
+  restoreActive = !restoreActive;
+  if (restoreActive) { eraserActive = false; eraserToggle.classList.remove('active'); }
+  restoreToggle.classList.toggle('active', restoreActive);
+  document.getElementById('eraser-row').classList.toggle('inactive', !eraserActive && !restoreActive);
+  resultCanvas.classList.toggle('erasing', eraserActive || restoreActive);
+  if (!eraserActive && !restoreActive) eraserCursor.classList.remove('visible');
 });
 
 // ── Sliders avec toggles ───────────────────────────────────────
@@ -672,8 +684,51 @@ function eraserErase(pos) {
   resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
 }
 
+async function eraserRestore(pos) {
+  const r = getEraserRadius();
+  const prevLast = eraserLast;
+  eraserLast = pos;
+
+  if (!eraserMask) return; // rien à restaurer
+
+  const rr = r * r;
+  const x0 = Math.round(pos.x), y0 = Math.round(pos.y);
+
+  // Effacer les pixels du masque dans le cercle + segment
+  function clearMaskCircle(cx, cy) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx*dx + dy*dy <= rr) {
+          const px = cx + dx, py = cy + dy;
+          if (px >= 0 && px < rawW && py >= 0 && py < rawH) eraserMask[py * rawW + px] = 0;
+        }
+      }
+    }
+  }
+  clearMaskCircle(x0, y0);
+  if (prevLast) {
+    const x1 = Math.round(prevLast.x), y1 = Math.round(prevLast.y);
+    const dist = Math.hypot(x0 - x1, y0 - y1);
+    const steps = Math.ceil(dist);
+    for (let s = 1; s < steps; s++) {
+      const t = s / steps;
+      clearMaskCircle(Math.round(x1 + (x0 - x1) * t), Math.round(y1 + (y0 - y1) * t));
+    }
+  }
+
+  // Reconstruire l'image avec le masque mis à jour
+  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+  await rebuild(tol, feather);
+}
+
+function onCanvasDraw(e) {
+  if (eraserActive)  eraserErase(getCanvasPos(e));
+  if (restoreActive) eraserRestore(getCanvasPos(e));
+}
+
 resultCanvas.addEventListener('mouseenter', e => {
-  if (!eraserActive) return;
+  if (!eraserActive && !restoreActive) return;
   eraserCursor.classList.add('visible');
   updateEraserCursor(e.clientX, e.clientY);
 });
@@ -682,25 +737,24 @@ resultCanvas.addEventListener('mouseleave', () => {
   eraserDrawing = false; eraserLast = null;
 });
 resultCanvas.addEventListener('mousemove', e => {
-  if (!eraserActive) return;
+  if (!eraserActive && !restoreActive) return;
   updateEraserCursor(e.clientX, e.clientY);
-  if (eraserDrawing) eraserErase(getCanvasPos(e));
+  if (eraserDrawing) onCanvasDraw(e);
 });
 resultCanvas.addEventListener('mousedown', e => {
-  if (!eraserActive) return;
+  if (!eraserActive && !restoreActive) return;
   // Sauvegarder l'état avant le tracé
   eraserHistory.push(eraserMask ? eraserMask.slice() : null);
   if (eraserHistory.length > 20) eraserHistory.shift();
   updateUndoBtn();
-  eraserDrawing = true; eraserLast = null; eraserErase(getCanvasPos(e));
+  eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
 });
 resultCanvas.addEventListener('mouseup', () => { eraserDrawing = false; eraserLast = null; });
 
 eraserSize.addEventListener('input', () => {
-  if (!eraserActive) {
+  if (!eraserActive && !restoreActive) {
     eraserActive = true;
     eraserToggle.classList.add('active');
-    eraserToggle.textContent = 'Désactiver';
     document.getElementById('eraser-row').classList.remove('inactive');
     resultCanvas.classList.add('erasing');
   }
@@ -714,14 +768,14 @@ eraserSize.addEventListener('input', () => {
 });
 
 resultCanvas.addEventListener('touchstart', e => {
-  if (!eraserActive) return;
+  if (!eraserActive && !restoreActive) return;
   e.preventDefault();
   eraserHistory.push(eraserMask ? eraserMask.slice() : null);
   if (eraserHistory.length > 20) eraserHistory.shift();
   updateUndoBtn();
-  eraserDrawing = true; eraserLast = null; eraserErase(getCanvasPos(e));
+  eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
 }, { passive: false });
-resultCanvas.addEventListener('touchmove',  e => { if (!eraserActive || !eraserDrawing) return; e.preventDefault(); eraserErase(getCanvasPos(e)); }, { passive: false });
+resultCanvas.addEventListener('touchmove',  e => { if ((!eraserActive && !restoreActive) || !eraserDrawing) return; e.preventDefault(); onCanvasDraw(e); }, { passive: false });
 resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; eraserLast = null; });
 
 // ── Annuler (Ctrl+Z + bouton) ───────────────────────────────────
@@ -941,9 +995,9 @@ function loadFile(file) {
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
     runBtn.style.display = '';
-    eraserActive = false;
+    eraserActive = false; restoreActive = false;
     eraserToggle.classList.remove('active');
-    eraserToggle.textContent = 'Activer';
+    restoreToggle.classList.remove('active');
     document.getElementById('eraser-row').classList.add('inactive');
     resultCanvas.classList.remove('erasing');
     eraserCursor.classList.remove('visible');
@@ -971,9 +1025,9 @@ function resetAll() {
   tolActive = false; featherActive = false;
   setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
   setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
-  eraserActive = false;
+  eraserActive = false; restoreActive = false;
   eraserToggle.classList.remove('active');
-  eraserToggle.textContent = 'Activer';
+  restoreToggle.classList.remove('active');
   document.getElementById('eraser-row').classList.add('inactive');
   resultCanvas.classList.remove('erasing');
   eraserCursor.classList.remove('visible');
