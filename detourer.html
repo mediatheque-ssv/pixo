@@ -909,16 +909,9 @@ document.addEventListener('keydown', async e => {
 function applySharpen(src, tolerance) {
   const data = new Uint8ClampedArray(src);
   if (tolerance === 0) return data;
-  // "Niveaux" sur le canal alpha :
-  // - en dessous du point noir (low) → 0
-  // - au dessus → étiré vers 255
-  // Plus la tolérance est forte, plus le point noir monte (élimine plus de gris)
-  const low  = Math.round((tolerance / 100) * 180); // 0 → 180
-  const high = 255;
+  const threshold = Math.round((1 - tolerance / 100) * 255);
   for (let i = 3; i < data.length; i += 4) {
-    const a = data[i];
-    if (a <= low) { data[i] = 0; }
-    else { data[i] = Math.min(255, Math.round((a - low) / (high - low) * 255)); }
+    if (data[i] < threshold) data[i] = 0;
   }
   return data;
 }
