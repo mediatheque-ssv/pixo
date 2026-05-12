@@ -406,7 +406,7 @@ input[type=range].rng::-moz-range-thumb {
 
         <div class="slider-row inactive" id="eraser-row">
           <div class="slider-header">
-            <span class="slider-label">Gommer/Restaurer</span>
+            <span class="slider-label">Gomme</span>
             <div style="display:flex;gap:6px">
               <button class="eraser-toggle" id="undo-btn" title="Annuler (Ctrl+Z)" disabled>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
@@ -510,7 +510,8 @@ let eraserActive = false;
 let restoreActive = false;
 let eraserDrawing = false;
 let eraserLast = null;
-let eraserMask = null; // Uint8Array des pixels mis à 0 par la gomme (1 = effacé)
+let eraserMask = null;   // Uint8Array : 1 = pixel effacé par la gomme
+let restoreMask = null;  // Uint8Array : 1 = pixel forcé visible par la restauration
 let eraserHistory = []; // pile des états avant chaque tracé
 
 // ── Drag & drop / import ───────────────────────────────────────
@@ -689,34 +690,35 @@ async function eraserRestore(pos) {
   const prevLast = eraserLast;
   eraserLast = pos;
 
-  if (!eraserMask) return; // rien à restaurer
-
+  if (!restoreMask) restoreMask = new Uint8Array(rawW * rawH);
   const rr = r * r;
   const x0 = Math.round(pos.x), y0 = Math.round(pos.y);
 
-  // Effacer les pixels du masque dans le cercle + segment
-  function clearMaskCircle(cx, cy) {
+  function fillRestoreCircle(cx, cy) {
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         if (dx*dx + dy*dy <= rr) {
           const px = cx + dx, py = cy + dy;
-          if (px >= 0 && px < rawW && py >= 0 && py < rawH) eraserMask[py * rawW + px] = 0;
+          if (px >= 0 && px < rawW && py >= 0 && py < rawH) {
+            restoreMask[py * rawW + px] = 1;
+            // Retirer aussi du masque gomme si présent
+            if (eraserMask) eraserMask[py * rawW + px] = 0;
+          }
         }
       }
     }
   }
-  clearMaskCircle(x0, y0);
+  fillRestoreCircle(x0, y0);
   if (prevLast) {
     const x1 = Math.round(prevLast.x), y1 = Math.round(prevLast.y);
     const dist = Math.hypot(x0 - x1, y0 - y1);
     const steps = Math.ceil(dist);
     for (let s = 1; s < steps; s++) {
       const t = s / steps;
-      clearMaskCircle(Math.round(x1 + (x0 - x1) * t), Math.round(y1 + (y0 - y1) * t));
+      fillRestoreCircle(Math.round(x1 + (x0 - x1) * t), Math.round(y1 + (y0 - y1) * t));
     }
   }
 
-  // Reconstruire l'image avec le masque mis à jour
   const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
   const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
   await rebuild(tol, feather);
@@ -744,7 +746,7 @@ resultCanvas.addEventListener('mousemove', e => {
 resultCanvas.addEventListener('mousedown', e => {
   if (!eraserActive && !restoreActive) return;
   // Sauvegarder l'état avant le tracé
-  eraserHistory.push(eraserMask ? eraserMask.slice() : null);
+  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
   if (eraserHistory.length > 20) eraserHistory.shift();
   updateUndoBtn();
   eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
@@ -770,7 +772,7 @@ eraserSize.addEventListener('input', () => {
 resultCanvas.addEventListener('touchstart', e => {
   if (!eraserActive && !restoreActive) return;
   e.preventDefault();
-  eraserHistory.push(eraserMask ? eraserMask.slice() : null);
+  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
   if (eraserHistory.length > 20) eraserHistory.shift();
   updateUndoBtn();
   eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
@@ -785,7 +787,9 @@ function updateUndoBtn() {
 
 async function doUndo() {
   if (eraserHistory.length === 0) return;
-  eraserMask = eraserHistory.pop();
+  const state = eraserHistory.pop();
+  eraserMask  = state.eraser;
+  restoreMask = state.restore;
   updateUndoBtn();
   const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
   const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
@@ -878,6 +882,12 @@ async function rebuild(tol, feather) {
       if (eraserMask[i]) px[i * 4 + 3] = 0;
     }
   }
+  // Réappliquer le masque de restauration (force les pixels à opaques)
+  if (restoreMask) {
+    for (let i = 0; i < restoreMask.length; i++) {
+      if (restoreMask[i]) px[i * 4 + 3] = origPixels[i * 4 + 3] || 255;
+    }
+  }
   resultCanvas.width  = rawW;
   resultCanvas.height = rawH;
   resultCtx.putImageData(new ImageData(px, rawW, rawH), 0, 0);
@@ -887,7 +897,7 @@ async function rebuild(tol, feather) {
 // ── Détourage ──────────────────────────────────────────────────
 async function runDetourage() {
   if (!srcFile) return;
-  eraserMask = null; eraserHistory = []; updateUndoBtn();
+  eraserMask = null; restoreMask = null; eraserHistory = []; updateUndoBtn();
   runBtn.disabled = true;
   runBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
@@ -982,7 +992,7 @@ function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
-  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; eraserHistory = [];
+  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = [];
 
   const reader = new FileReader();
   reader.onload = ev => {
@@ -1011,7 +1021,7 @@ function loadFile(file) {
 
 // ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
-  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; eraserHistory = [];
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = [];
   updateUndoBtn();
   dropZone.style.display = '';
   previewGrid.className = 'preview-grid';
