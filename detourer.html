@@ -552,8 +552,14 @@ featherToggle.addEventListener('click', () => {
   triggerRebuild();
 });
 
-tolSlider.addEventListener('input',     () => { if (tolActive)     triggerRebuild(); });
-featherSlider.addEventListener('input', () => { if (featherActive) triggerRebuild(); });
+tolSlider.addEventListener('input', () => {
+  if (!tolActive) { tolActive = true; setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), true); }
+  triggerRebuild();
+});
+featherSlider.addEventListener('input', () => {
+  if (!featherActive) { featherActive = true; setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), true); }
+  triggerRebuild();
+});
 
 // ── Gomme ──────────────────────────────────────────────────────
 // Calcule la zone réellement dessinée du canvas (object-fit:contain peut laisser des marges)
