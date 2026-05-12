@@ -89,11 +89,6 @@ body::before {
 }
 .drop-zone:hover { border-color: var(--border-hi); background: var(--surface-2); }
 .drop-zone.over  { border-color: var(--accent-border); background: var(--accent-dim); }
-.drop-icon {
-  width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
-  background: var(--surface-2); border: 0.5px solid var(--border-md);
-  display: flex; align-items: center; justify-content: center;
-}
 .drop-label { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
 .drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.04em; }
 
@@ -225,9 +220,9 @@ input[type=range].rng::-moz-range-thumb {
 #eraser-cursor {
   position: fixed; pointer-events: none; z-index: 9998;
   border: 1.5px solid var(--accent); border-radius: 50%;
-  display: none; top: 0; left: 0;
+  display: none; transform: translate(-50%, -50%);
   box-shadow: 0 0 6px rgba(212,255,78,0.3);
-  will-change: transform;
+  transition: width .1s, height .1s;
 }
 #eraser-cursor.visible { display: block; }
 
@@ -330,20 +325,13 @@ input[type=range].rng::-moz-range-thumb {
        aria-label="Importer une image à détourer"
        onclick="document.getElementById('file-in').click()"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('file-in').click()}">
-    <div class="drop-icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
-        <rect x="3" y="3" width="18" height="18" rx="3"/>
-        <path d="M3 15l5-5 4 4 3-3 6 6"/>
-        <circle cx="8.5" cy="8.5" r="1.5"/>
-      </svg>
-    </div>
     <div class="drop-label">Glissez une image ici ou cliquez pour parcourir</div>
     <div class="drop-hint">JPG · PNG · WEBP</div>
   </div>
   <input type="file" id="file-in" accept="image/*" style="display:none">
 
   <!-- Grille d'aperçus -->
-  <div class="preview-grid" id="preview-grid">
+  <div class="preview-grid" id="preview-grid" style="display:none">
 
     <!-- Colonne Original -->
     <div class="preview-col">
@@ -407,17 +395,11 @@ input[type=range].rng::-moz-range-thumb {
         <div class="slider-row inactive" id="eraser-row">
           <div class="slider-header">
             <span class="slider-label">Gomme</span>
-            <div style="display:flex;gap:6px">
-              <button class="eraser-toggle" id="undo-btn" title="Annuler (Ctrl+Z)" disabled>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
-                Annuler
-              </button>
-              <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Activer</button>
-            </div>
+            <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Activer</button>
           </div>
           <div class="slider-track">
             <span class="slider-hint">Petite</span>
-            <input type="range" class="rng" id="eraser-size" min="1" max="100" value="20">
+            <input type="range" class="rng" id="eraser-size" min="5" max="80" value="20">
             <span class="slider-hint">Grande</span>
           </div>
         </div>
@@ -471,7 +453,8 @@ let origPixels = null;  // couleurs originales pleine résolution (RGBA)
 let rawW = 0, rawH = 0;
 
 // Pré-charger le modèle en arrière-plan
-pipeline('background-removal', 'briaai/RMBG-1.4')
+pipeline('image-segmentation', 'briaai/RMBG-1.4', { device: 'webgpu' })
+  .catch(() => pipeline('image-segmentation', 'briaai/RMBG-1.4'))
   .then(p  => { segmenter = p; })
   .catch(() => { segmenter = 'error'; });
 
@@ -493,7 +476,6 @@ const featherSlider= document.getElementById('feather-slider');
 const featherToggle= document.getElementById('feather-toggle');
 const processingOverlay = document.getElementById('processing-overlay');
 const eraserToggle  = document.getElementById('eraser-toggle');
-const undoBtn       = document.getElementById('undo-btn');
 const eraserSize    = document.getElementById('eraser-size');
 const resultCanvas  = document.getElementById('img-result');
 const resultCtx     = resultCanvas.getContext('2d');
@@ -507,8 +489,6 @@ let featherActive = false;
 let eraserActive = false;
 let eraserDrawing = false;
 let eraserLast = null;
-let eraserMask = null; // Uint8Array des pixels mis à 0 par la gomme (1 = effacé)
-let eraserHistory = []; // pile des états avant chaque tracé
 
 // ── Drag & drop / import ───────────────────────────────────────
 dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
@@ -561,78 +541,33 @@ featherToggle.addEventListener('click', () => {
   triggerRebuild();
 });
 
-tolSlider.addEventListener('input', () => {
-  if (!tolActive) { tolActive = true; setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), true); }
-  triggerRebuild();
-});
-featherSlider.addEventListener('input', () => {
-  if (!featherActive) { featherActive = true; setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), true); }
-  triggerRebuild();
-});
+tolSlider.addEventListener('input',     () => { if (tolActive)     triggerRebuild(); });
+featherSlider.addEventListener('input', () => { if (featherActive) triggerRebuild(); });
 
 // ── Gomme ──────────────────────────────────────────────────────
 function getCanvasPos(e) {
-  const { drawW, drawH, offsetX, offsetY } = getCachedDisplayRect();
+  const rect = resultCanvas.getBoundingClientRect();
+  const scaleX = resultCanvas.width  / rect.width;
+  const scaleY = resultCanvas.height / rect.height;
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  const scaleX = resultCanvas.width  / drawW;
-  const scaleY = resultCanvas.height / drawH;
-  return { x: (clientX - offsetX) * scaleX, y: (clientY - offsetY) * scaleY, cx: clientX, cy: clientY };
+  return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY, cx: clientX, cy: clientY };
 }
-
-let _displayRectCache = null;
-function getCanvasDisplayRect() {
-  const rect = resultCanvas.getBoundingClientRect();
-  const canvasAspect = resultCanvas.width / resultCanvas.height;
-  const boxAspect    = rect.width / rect.height;
-  let drawW, drawH;
-  if (canvasAspect > boxAspect) {
-    drawW = rect.width;
-    drawH = rect.width / canvasAspect;
-  } else {
-    drawH = rect.height;
-    drawW = rect.height * canvasAspect;
-  }
-  const offsetX = rect.left + (rect.width  - drawW) / 2;
-  const offsetY = rect.top  + (rect.height - drawH) / 2;
-  return { drawW, drawH, offsetX, offsetY };
-}
-
-// Invalide le cache quand la page est redimensionnée
-window.addEventListener('resize', () => { _displayRectCache = null; });
-window.addEventListener('scroll', () => { _displayRectCache = null; }, true);
-
-function getCachedDisplayRect() {
-  if (!_displayRectCache) _displayRectCache = getCanvasDisplayRect();
-  return _displayRectCache;
-}
-
-// Rayon en pixels canvas : slider 1–100 → 0.5% à 15% de rawW
-function getEraserRadius() {
-  const pct = parseInt(eraserSize.value, 10) / 100;
-  return Math.round((0.005 + pct * 0.145) * (rawW || 800));
-}
-
-let _eraserSizePx = null; // cache de la taille visuelle en px
-function getEraserSizePx() {
-  if (_eraserSizePx === null) {
-    const { drawW } = getCachedDisplayRect();
-    _eraserSizePx = getEraserRadius() * (drawW / resultCanvas.width) * 2;
-  }
-  return _eraserSizePx;
-}
-eraserSize.addEventListener('input', () => { _eraserSizePx = null; _displayRectCache = null; });
 
 function updateEraserCursor(cx, cy) {
-  const size = getEraserSizePx();
-  const half = size / 2;
+  const rect = resultCanvas.getBoundingClientRect();
+  // Convertir le rayon canvas → pixels écran
+  const scale = rect.width / resultCanvas.width;
+  const displayRadius = parseInt(eraserSize.value, 10) * scale;
+  const size = displayRadius * 2;
   eraserCursor.style.width  = size + 'px';
   eraserCursor.style.height = size + 'px';
-  eraserCursor.style.transform = `translate(${cx - half}px, ${cy - half}px)`;
+  eraserCursor.style.left = cx + 'px';
+  eraserCursor.style.top  = cy + 'px';
 }
 
 function eraserErase(pos) {
-  const r = getEraserRadius();
+  const r = parseInt(eraserSize.value, 10) * (resultCanvas.width / resultCanvas.getBoundingClientRect().width);
   resultCtx.save();
   resultCtx.globalCompositeOperation = 'destination-out';
   if (eraserLast) {
@@ -649,41 +584,7 @@ function eraserErase(pos) {
   resultCtx.fillStyle = 'rgba(0,0,0,1)';
   resultCtx.fill();
   resultCtx.restore();
-  const prevLast = eraserLast;
   eraserLast = pos;
-
-  // Mettre à jour le masque de gomme géométriquement (sans relire le canvas)
-  if (!eraserMask) eraserMask = new Uint8Array(rawW * rawH);
-  const rr = r * r;
-  // Cercle courant
-  const x0 = Math.round(pos.x), y0 = Math.round(pos.y);
-  for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r; dx <= r; dx++) {
-      if (dx*dx + dy*dy <= rr) {
-        const px = x0 + dx, py = y0 + dy;
-        if (px >= 0 && px < rawW && py >= 0 && py < rawH) eraserMask[py * rawW + px] = 1;
-      }
-    }
-  }
-  // Segment depuis le dernier point (combler les trous entre deux événements touch)
-  if (prevLast) {
-    const x1 = Math.round(prevLast.x), y1 = Math.round(prevLast.y);
-    const dist = Math.hypot(x0 - x1, y0 - y1);
-    const steps = Math.ceil(dist);
-    for (let s = 1; s < steps; s++) {
-      const t = s / steps;
-      const ix = Math.round(x1 + (x0 - x1) * t), iy = Math.round(y1 + (y0 - y1) * t);
-      for (let dy = -r; dy <= r; dy++) {
-        for (let dx = -r; dx <= r; dx++) {
-          if (dx*dx + dy*dy <= rr) {
-            const px = ix + dx, py = iy + dy;
-            if (px >= 0 && px < rawW && py >= 0 && py < rawH) eraserMask[py * rawW + px] = 1;
-          }
-        }
-      }
-    }
-  }
-
   resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
 }
 
@@ -703,66 +604,29 @@ resultCanvas.addEventListener('mousemove', e => {
 });
 resultCanvas.addEventListener('mousedown', e => {
   if (!eraserActive) return;
-  // Sauvegarder l'état avant le tracé
-  eraserHistory.push(eraserMask ? eraserMask.slice() : null);
-  if (eraserHistory.length > 20) eraserHistory.shift();
-  updateUndoBtn();
   eraserDrawing = true; eraserLast = null; eraserErase(getCanvasPos(e));
 });
 resultCanvas.addEventListener('mouseup', () => { eraserDrawing = false; eraserLast = null; });
 
 eraserSize.addEventListener('input', () => {
-  if (!eraserActive) {
-    eraserActive = true;
-    eraserToggle.classList.add('active');
-    eraserToggle.textContent = 'Désactiver';
-    document.getElementById('eraser-row').classList.remove('inactive');
-    resultCanvas.classList.add('erasing');
+  // Mettre à jour la taille du curseur si visible
+  if (eraserCursor.classList.contains('visible')) {
+    const rect = resultCanvas.getBoundingClientRect();
+    // On garde juste la taille, pas besoin de position ici
+    const size = parseInt(eraserSize.value, 10) * 2;
+    eraserCursor.style.width  = size + 'px';
+    eraserCursor.style.height = size + 'px';
   }
 });
 
-resultCanvas.addEventListener('touchstart', e => {
-  if (!eraserActive) return;
-  e.preventDefault();
-  const pos = getCanvasPos(e);
-  eraserCursor.classList.add('visible');
-  updateEraserCursor(pos.cx, pos.cy);
-  eraserHistory.push(eraserMask ? eraserMask.slice() : null);
-  if (eraserHistory.length > 20) eraserHistory.shift();
-  updateUndoBtn();
-  eraserDrawing = true; eraserLast = null; eraserErase(pos);
-}, { passive: false });
-resultCanvas.addEventListener('touchmove', e => {
-  if (!eraserActive || !eraserDrawing) return;
-  e.preventDefault();
-  const pos = getCanvasPos(e);
-  updateEraserCursor(pos.cx, pos.cy);
-  eraserErase(pos);
-}, { passive: false });
-resultCanvas.addEventListener('touchend', () => {
-  eraserDrawing = false; eraserLast = null;
-  eraserCursor.classList.remove('visible');
-});
+resultCanvas.addEventListener('touchstart', e => { if (!eraserActive) return; e.preventDefault(); eraserDrawing = true; eraserLast = null; const pos = getCanvasPos(e); updateEraserCursor(pos.cx, pos.cy); eraserCursor.classList.add('visible'); eraserErase(pos); }, { passive: false });
+resultCanvas.addEventListener('touchmove',  e => { if (!eraserActive || !eraserDrawing) return; e.preventDefault(); const pos = getCanvasPos(e); updateEraserCursor(pos.cx, pos.cy); eraserErase(pos); }, { passive: false });
+resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; eraserLast = null; eraserCursor.classList.remove('visible'); });
 
-// ── Annuler (Ctrl+Z + bouton) ───────────────────────────────────
-function updateUndoBtn() {
-  undoBtn.disabled = eraserHistory.length === 0;
+// Sur mobile (touch), le curseur gomme n'est jamais affiché
+if ('ontouchstart' in window) {
+  eraserCursor.style.display = 'none !important';
 }
-
-async function doUndo() {
-  if (eraserHistory.length === 0) return;
-  eraserMask = eraserHistory.pop();
-  updateUndoBtn();
-  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
-  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
-  await rebuild(tol, feather);
-}
-
-undoBtn.addEventListener('click', doUndo);
-
-document.addEventListener('keydown', async e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); doUndo(); }
-});
 
 // Seuille le canal alpha : les semi-transparences sous le seuil passent à 0
 function applySharpen(src, tolerance) {
@@ -838,24 +702,23 @@ async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
-  // Réappliquer le masque de gomme s'il existe
-  if (eraserMask) {
-    for (let i = 0; i < eraserMask.length; i++) {
-      if (eraserMask[i]) px[i * 4 + 3] = 0;
-    }
-  }
   resultCanvas.width  = rawW;
   resultCanvas.height = rawH;
   resultCtx.putImageData(new ImageData(px, rawW, rawH), 0, 0);
   resultBlob = await new Promise(res => resultCanvas.toBlob(res, 'image/png'));
-  _displayRectCache = null;
-  _eraserSizePx = null;
+  // Désactiver la gomme si active (le rebuild repart de zéro)
+  if (eraserActive) {
+    eraserActive = false;
+    eraserToggle.classList.remove('active');
+    eraserToggle.textContent = 'Activer';
+    document.getElementById('eraser-row').classList.add('inactive');
+    resultCanvas.classList.remove('erasing');
+  }
 }
 
 // ── Détourage ──────────────────────────────────────────────────
 async function runDetourage() {
   if (!srcFile) return;
-  eraserMask = null; eraserHistory = []; updateUndoBtn();
   runBtn.disabled = true;
   runBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
@@ -876,20 +739,41 @@ async function runDetourage() {
     const dataUrl = await fileToDataUrl(srcFile);
 
     showProgress(65);
-    const output = await segmenter(dataUrl);
+    const output = await segmenter(dataUrl, { subtask: 'binary' }).catch(() => segmenter(dataUrl));
     showProgress(85);
 
     if (!output || !output[0]) throw new Error('Résultat vide.');
 
-    // Canvas de sortie du modèle
-    const srcCanvas = output[0].toCanvas();
-    let mc;
-    if (srcCanvas instanceof HTMLCanvasElement) {
-      mc = srcCanvas;
+    // Canvas de sortie du modèle — compatible avec les différentes versions de transformers.js
+    let mc = document.createElement('canvas');
+    const seg = output[0];
+
+    if (seg.mask) {
+      // API transformers.js ≥ 3.x : seg.mask est un objet { data, width, height }
+      const { data: maskData, width: mw, height: mh } = seg.mask;
+      mc.width = mw; mc.height = mh;
+      const ctx = mc.getContext('2d');
+      const imgData = ctx.createImageData(mw, mh);
+      for (let i = 0; i < mw * mh; i++) {
+        imgData.data[i * 4]     = 0;
+        imgData.data[i * 4 + 1] = 0;
+        imgData.data[i * 4 + 2] = 0;
+        imgData.data[i * 4 + 3] = Math.round(maskData[i] * 255);
+      }
+      ctx.putImageData(imgData, 0, 0);
+    } else if (typeof seg.toCanvas === 'function') {
+      // Ancienne API : toCanvas()
+      const srcCanvas = seg.toCanvas();
+      if (srcCanvas instanceof HTMLCanvasElement) {
+        mc = srcCanvas;
+      } else {
+        mc.width = srcCanvas.width; mc.height = srcCanvas.height;
+        mc.getContext('2d').drawImage(srcCanvas, 0, 0);
+      }
+    } else if (seg instanceof HTMLCanvasElement) {
+      mc = seg;
     } else {
-      mc = document.createElement('canvas');
-      mc.width = srcCanvas.width; mc.height = srcCanvas.height;
-      mc.getContext('2d').drawImage(srcCanvas, 0, 0);
+      throw new Error('Format de sortie du modèle non reconnu.');
     }
 
     rawW = mc.width; rawH = mc.height;
@@ -950,7 +834,7 @@ function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
-  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; eraserHistory = [];
+  rawPixels = null; origPixels = null; resultBlob = null;
 
   const reader = new FileReader();
   reader.onload = ev => {
@@ -979,10 +863,10 @@ function loadFile(file) {
 
 // ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
-  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; eraserHistory = [];
-  updateUndoBtn();
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null;
   dropZone.style.display = '';
   previewGrid.className = 'preview-grid';
+  previewGrid.style.display = 'none';
   colResult.style.display = 'none';
   slidersPanel.classList.remove('visible');
   actionsEl.style.display = 'none';
