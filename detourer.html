@@ -166,11 +166,15 @@ body::before {
 .sliders-panel.visible { display: flex; }
 
 .slider-row { display: flex; flex-direction: column; gap: 6px; }
-.slider-row.inactive .slider-label,
-.slider-row.inactive .slider-hint { color: var(--border-md); }
-.slider-row.inactive .slider-val { color: var(--border-md); }
-.slider-row.inactive input[type=range].rng { opacity: 0.3; }
-.slider-row.inactive .reset-slider-btn { opacity: 0.3; pointer-events: none; }
+.slider-row.inactive input[type=range].rng::-webkit-slider-thumb {
+  background: var(--surface-3);
+  box-shadow: none;
+  border-color: var(--border-md);
+}
+.slider-row.inactive input[type=range].rng::-moz-range-thumb {
+  background: var(--surface-3);
+  box-shadow: none;
+}
 .slider-header { display: flex; align-items: center; justify-content: space-between; }
 .slider-label {
   font-family: 'JetBrains Mono', monospace; font-size: 10px;
