@@ -500,6 +500,7 @@ let featherActive = false;
 let eraserActive = false;
 let eraserDrawing = false;
 let eraserLast = null;
+let eraserMask = null; // Uint8Array des pixels mis à 0 par la gomme (1 = effacé)
 
 // ── Drag & drop / import ───────────────────────────────────────
 dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
@@ -619,6 +620,14 @@ function eraserErase(pos) {
   resultCtx.fill();
   resultCtx.restore();
   eraserLast = pos;
+
+  // Mettre à jour le masque de gomme
+  if (!eraserMask) eraserMask = new Uint8Array(rawW * rawH);
+  const imgData = resultCtx.getImageData(0, 0, rawW, rawH);
+  for (let i = 0; i < eraserMask.length; i++) {
+    if (imgData.data[i * 4 + 3] === 0) eraserMask[i] = 1;
+  }
+
   resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
 }
 
@@ -737,23 +746,22 @@ async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
+  // Réappliquer le masque de gomme s'il existe
+  if (eraserMask) {
+    for (let i = 0; i < eraserMask.length; i++) {
+      if (eraserMask[i]) px[i * 4 + 3] = 0;
+    }
+  }
   resultCanvas.width  = rawW;
   resultCanvas.height = rawH;
   resultCtx.putImageData(new ImageData(px, rawW, rawH), 0, 0);
   resultBlob = await new Promise(res => resultCanvas.toBlob(res, 'image/png'));
-  // Désactiver la gomme si active (le rebuild repart de zéro)
-  if (eraserActive) {
-    eraserActive = false;
-    eraserToggle.classList.remove('active');
-    eraserToggle.textContent = 'Activer';
-    document.getElementById('eraser-row').classList.add('inactive');
-    resultCanvas.classList.remove('erasing');
-  }
 }
 
 // ── Détourage ──────────────────────────────────────────────────
 async function runDetourage() {
   if (!srcFile) return;
+  eraserMask = null;
   runBtn.disabled = true;
   runBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
@@ -848,7 +856,7 @@ function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
-  rawPixels = null; origPixels = null; resultBlob = null;
+  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null;
 
   const reader = new FileReader();
   reader.onload = ev => {
@@ -877,7 +885,7 @@ function loadFile(file) {
 
 // ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
-  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null;
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null;
   dropZone.style.display = '';
   previewGrid.className = 'preview-grid';
   colResult.style.display = 'none';
