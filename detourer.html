@@ -137,6 +137,33 @@ body::before {
   background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
 }
 
+/* Sélecteur de fond de prévisualisation */
+.bg-picker {
+  display: flex; align-items: center; gap: 5px;
+}
+.bg-swatch {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid transparent;
+  cursor: pointer; transition: transform .15s, border-color .15s;
+  flex-shrink: 0;
+}
+.bg-swatch:hover { transform: scale(1.2); }
+.bg-swatch.active { border-color: var(--accent); }
+.bg-swatch-checker {
+  background: repeating-conic-gradient(#888 0% 25%, #ccc 0% 50%) 0 0 / 8px 8px;
+}
+.bg-swatch-color-btn {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--border-md);
+  cursor: pointer; overflow: hidden; padding: 0;
+  flex-shrink: 0; position: relative; transition: transform .15s;
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+}
+.bg-swatch-color-btn:hover { transform: scale(1.2); }
+.bg-swatch-color-btn input[type="color"] {
+  position: absolute; inset: -4px; opacity: 0; cursor: pointer; width: 200%; height: 200%;
+}
+
 /* Wrap relatif pour l'overlay */
 .result-wrap { position: relative; display: block; }
 
@@ -367,6 +394,16 @@ input[type=range].rng::-moz-range-thumb {
     <div class="preview-col" id="col-result" style="display:none">
       <div class="col-label-row">
         <span class="col-label">Détouré</span>
+        <div class="bg-picker" id="bg-picker">
+          <div class="bg-swatch bg-swatch-checker active" data-bg="checker" title="Damier"></div>
+          <div class="bg-swatch" style="background:#ffffff" data-bg="#ffffff" title="Blanc"></div>
+          <div class="bg-swatch" style="background:#000000" data-bg="#000000" title="Noir"></div>
+          <div class="bg-swatch" style="background:#00b140" data-bg="#00b140" title="Vert chroma"></div>
+          <div class="bg-swatch" style="background:#ff3cac" data-bg="#ff3cac" title="Rose"></div>
+          <button class="bg-swatch-color-btn" title="Couleur libre">
+            <input type="color" id="bg-color-picker" value="#4f46e5">
+          </button>
+        </div>
       </div>
       <!-- Image résultat + overlay de traitement -->
       <div class="result-wrap" id="result-wrap">
@@ -409,13 +446,13 @@ input[type=range].rng::-moz-range-thumb {
 
         <div class="slider-row inactive" id="eraser-row">
           <div class="slider-header">
-            <span class="slider-label">Gommer/Restaurer</span>
+            <span class="slider-label">Gomme</span>
             <div style="display:flex;gap:6px">
               <button class="eraser-toggle" id="undo-btn" title="Annuler (Ctrl+Z)" disabled>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
                 Annuler
               </button>
-              <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Gommer</button>
+              <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Gomme</button>
               <button class="eraser-toggle" id="restore-toggle" aria-pressed="false">Restaurer</button>
             </div>
           </div>
@@ -830,6 +867,21 @@ resultCanvas.addEventListener('touchstart', e => {
 }, { passive: false });
 resultCanvas.addEventListener('touchmove',  e => { if ((!eraserActive && !restoreActive) || !eraserDrawing) return; e.preventDefault(); onCanvasDraw(e); }, { passive: false });
 resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; eraserLast = null; finalizeStroke(); });
+
+// ── Fond de prévisualisation ────────────────────────────────────
+const CHECKER_BG = 'repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px';
+document.getElementById('bg-picker').addEventListener('click', e => {
+  const swatch = e.target.closest('.bg-swatch');
+  if (!swatch) return;
+  document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+  swatch.classList.add('active');
+  const bg = swatch.dataset.bg;
+  resultCanvas.style.background = bg === 'checker' ? CHECKER_BG : bg;
+});
+document.getElementById('bg-color-picker').addEventListener('input', e => {
+  document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+  resultCanvas.style.background = e.target.value;
+});
 
 // ── Annuler (Ctrl+Z + bouton) ───────────────────────────────────
 function updateUndoBtn() {
