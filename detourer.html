@@ -909,9 +909,14 @@ document.addEventListener('keydown', async e => {
 function applySharpen(src, tolerance) {
   const data = new Uint8ClampedArray(src);
   if (tolerance === 0) return data;
-  const threshold = Math.round((1 - tolerance / 100) * 255);
+  // Courbe en S (sigmoïde) : pousse les alphas faibles vers 0, les forts vers 255
+  // Plus la tolérance est élevée, plus la courbe est prononcée
+  const strength = 0.05 + (tolerance / 100) * 0.25; // 0.05 → 0.30
   for (let i = 3; i < data.length; i += 4) {
-    if (data[i] < threshold) data[i] = 0;
+    const a = data[i] / 255;           // normalise 0-1
+    const x = (a - 0.5) * strength * 40; // centre et échelle
+    const s = 1 / (1 + Math.exp(-x));    // sigmoïde
+    data[i] = Math.round(s * 255);
   }
   return data;
 }
