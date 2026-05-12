@@ -772,6 +772,14 @@ resultCanvas.addEventListener('mouseenter', e => {
   if (!eraserActive && !restoreActive) return;
   eraserCursor.classList.add('visible');
   updateEraserCursor(e.clientX, e.clientY);
+  if (e.buttons === 1) {
+    // Le bouton est toujours enfoncé : on reprend le tracé
+    eraserDrawing = true; eraserLast = null;
+  } else {
+    // Le bouton a été relâché hors du canvas : on finalise
+    if (eraserDrawing) finalizeStroke();
+    eraserDrawing = false; eraserLast = null;
+  }
 });
 resultCanvas.addEventListener('mouseleave', () => {
   eraserCursor.classList.remove('visible');
@@ -1119,6 +1127,10 @@ function showToast(msg, type) {
   clearTimeout(t._tid);
   t._tid = setTimeout(() => { t.className = 'toast'; }, 2500);
 }
+</script>
+<script>
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.addEventListener('load', () => window.scrollTo(0, 0));
 </script>
 </body>
 </html>
