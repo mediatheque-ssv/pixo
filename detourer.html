@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-y: scroll; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 :root {
@@ -50,7 +51,7 @@ body::before {
 .container { max-width: 740px; margin: 0 auto; position: relative; z-index: 1; }
 
 /* HEADER */
-.header { display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; }
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 2.5rem; }
 .logo { width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; }
 .header-title { display: flex; align-items: baseline; gap: 14px; }
 .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
@@ -405,7 +406,7 @@ input[type=range].rng::-moz-range-thumb {
   <div class="status" id="status"></div>
 
   <div class="info-box">
-    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur. Modèle IA chargé via CDN (~50 Mo, mis en cache).<br>
+    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur.<br>
     <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
   </div>
 
@@ -581,7 +582,7 @@ async function runDetourage() {
     await sleep(300); waited += 300;
   }
   if (segmenter === 'error') {
-    setStatus('Erreur de chargement du modèle.', 'error'); endRun(); return;
+    setStatus('Erreur de chargement du modèle — cela peut arriver lors de la première utilisation (~50 Mo à télécharger). Réessayez dans quelques instants.', 'error'); endRun(); return;
   }
 
   try {
