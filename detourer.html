@@ -556,19 +556,38 @@ tolSlider.addEventListener('input',     () => { if (tolActive)     triggerRebuil
 featherSlider.addEventListener('input', () => { if (featherActive) triggerRebuild(); });
 
 // ── Gomme ──────────────────────────────────────────────────────
-function getCanvasPos(e) {
+// Calcule la zone réellement dessinée du canvas (object-fit:contain peut laisser des marges)
+function getCanvasDisplayRect() {
   const rect = resultCanvas.getBoundingClientRect();
-  const scaleX = resultCanvas.width  / rect.width;
-  const scaleY = resultCanvas.height / rect.height;
+  const canvasAspect = resultCanvas.width / resultCanvas.height;
+  const boxAspect    = rect.width / rect.height;
+  let drawW, drawH;
+  if (canvasAspect > boxAspect) {
+    drawW = rect.width;
+    drawH = rect.width / canvasAspect;
+  } else {
+    drawH = rect.height;
+    drawW = rect.height * canvasAspect;
+  }
+  const offsetX = rect.left + (rect.width  - drawW) / 2;
+  const offsetY = rect.top  + (rect.height - drawH) / 2;
+  return { drawW, drawH, offsetX, offsetY };
+}
+
+function getCanvasPos(e) {
+  const { drawW, drawH, offsetX, offsetY } = getCanvasDisplayRect();
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY, cx: clientX, cy: clientY };
+  const scaleX = resultCanvas.width  / drawW;
+  const scaleY = resultCanvas.height / drawH;
+  return { x: (clientX - offsetX) * scaleX, y: (clientY - offsetY) * scaleY, cx: clientX, cy: clientY };
 }
 
 function updateEraserCursor(cx, cy) {
-  const rect = resultCanvas.getBoundingClientRect();
-  const displayRadius = parseInt(eraserSize.value, 10);
-  const size = displayRadius * 2;
+  const { drawW } = getCanvasDisplayRect();
+  // Taille visuelle : rayon canvas → pixels écran
+  const scale = drawW / resultCanvas.width;
+  const size = parseInt(eraserSize.value, 10) * scale * 2;
   eraserCursor.style.width  = size + 'px';
   eraserCursor.style.height = size + 'px';
   eraserCursor.style.left = cx + 'px';
@@ -576,7 +595,7 @@ function updateEraserCursor(cx, cy) {
 }
 
 function eraserErase(pos) {
-  const r = parseInt(eraserSize.value, 10) * (resultCanvas.width / resultCanvas.getBoundingClientRect().width);
+  const r = parseInt(eraserSize.value, 10);
   resultCtx.save();
   resultCtx.globalCompositeOperation = 'destination-out';
   if (eraserLast) {
@@ -618,11 +637,10 @@ resultCanvas.addEventListener('mousedown', e => {
 resultCanvas.addEventListener('mouseup', () => { eraserDrawing = false; eraserLast = null; });
 
 eraserSize.addEventListener('input', () => {
-  // Mettre à jour la taille du curseur si visible
   if (eraserCursor.classList.contains('visible')) {
-    const rect = resultCanvas.getBoundingClientRect();
-    // On garde juste la taille, pas besoin de position ici
-    const size = parseInt(eraserSize.value, 10) * 2;
+    const { drawW } = getCanvasDisplayRect();
+    const scale = drawW / resultCanvas.width;
+    const size = parseInt(eraserSize.value, 10) * scale * 2;
     eraserCursor.style.width  = size + 'px';
     eraserCursor.style.height = size + 'px';
   }
