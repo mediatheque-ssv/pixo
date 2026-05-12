@@ -97,15 +97,14 @@ body::before {
 .drop-label { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
 .drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.04em; }
 
-/* PREVIEW GRID — 1 ou 2 colonnes */
+/* PREVIEW GRID — toujours en colonne */
 .preview-grid {
   display: none;
+  flex-direction: column;
   margin-top: 1.5rem;
   gap: 16px;
-  align-items: start;
 }
-.preview-grid.single { display: grid; grid-template-columns: 1fr; max-width: 380px; }
-.preview-grid.dual   { display: grid; grid-template-columns: 1fr 1fr; }
+.preview-grid.visible { display: flex; }
 
 .preview-col { display: flex; flex-direction: column; gap: 7px; }
 
@@ -174,8 +173,7 @@ body::before {
 .slider-row.inactive input[type=range].rng::-moz-range-thumb {
   background: var(--surface-3);
   box-shadow: none;
-}
-.slider-header { display: flex; align-items: center; justify-content: space-between; }
+}.slider-header { display: flex; align-items: center; justify-content: space-between; }
 .slider-label {
   font-family: 'JetBrains Mono', monospace; font-size: 10px;
   text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
@@ -232,14 +230,6 @@ input[type=range].rng::-moz-range-thumb {
   transition: width .1s, height .1s;
 }
 #eraser-cursor.visible { display: block; }
-
-/* Mode une colonne pour la vue détourée agrandie */
-.preview-grid.stacked {
-  display: flex !important;
-  flex-direction: column;
-  max-width: 100%;
-}
-.preview-grid.stacked #col-original { display: none; }
 
 /* ACTIONS */
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
@@ -313,7 +303,6 @@ input[type=range].rng::-moz-range-thumb {
   body { padding: 1.5rem 0.75rem 3rem; }
   .logo { width: 64px; height: 64px; }
   .header h1 { font-size: 18px; }
-  .preview-grid.dual { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
   .run-btn, .dl-btn { width: 100%; justify-content: center; }
 }
@@ -326,7 +315,7 @@ input[type=range].rng::-moz-range-thumb {
     <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.6</span>
+      <span class="header-tag">v2.7</span>
     </div>
   </div>
 
@@ -375,15 +364,6 @@ input[type=range].rng::-moz-range-thumb {
     <div class="preview-col" id="col-result" style="display:none">
       <div class="col-label-row">
         <span class="col-label">Détouré</span>
-        <button class="change-btn" id="layout-toggle-btn">
-          <svg id="layout-icon-dual" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-            <rect x="3" y="3" width="8" height="18" rx="1"/><rect x="13" y="3" width="8" height="18" rx="1"/>
-          </svg>
-          <svg id="layout-icon-single" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="1"/>
-          </svg>
-          <span id="layout-toggle-label">Agrandir</span>
-        </button>
       </div>
       <!-- Image résultat + overlay de traitement -->
       <div class="result-wrap" id="result-wrap">
@@ -396,37 +376,35 @@ input[type=range].rng::-moz-range-thumb {
       <!-- Sliders juste en dessous de l'image résultat -->
       <div class="sliders-panel" id="sliders-panel">
 
-        <div class="slider-row">
+        <div class="slider-row inactive" id="tol-row">
           <div class="slider-header">
             <span class="slider-label">Tolérance</span>
-            <span class="slider-val" id="tol-val">0</span>
+            <button class="eraser-toggle" id="tol-toggle" aria-pressed="false">Activer</button>
           </div>
           <div class="slider-track">
             <span class="slider-hint">Faible</span>
-            <input type="range" class="rng" id="tol-slider" min="0" max="100" value="0">
+            <input type="range" class="rng" id="tol-slider" min="1" max="100" value="50">
             <span class="slider-hint">Max</span>
-            <button class="reset-slider-btn" id="reset-tol" aria-label="Réinitialiser la tolérance">↺</button>
           </div>
         </div>
 
         <div class="panel-sep"></div>
 
-        <div class="slider-row">
+        <div class="slider-row inactive" id="feather-row">
           <div class="slider-header">
             <span class="slider-label">Lissage des bords</span>
-            <span class="slider-val" id="feather-val">0</span>
+            <button class="eraser-toggle" id="feather-toggle" aria-pressed="false">Activer</button>
           </div>
           <div class="slider-track">
-            <span class="slider-hint">Aucun</span>
-            <input type="range" class="rng" id="feather-slider" min="0" max="100" value="0">
+            <span class="slider-hint">Faible</span>
+            <input type="range" class="rng" id="feather-slider" min="1" max="100" value="50">
             <span class="slider-hint">Max</span>
-            <button class="reset-slider-btn" id="reset-feather" aria-label="Réinitialiser le lissage des bords">↺</button>
           </div>
         </div>
 
         <div class="panel-sep"></div>
 
-        <div class="slider-row" id="eraser-row">
+        <div class="slider-row inactive" id="eraser-row">
           <div class="slider-header">
             <span class="slider-label">Gomme</span>
             <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Activer</button>
@@ -504,25 +482,24 @@ const dlBtn        = document.getElementById('dl-btn');
 const changeBtn    = document.getElementById('change-btn');
 const slidersPanel = document.getElementById('sliders-panel');
 const tolSlider    = document.getElementById('tol-slider');
-const tolVal       = document.getElementById('tol-val');
+const tolToggle    = document.getElementById('tol-toggle');
 const featherSlider= document.getElementById('feather-slider');
-const featherVal   = document.getElementById('feather-val');
+const featherToggle= document.getElementById('feather-toggle');
 const processingOverlay = document.getElementById('processing-overlay');
 const eraserToggle  = document.getElementById('eraser-toggle');
 const eraserSize    = document.getElementById('eraser-size');
 const resultCanvas  = document.getElementById('img-result');
 const resultCtx     = resultCanvas.getContext('2d');
-const layoutToggleBtn = document.getElementById('layout-toggle-btn');
-const layoutToggleLabel = document.getElementById('layout-toggle-label');
-const layoutIconDual   = document.getElementById('layout-icon-dual');
-const layoutIconSingle = document.getElementById('layout-icon-single');
 const eraserCursor  = document.getElementById('eraser-cursor');
+
+// ── État sliders ───────────────────────────────────────────────
+let tolActive     = false;
+let featherActive = false;
 
 // ── État gomme ─────────────────────────────────────────────────
 let eraserActive = false;
 let eraserDrawing = false;
 let eraserLast = null;
-let isStacked = false;
 
 // ── Drag & drop / import ───────────────────────────────────────
 dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
@@ -538,60 +515,45 @@ eraserToggle.addEventListener('click', () => {
   eraserActive = !eraserActive;
   eraserToggle.classList.toggle('active', eraserActive);
   eraserToggle.textContent = eraserActive ? 'Désactiver' : 'Activer';
+  document.getElementById('eraser-row').classList.toggle('inactive', !eraserActive);
   resultCanvas.classList.toggle('erasing', eraserActive);
   if (!eraserActive) eraserCursor.classList.remove('visible');
 });
 
-layoutToggleBtn.addEventListener('click', () => {
-  isStacked = !isStacked;
-  if (isStacked) {
-    previewGrid.classList.remove('dual');
-    previewGrid.classList.add('stacked');
-    layoutToggleLabel.textContent = 'Réduire';
-    layoutIconDual.style.display = '';
-    layoutIconSingle.style.display = 'none';
-  } else {
-    previewGrid.classList.remove('stacked');
-    previewGrid.classList.add('dual');
-    layoutToggleLabel.textContent = 'Agrandir';
-    layoutIconDual.style.display = 'none';
-    layoutIconSingle.style.display = '';
-  }
-});
-
-// ── Sliders : aperçu live avec debounce ───────────────────────
+// ── Sliders avec toggles ───────────────────────────────────────
 let debounceTimer = null;
-const DEBOUNCE_MS = 350; // délai après lequel on recalcule
+const DEBOUNCE_MS = 350;
 
-function updateSliderState(el, row) {
-  row.classList.toggle('inactive', parseInt(el.value, 10) === 0);
-}
-
-function onSliderInput(el, display, row) {
-  display.textContent = el.value;
-  updateSliderState(el, row);
-  // Afficher l'overlay immédiatement pour signaler le chargement en cours
+function triggerRebuild() {
   processingOverlay.classList.add('visible');
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(async () => {
-    await rebuild(parseInt(tolSlider.value, 10), parseInt(featherSlider.value, 10));
+    const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+    const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+    await rebuild(tol, feather);
     processingOverlay.classList.remove('visible');
-    dlBtn.classList.add('visible');
   }, DEBOUNCE_MS);
 }
 
-const tolRow     = tolSlider.closest('.slider-row');
-const featherRow = featherSlider.closest('.slider-row');
+function setToggle(toggle, slider, row, active) {
+  toggle.classList.toggle('active', active);
+  toggle.textContent = active ? 'Désactiver' : 'Activer';
+  row.classList.toggle('inactive', !active);
+}
 
-document.getElementById('reset-tol').addEventListener('click', () => {
-  tolSlider.value = 0; onSliderInput(tolSlider, tolVal, tolRow);
+tolToggle.addEventListener('click', () => {
+  tolActive = !tolActive;
+  setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), tolActive);
+  triggerRebuild();
 });
-document.getElementById('reset-feather').addEventListener('click', () => {
-  featherSlider.value = 0; onSliderInput(featherSlider, featherVal, featherRow);
+featherToggle.addEventListener('click', () => {
+  featherActive = !featherActive;
+  setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), featherActive);
+  triggerRebuild();
 });
 
-tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal,     tolRow));
-featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal, featherRow));
+tolSlider.addEventListener('input',     () => { if (tolActive)     triggerRebuild(); });
+featherSlider.addEventListener('input', () => { if (featherActive) triggerRebuild(); });
 
 // ── Gomme ──────────────────────────────────────────────────────
 function getCanvasPos(e) {
@@ -753,6 +715,7 @@ async function rebuild(tol, feather) {
     eraserActive = false;
     eraserToggle.classList.remove('active');
     eraserToggle.textContent = 'Activer';
+    document.getElementById('eraser-row').classList.add('inactive');
     resultCanvas.classList.remove('erasing');
   }
 }
@@ -814,16 +777,16 @@ async function runDetourage() {
     });
 
     // Remettre les sliders à zéro
-    tolSlider.value = 0;     tolVal.textContent     = '0'; updateSliderState(tolSlider, tolRow);
-    featherSlider.value = 0; featherVal.textContent = '0'; updateSliderState(featherSlider, featherRow);
+    tolActive = false; featherActive = false;
+    setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
+    setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
 
     showProgress(95);
     await rebuild(0, 0);
 
-    // Révéler la colonne résultat et passer en 2 colonnes
+    // Révéler la colonne résultat
     colResult.style.display = 'block';
-    previewGrid.classList.remove('single');
-    previewGrid.classList.add('dual');
+    previewGrid.classList.add('visible');
     slidersPanel.classList.add('visible');
     dlBtn.classList.add('visible');
     runBtn.style.display = 'none'; // caché jusqu'au prochain reset
@@ -862,9 +825,7 @@ function loadFile(file) {
     imgOriginal.style.display = 'block';
     resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
     colResult.style.display = 'none';
-    previewGrid.classList.remove('dual');
-    previewGrid.classList.add('single');
-    previewGrid.style.display = '';
+    previewGrid.classList.add('visible');
     slidersPanel.classList.remove('visible');
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
@@ -872,12 +833,11 @@ function loadFile(file) {
     eraserActive = false;
     eraserToggle.classList.remove('active');
     eraserToggle.textContent = 'Activer';
+    document.getElementById('eraser-row').classList.add('inactive');
     resultCanvas.classList.remove('erasing');
     eraserCursor.classList.remove('visible');
-    isStacked = false;
-    layoutToggleLabel.textContent = 'Agrandir';
-    layoutIconDual.style.display = 'none';
-    layoutIconSingle.style.display = '';
+    setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
+    setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
     dropZone.style.display = 'none';
     setStatus(''); hideProgress();
   };
@@ -888,7 +848,7 @@ function loadFile(file) {
 function resetAll() {
   srcFile = null; rawPixels = null; origPixels = null; resultBlob = null;
   dropZone.style.display = '';
-  previewGrid.className = 'preview-grid single';
+  previewGrid.className = 'preview-grid';
   previewGrid.style.display = 'none';
   colResult.style.display = 'none';
   slidersPanel.classList.remove('visible');
@@ -896,18 +856,16 @@ function resetAll() {
   dlBtn.classList.remove('visible');
   imgOriginal.src = ''; imgOriginal.style.display = 'none';
   resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
-  tolSlider.value = 0;     tolVal.textContent = '0';
-  featherSlider.value = 0; featherVal.textContent = '0';
   fileInput.value = '';
+  tolActive = false; featherActive = false;
+  setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
+  setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
   eraserActive = false;
   eraserToggle.classList.remove('active');
   eraserToggle.textContent = 'Activer';
+  document.getElementById('eraser-row').classList.add('inactive');
   resultCanvas.classList.remove('erasing');
   eraserCursor.classList.remove('visible');
-  isStacked = false;
-  layoutToggleLabel.textContent = 'Agrandir';
-  layoutIconDual.style.display = 'none';
-  layoutIconSingle.style.display = '';
   setStatus(''); hideProgress();
   endRun();
 }
