@@ -1187,9 +1187,17 @@ function showToast(msg, type) {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.addEventListener('load', () => {
     window.scrollTo(0, 0);
-    document.getElementById('tol-slider').value    = 50;
+    document.getElementById('tol-slider').value     = 50;
     document.getElementById('feather-slider').value = 50;
-    document.getElementById('eraser-size').value   = 2;
+    document.getElementById('eraser-size').value    = 2;
+    // Remettre le damier par défaut
+    const checkerSwatch = document.querySelector('.bg-swatch[data-bg="checker"]');
+    if (checkerSwatch) {
+      document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+      checkerSwatch.classList.add('active');
+    }
+    const canvas = document.getElementById('img-result');
+    if (canvas) canvas.style.background = '';
   });
 </script>
 </body>
