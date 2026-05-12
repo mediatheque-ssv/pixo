@@ -212,6 +212,18 @@ input[type=range].rng::-moz-range-thumb {
 
 .panel-sep { height: 0.5px; background: var(--border-md); }
 
+.eraser-toggle {
+  height: 22px; padding: 0 10px; border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md); background: transparent; color: var(--text-3);
+  font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 600;
+  cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+}
+.eraser-toggle:hover { border-color: var(--border-hi); color: var(--text); }
+.eraser-toggle.active {
+  background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent);
+}
+#img-result.erasing { cursor: crosshair; }
+
 /* ACTIONS */
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
 .run-btn {
@@ -297,7 +309,7 @@ input[type=range].rng::-moz-range-thumb {
     <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.6</span>
+      <span class="header-tag">v2.7</span>
     </div>
   </div>
 
@@ -349,7 +361,7 @@ input[type=range].rng::-moz-range-thumb {
       </div>
       <!-- Image résultat + overlay de traitement -->
       <div class="result-wrap" id="result-wrap">
-        <img id="img-result" class="preview-img result" alt="Image détourée">
+        <canvas id="img-result" class="preview-img result"></canvas>
         <div class="processing-overlay" id="processing-overlay">
           <div class="processing-spinner"></div>
         </div>
@@ -383,6 +395,20 @@ input[type=range].rng::-moz-range-thumb {
             <input type="range" class="rng" id="feather-slider" min="0" max="100" value="0">
             <span class="slider-hint">Max</span>
             <button class="reset-slider-btn" id="reset-feather" aria-label="Réinitialiser le lissage des bords">↺</button>
+          </div>
+        </div>
+
+        <div class="panel-sep"></div>
+
+        <div class="slider-row" id="eraser-row">
+          <div class="slider-header">
+            <span class="slider-label">Gomme</span>
+            <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Activer</button>
+          </div>
+          <div class="slider-track">
+            <span class="slider-hint">Petite</span>
+            <input type="range" class="rng" id="eraser-size" min="5" max="80" value="20">
+            <span class="slider-hint">Grande</span>
           </div>
         </div>
 
@@ -455,6 +481,15 @@ const tolVal       = document.getElementById('tol-val');
 const featherSlider= document.getElementById('feather-slider');
 const featherVal   = document.getElementById('feather-val');
 const processingOverlay = document.getElementById('processing-overlay');
+const eraserToggle  = document.getElementById('eraser-toggle');
+const eraserSize    = document.getElementById('eraser-size');
+const resultCanvas  = document.getElementById('img-result');
+const resultCtx     = resultCanvas.getContext('2d');
+
+// ── État gomme ─────────────────────────────────────────────────
+let eraserActive = false;
+let eraserDrawing = false;
+let eraserLast = null;
 
 // ── Drag & drop / import ───────────────────────────────────────
 dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
@@ -466,6 +501,12 @@ fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 runBtn.addEventListener('click', runDetourage);
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
+eraserToggle.addEventListener('click', () => {
+  eraserActive = !eraserActive;
+  eraserToggle.classList.toggle('active', eraserActive);
+  eraserToggle.textContent = eraserActive ? 'Désactiver' : 'Activer';
+  resultCanvas.classList.toggle('erasing', eraserActive);
+});
 
 // ── Sliders : aperçu live avec debounce ───────────────────────
 let debounceTimer = null;
@@ -501,7 +542,46 @@ document.getElementById('reset-feather').addEventListener('click', () => {
 tolSlider.addEventListener('input',     () => onSliderInput(tolSlider,     tolVal,     tolRow));
 featherSlider.addEventListener('input', () => onSliderInput(featherSlider, featherVal, featherRow));
 
-// ── Traitement pixel ───────────────────────────────────────────
+// ── Gomme ──────────────────────────────────────────────────────
+function getCanvasPos(e) {
+  const rect = resultCanvas.getBoundingClientRect();
+  const scaleX = resultCanvas.width  / rect.width;
+  const scaleY = resultCanvas.height / rect.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+}
+
+function eraserErase(pos) {
+  const r = parseInt(eraserSize.value, 10) * (resultCanvas.width / resultCanvas.getBoundingClientRect().width);
+  resultCtx.save();
+  resultCtx.globalCompositeOperation = 'destination-out';
+  if (eraserLast) {
+    resultCtx.beginPath();
+    resultCtx.lineWidth = r * 2;
+    resultCtx.lineCap = 'round';
+    resultCtx.strokeStyle = 'rgba(0,0,0,1)';
+    resultCtx.moveTo(eraserLast.x, eraserLast.y);
+    resultCtx.lineTo(pos.x, pos.y);
+    resultCtx.stroke();
+  }
+  resultCtx.beginPath();
+  resultCtx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+  resultCtx.fillStyle = 'rgba(0,0,0,1)';
+  resultCtx.fill();
+  resultCtx.restore();
+  eraserLast = pos;
+  // Mettre à jour le blob pour le téléchargement
+  resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
+}
+
+resultCanvas.addEventListener('mousedown',  e => { if (!eraserActive) return; eraserDrawing = true; eraserLast = null; eraserErase(getCanvasPos(e)); });
+resultCanvas.addEventListener('mousemove',  e => { if (!eraserActive || !eraserDrawing) return; eraserErase(getCanvasPos(e)); });
+resultCanvas.addEventListener('mouseup',    () => { eraserDrawing = false; eraserLast = null; });
+resultCanvas.addEventListener('mouseleave', () => { eraserDrawing = false; eraserLast = null; });
+resultCanvas.addEventListener('touchstart', e => { if (!eraserActive) return; e.preventDefault(); eraserDrawing = true; eraserLast = null; eraserErase(getCanvasPos(e)); }, { passive: false });
+resultCanvas.addEventListener('touchmove',  e => { if (!eraserActive || !eraserDrawing) return; e.preventDefault(); eraserErase(getCanvasPos(e)); }, { passive: false });
+resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; eraserLast = null; });
 
 // Seuille le canal alpha : les semi-transparences sous le seuil passent à 0
 function applySharpen(src, tolerance) {
@@ -577,11 +657,17 @@ async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
-  const blob = await pixelsToBlob(px, rawW, rawH);
-  resultBlob = blob;
-  const prev = imgResult.src;
-  imgResult.src = URL.createObjectURL(blob);
-  if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+  resultCanvas.width  = rawW;
+  resultCanvas.height = rawH;
+  resultCtx.putImageData(new ImageData(px, rawW, rawH), 0, 0);
+  resultBlob = await new Promise(res => resultCanvas.toBlob(res, 'image/png'));
+  // Désactiver la gomme si active (le rebuild repart de zéro)
+  if (eraserActive) {
+    eraserActive = false;
+    eraserToggle.classList.remove('active');
+    eraserToggle.textContent = 'Activer';
+    resultCanvas.classList.remove('erasing');
+  }
 }
 
 // ── Détourage ──────────────────────────────────────────────────
@@ -668,13 +754,12 @@ async function runDetourage() {
 
 // ── Téléchargement ─────────────────────────────────────────────
 function downloadResult() {
-  if (!resultBlob) return;
   const name = srcFile ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png' : 'image_detoure.png';
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(resultBlob);
+  a.href = resultCanvas.toDataURL('image/png');
   a.download = name;
   document.body.appendChild(a); a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 200);
+  setTimeout(() => document.body.removeChild(a), 200);
 }
 
 // ── Charger un fichier ─────────────────────────────────────────
@@ -688,7 +773,7 @@ function loadFile(file) {
   reader.onload = ev => {
     imgOriginal.src = ev.target.result;
     imgOriginal.style.display = 'block';
-    imgResult.src = '';
+    resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
     colResult.style.display = 'none';
     previewGrid.classList.remove('dual');
     previewGrid.classList.add('single');
@@ -697,6 +782,10 @@ function loadFile(file) {
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
     runBtn.style.display = '';
+    eraserActive = false;
+    eraserToggle.classList.remove('active');
+    eraserToggle.textContent = 'Activer';
+    resultCanvas.classList.remove('erasing');
     dropZone.style.display = 'none';
     setStatus(''); hideProgress();
   };
@@ -714,10 +803,14 @@ function resetAll() {
   actionsEl.style.display = 'none';
   dlBtn.classList.remove('visible');
   imgOriginal.src = ''; imgOriginal.style.display = 'none';
-  imgResult.src = '';
+  resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
   tolSlider.value = 0;     tolVal.textContent = '0';
   featherSlider.value = 0; featherVal.textContent = '0';
   fileInput.value = '';
+  eraserActive = false;
+  eraserToggle.classList.remove('active');
+  eraserToggle.textContent = 'Activer';
+  resultCanvas.classList.remove('erasing');
   setStatus(''); hideProgress();
   endRun();
 }
