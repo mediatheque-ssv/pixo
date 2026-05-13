@@ -280,18 +280,11 @@ input[type=range].rng::-moz-range-thumb {
 /* ACTIONS */
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
 
-.flat-bg-btn {
-  height: 48px; padding: 0 20px;
-  background: transparent; border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-lg); font-size: 13px; font-weight: 700;
-  font-family: 'Syne', sans-serif; cursor: pointer; color: var(--text-2);
-  transition: all .2s; display: flex; align-items: center; gap: 8px;
-  position: relative;
-}
-.flat-bg-btn:hover:not(.picking) { border-color: var(--border-hi); color: var(--text); }
-.flat-bg-btn.picking { border-color: var(--accent); color: var(--accent); }
-
-.flat-bg-hint {
+.flat-bg-btn-picking { outline: 2px solid var(--accent); }
+#flat-bg-btn .flat-bg-label { display: flex; align-items: center; gap: 8px; }
+#flat-bg-btn.picking .flat-bg-label { display: none; }
+#flat-bg-btn.picking .spinner { display: block; }
+#flat-bg-btn .flat-bg-hint {
   position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
   background: var(--surface-3); border: 0.5px solid var(--border-md);
   border-radius: var(--radius); padding: 5px 10px;
@@ -299,12 +292,12 @@ input[type=range].rng::-moz-range-thumb {
   white-space: nowrap; pointer-events: none;
   opacity: 0; transition: opacity .2s;
 }
-.flat-bg-hint::before {
+#flat-bg-btn .flat-bg-hint::before {
   content: '';
   position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
   border: 5px solid transparent; border-right-color: var(--border-md);
 }
-.flat-bg-btn.picking .flat-bg-hint { opacity: 1; }
+#flat-bg-btn.picking .flat-bg-hint { opacity: 1; }
 .run-btn {
   height: 48px; padding: 0 24px; background: var(--accent);
   border: none; border-radius: var(--radius-lg);
@@ -532,15 +525,16 @@ input[type=range].rng::-moz-range-thumb {
       <span class="run-label">Supprimer le fond</span>
       <div class="spinner"></div>
     </button>
-    <button class="flat-bg-btn" id="flat-bg-btn">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <button class="run-btn" id="flat-bg-btn">
+      <svg class="flat-bg-label" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 11l-9-9-9 9 9 9z" opacity="0"/>
         <path d="M2 22l4-4"/>
         <path d="M8.5 15.5l-2 2 5 5 9-9-5-5-2 2"/>
         <circle cx="17" cy="7" r="3" stroke="currentColor"/>
         <path d="M14.5 9.5L8 16"/>
       </svg>
-      Fond uni
+      <span class="flat-bg-label">Supprimer un fond uni</span>
+      <div class="spinner"></div>
       <span class="flat-bg-hint">Clique sur le fond de ton image</span>
     </button>
     <button class="dl-btn" id="dl-btn">
@@ -643,7 +637,6 @@ flatBgBtn.addEventListener('click', () => {
 imgOriginal.addEventListener('click', async e => {
   if (!pickingMode) return;
 
-  // Lire le pixel cliqué depuis l'image originale
   const rect = imgOriginal.getBoundingClientRect();
   const scaleX = imgOriginal.naturalWidth  / rect.width;
   const scaleY = imgOriginal.naturalHeight / rect.height;
@@ -657,13 +650,15 @@ imgOriginal.addEventListener('click', async e => {
   const pixel = oc.getContext('2d').getImageData(px, py, 1, 1).data;
   flatBgColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
 
-  // Quitter le mode pipette
+  // Quitter le mode pipette, passer en loading
   pickingMode = false;
   flatBgBtn.classList.remove('picking');
+  flatBgBtn.classList.add('loading');
   imgOriginal.style.cursor = '';
 
-  // Lancer le détourage avec post-traitement fond uni
   await runDetourage();
+
+  flatBgBtn.classList.remove('loading');
 });
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
@@ -1109,17 +1104,16 @@ async function rebuild(tol, feather) {
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
 
-  // Post-traitement fond uni : supprimer les pixels proches de la couleur capturée
+  // Post-traitement fond uni : flood-fill depuis la couleur capturée sur origPixels
   if (flatBgColor) {
     const { r: fr, g: fg, b: fb } = flatBgColor;
-    const threshold = 40; // tolérance colorimétrique
+    const threshold = 35;
     for (let i = 0; i < rawW * rawH; i++) {
-      if (px[i * 4 + 3] === 0) continue; // déjà transparent
-      const dr = px[i * 4]     - fr;
-      const dg = px[i * 4 + 1] - fg;
-      const db = px[i * 4 + 2] - fb;
-      const dist = Math.sqrt(dr*dr + dg*dg + db*db);
-      if (dist < threshold) px[i * 4 + 3] = 0;
+      if (px[i * 4 + 3] === 0) continue;
+      const dr = origPixels[i * 4]     - fr;
+      const dg = origPixels[i * 4 + 1] - fg;
+      const db = origPixels[i * 4 + 2] - fb;
+      if (Math.sqrt(dr*dr + dg*dg + db*db) < threshold) px[i * 4 + 3] = 0;
     }
   }
   // Réappliquer le masque de gomme s'il existe
