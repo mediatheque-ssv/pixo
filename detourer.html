@@ -133,8 +133,14 @@ body::before {
   display: block; object-fit: contain; max-height: 320px;
 }
 .preview-img.original { background: var(--surface-2); }
-.preview-img.result {
+.preview-img.result { background: transparent; }
+
+.checker-wrap {
+  display: inline-block;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
+  line-height: 0;
 }
 
 /* Sélecteur de fond de prévisualisation */
@@ -407,7 +413,9 @@ input[type=range].rng::-moz-range-thumb {
       </div>
       <!-- Image résultat + overlay de traitement -->
       <div class="result-wrap" id="result-wrap">
-        <canvas id="img-result" class="preview-img result"></canvas>
+        <div class="checker-wrap" id="checker-wrap">
+          <canvas id="img-result" class="preview-img result"></canvas>
+        </div>
         <div class="processing-overlay" id="processing-overlay">
           <div class="processing-spinner"></div>
         </div>
@@ -870,17 +878,20 @@ resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; erase
 
 // ── Fond de prévisualisation ────────────────────────────────────
 const CHECKER_BG = 'repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px';
+const checkerWrap = document.getElementById('checker-wrap');
 document.getElementById('bg-picker').addEventListener('click', e => {
   const swatch = e.target.closest('.bg-swatch');
   if (!swatch) return;
   document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
   swatch.classList.add('active');
   const bg = swatch.dataset.bg;
-  resultCanvas.style.background = bg === 'checker' ? CHECKER_BG : bg;
+  checkerWrap.style.background = bg === 'checker' ? CHECKER_BG : bg;
+  resultCanvas.style.background = '';
 });
 document.getElementById('bg-color-picker').addEventListener('input', e => {
   document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
-  resultCanvas.style.background = e.target.value;
+  checkerWrap.style.background = e.target.value;
+  resultCanvas.style.background = '';
 });
 
 // ── Annuler (Ctrl+Z + bouton) ───────────────────────────────────
@@ -1196,8 +1207,8 @@ function showToast(msg, type) {
       document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
       checkerSwatch.classList.add('active');
     }
-    const canvas = document.getElementById('img-result');
-    if (canvas) canvas.style.background = '';
+    const checkerWrapEl = document.getElementById('checker-wrap');
+    if (checkerWrapEl) checkerWrapEl.style.background = CHECKER_BG;
   });
 </script>
 </body>
