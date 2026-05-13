@@ -814,6 +814,10 @@ function eraserRestore(pos) {
 
   // Coller sur le canvas principal
   resultCtx.drawImage(clipOC, bx0, by0);
+
+  // Mettre à jour les masques
+  updateMaskFromBrush(restoreMask, pos, prevLast, r, 1);
+  if (eraserMask) updateMaskFromBrush(eraserMask, pos, prevLast, r, 0);
 }
 
 // Appelé une seule fois à la fin du trait — met à jour le blob
