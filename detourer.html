@@ -132,20 +132,18 @@ body::before {
   display: block; object-fit: contain;
 }
 .preview-img.original { width: 100%; max-height: 320px; background: var(--surface-2); border-radius: var(--radius-lg); border: 0.5px solid var(--border-md); }
-.preview-img.result { background: transparent; max-height: 320px; width: auto; max-width: 100%; display: block; }
+.preview-img.result { background: transparent; max-height: 320px; width: 100%; display: block; object-fit: contain; }
 
 .result-wrap {
   position: relative;
   display: flex; justify-content: center; align-items: center;
   width: 100%; min-height: 60px;
   background: var(--surface-2);
-  border-radius: var(--radius-lg);
   border: 0.5px solid var(--border-md);
 }
 
 .checker-wrap {
   display: inline-flex;
-  border-radius: var(--radius-lg);
   overflow: hidden;
   background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
   line-height: 0;
@@ -186,7 +184,6 @@ body::before {
 /* Overlay de chargement sur l'image résultat */
 .processing-overlay {
   position: absolute; inset: 0;
-  border-radius: var(--radius-lg);
   background: rgba(0,0,0,0.45);
   backdrop-filter: blur(2px);
   display: none; align-items: center; justify-content: center;
@@ -280,26 +277,6 @@ input[type=range].rng::-moz-range-thumb {
 /* ACTIONS */
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
 
-.flat-bg-btn-picking { outline: 2px solid var(--accent); }
-#flat-bg-btn .flat-bg-label { display: flex; align-items: center; gap: 8px; }
-#flat-bg-btn.loading .flat-bg-label { display: none; }
-#flat-bg-btn.loading .spinner { display: block; }
-#flat-bg-btn { position: relative; }
-#flat-bg-btn .flat-bg-hint {
-  position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
-  background: var(--surface-3); border: 0.5px solid var(--border-md);
-  border-radius: var(--radius); padding: 5px 10px;
-  font-size: 11px; font-weight: 500; color: var(--text-2);
-  white-space: nowrap; pointer-events: none;
-  opacity: 0; transition: opacity .2s;
-  z-index: 10;
-}
-#flat-bg-btn .flat-bg-hint::before {
-  content: '';
-  position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
-  border: 5px solid transparent; border-right-color: var(--border-md);
-}
-#flat-bg-btn.picking .flat-bg-hint { opacity: 1; }
 .run-btn {
   height: 48px; padding: 0 24px; background: var(--accent);
   border: none; border-radius: var(--radius-lg);
@@ -527,18 +504,6 @@ input[type=range].rng::-moz-range-thumb {
       <span class="run-label">Supprimer le fond</span>
       <div class="spinner"></div>
     </button>
-    <button class="run-btn" id="flat-bg-btn">
-      <svg class="flat-bg-label" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 11l-9-9-9 9 9 9z" opacity="0"/>
-        <path d="M2 22l4-4"/>
-        <path d="M8.5 15.5l-2 2 5 5 9-9-5-5-2 2"/>
-        <circle cx="17" cy="7" r="3" stroke="currentColor"/>
-        <path d="M14.5 9.5L8 16"/>
-      </svg>
-      <span class="flat-bg-label">Supprimer un fond uni</span>
-      <div class="spinner"></div>
-      <span class="flat-bg-hint">Clique sur le fond de ton image</span>
-    </button>
     <button class="dl-btn" id="dl-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -621,191 +586,7 @@ dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.
 fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
 // ── Boutons ────────────────────────────────────────────────────
-runBtn.addEventListener('click', () => { flatBgColor = null; runDetourage(); });
-
-// ── Fond uni (pipette) ──────────────────────────────────────────
-const flatBgBtn = document.getElementById('flat-bg-btn');
-let flatBgColor = null; // { r, g, b }
-let flatBgFloodMask = null; // Uint8Array calculé par flood fill
-let pickingMode = false;
-
-flatBgBtn.addEventListener('click', () => {
-  if (!srcFile) return;
-  pickingMode = !pickingMode;
-  flatBgBtn.classList.toggle('picking', pickingMode);
-  imgOriginal.style.cursor = pickingMode ? 'crosshair' : '';
-});
-
-// Capture la couleur au clic sur l'image originale
-imgOriginal.addEventListener('click', async e => {
-  if (!pickingMode) return;
-
-  const rect = imgOriginal.getBoundingClientRect();
-  const scaleX = imgOriginal.naturalWidth  / rect.width;
-  const scaleY = imgOriginal.naturalHeight / rect.height;
-  const px = Math.round((e.clientX - rect.left) * scaleX);
-  const py = Math.round((e.clientY - rect.top)  * scaleY);
-
-  const oc  = document.createElement('canvas');
-  oc.width  = imgOriginal.naturalWidth;
-  oc.height = imgOriginal.naturalHeight;
-  oc.getContext('2d').drawImage(imgOriginal, 0, 0);
-  const pixel = oc.getContext('2d').getImageData(px, py, 1, 1).data;
-  flatBgColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
-
-  // Quitter le mode pipette
-  pickingMode = false;
-  flatBgBtn.classList.remove('picking');
-  imgOriginal.style.cursor = '';
-
-  if (rawPixels) {
-    // Détourage IA déjà fait — recalcul direct
-    flatBgBtn.disabled = true;
-    flatBgBtn.classList.add('loading');
-    flatBgFloodMask = buildFloodMask(origPixels, rawW, rawH, flatBgColor, 40);
-    const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
-    const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
-    await rebuild(tol, feather);
-    flatBgBtn.style.display = 'none';
-    endRun(flatBgBtn);
-    setStatus('✓ Fond uni supprimé.', 'success');
-  } else {
-    await removeFlatBgOnly();
-  }
-});
-
-// Flood fill depuis les 4 coins, 8-connexité.
-// Retourne un Float32Array [0..1] : 1 = fond à supprimer, 0 = sujet à garder.
-// Les pixels "de bord" (distance proche du seuil) ont une valeur intermédiaire
-// pour un fondu doux.
-function buildFloodMask(pixels, w, h, bgColor, tolerance) {
-  const { r: br, g: bg, b: bb } = bgColor;
-  const n = w * h;
-
-  // Distance euclidienne RGB normalisée [0..1] par rapport à la couleur de fond
-  function dist(idx) {
-    const i = idx * 4;
-    const dr = pixels[i]   - br;
-    const dg = pixels[i+1] - bg;
-    const db = pixels[i+2] - bb;
-    return Math.sqrt(dr*dr + dg*dg + db*db);
-  }
-
-  const visited = new Uint8Array(n);
-  const isFg    = new Uint8Array(n); // 1 = fond (à supprimer)
-  const stack   = [];
-
-  // Ensemencer depuis les 4 bords entiers
-  for (let x = 0; x < w; x++) {
-    stack.push(x);             // bord haut
-    stack.push((h-1)*w + x);   // bord bas
-  }
-  for (let y = 1; y < h-1; y++) {
-    stack.push(y*w);           // bord gauche
-    stack.push(y*w + w-1);     // bord droit
-  }
-  for (const s of stack) visited[s] = 1;
-
-  while (stack.length) {
-    const idx = stack.pop();
-    if (dist(idx) > tolerance) continue; // hors tolérance : bord du sujet, on s'arrête
-    isFg[idx] = 1;
-    const x = idx % w, y = (idx / w) | 0;
-    // 8 voisins
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
-        const ni = ny * w + nx;
-        if (!visited[ni]) { visited[ni] = 1; stack.push(ni); }
-      }
-    }
-  }
-
-  // Second passage : adoucir les bords (pixels voisins d'un pixel fond, avec distance < tolerance*1.5)
-  // → alpha proportionnel à la distance
-  const softZone = tolerance * 1.5;
-  const result = new Float32Array(n); // 0 = garder, 1 = supprimer
-  for (let i = 0; i < n; i++) {
-    if (isFg[i]) {
-      result[i] = 1;
-    } else {
-      // Pixel sujet — vérifier si un voisin est fond (zone de bord)
-      const d = dist(i);
-      if (d < softZone) {
-        // Chercher si adjacent à un pixel fond
-        const x = i % w, y = (i / w) | 0;
-        let nextToFg = false;
-        for (let dy = -1; dy <= 1 && !nextToFg; dy++) {
-          for (let dx = -1; dx <= 1 && !nextToFg; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = x+dx, ny = y+dy;
-            if (nx >= 0 && nx < w && ny >= 0 && ny < h && isFg[ny*w+nx]) nextToFg = true;
-          }
-        }
-        if (nextToFg) {
-          // Fondu : 0 à tolerance → alpha 1..0, tolerance à softZone → alpha 0
-          result[i] = Math.max(0, Math.min(1, (d - 0) / tolerance));
-          // Inverser : proche du fond = plus transparent
-          result[i] = 1 - result[i];
-        }
-      }
-    }
-  }
-  return result;
-}
-
-async function removeFlatBgOnly() {
-  if (!srcFile || !flatBgColor) return;
-  flatBgBtn.disabled = true;
-  flatBgBtn.classList.add('loading');
-  setStatus('Suppression du fond uni…');
-  try {
-    const dataUrl = await fileToDataUrl(srcFile);
-    const img = await new Promise((res, rej) => {
-      const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl;
-    });
-    rawW = img.naturalWidth; rawH = img.naturalHeight;
-
-    const oc = document.createElement('canvas');
-    oc.width = rawW; oc.height = rawH;
-    oc.getContext('2d').drawImage(img, 0, 0);
-    origPixels = oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
-
-    // Masque alpha : tout visible par défaut
-    rawPixels = new Uint8ClampedArray(rawW * rawH * 4);
-    for (let i = 0; i < rawW * rawH; i++) {
-      rawPixels[i * 4]     = origPixels[i * 4];
-      rawPixels[i * 4 + 1] = origPixels[i * 4 + 1];
-      rawPixels[i * 4 + 2] = origPixels[i * 4 + 2];
-      rawPixels[i * 4 + 3] = 255;
-    }
-
-    flatBgFloodMask = buildFloodMask(origPixels, rawW, rawH, flatBgColor, 40);
-
-    eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; updateUndoBtn();
-    tolActive = false; featherActive = false;
-    setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
-    setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
-
-    await rebuild(0, 0);
-
-    colResult.style.display = 'block';
-    previewGrid.classList.add('visible');
-    slidersPanel.classList.add('visible');
-    dlBtn.classList.add('visible');
-    runBtn.style.display = 'none';
-    flatBgBtn.style.display = 'none';
-
-    setStatus('✓ Fond uni supprimé.', 'success');
-    endRun(flatBgBtn);
-  } catch(e) {
-    console.error(e);
-    setStatus('Erreur : ' + (e.message || 'impossible.'), 'error');
-    endRun(flatBgBtn);
-  }
-}
+runBtn.addEventListener('click', () => { runDetourage(); });
 
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
@@ -1251,13 +1032,6 @@ async function rebuild(tol, feather) {
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
 
-  // Post-traitement fond uni : applique le masque flood fill (valeur float 0..1)
-  if (flatBgColor && flatBgFloodMask) {
-    for (let i = 0; i < rawW * rawH; i++) {
-      const v = flatBgFloodMask[i];
-      if (v > 0) px[i * 4 + 3] = Math.round(px[i * 4 + 3] * (1 - v));
-    }
-  }
   // Réappliquer le masque de gomme s'il existe
   if (eraserMask) {
     for (let i = 0; i < eraserMask.length; i++) {
@@ -1277,23 +1051,22 @@ async function rebuild(tol, feather) {
 }
 
 // ── Détourage ──────────────────────────────────────────────────
-async function runDetourage(fromFlatBg = false) {
+async function runDetourage() {
   if (!srcFile) return;
-  eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; redoHistory = []; updateUndoBtn();
-  const activeBtn = fromFlatBg ? flatBgBtn : runBtn;
-  activeBtn.disabled = true;
-  activeBtn.classList.add('loading');
+  eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; updateUndoBtn();
+  runBtn.disabled = true;
+  runBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
   showProgress(10); setStatus('Chargement du modèle…');
 
   // Attendre le modèle (chargé en parallèle dès l'ouverture de la page)
   let waited = 0;
   while (!segmenter) {
-    if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(activeBtn); return; }
+    if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(runBtn); return; }
     await sleep(300); waited += 300;
   }
   if (segmenter === 'error') {
-    setStatus('Erreur de chargement du modèle — cela peut arriver lors de la première utilisation (~50 Mo à télécharger). Réessayez dans quelques instants.', 'error'); endRun(activeBtn); return;
+    setStatus('Erreur de chargement du modèle — cela peut arriver lors de la première utilisation (~50 Mo à télécharger). Réessayez dans quelques instants.', 'error'); endRun(runBtn); return;
   }
 
   try {
@@ -1351,16 +1124,12 @@ async function runDetourage(fromFlatBg = false) {
 
     setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100); setTimeout(hideProgress, 800);
-    endRun(activeBtn);
-    // Après un détourage IA réussi, masquer le bouton fond uni (inutile après coup)
-    if (!fromFlatBg) {
-      flatBgBtn.style.display = 'none';
-    }
+    endRun(runBtn);
 
   } catch(e) {
     console.error(e);
     setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
-    hideProgress(); endRun(activeBtn);
+    hideProgress(); endRun(runBtn);
   }
 }
 
@@ -1379,7 +1148,7 @@ function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
-  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; flatBgColor = null; flatBgFloodMask = null;
+  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = [];
 
   const reader = new FileReader();
   reader.onload = ev => {
@@ -1392,7 +1161,6 @@ function loadFile(file) {
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
     runBtn.style.display = '';
-    flatBgBtn.style.display = '';
     eraserActive = false; restoreActive = false;
     eraserToggle.classList.remove('active');
     restoreToggle.classList.remove('active');
@@ -1409,7 +1177,7 @@ function loadFile(file) {
 
 // ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
-  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; flatBgColor = null; flatBgFloodMask = null;
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = [];
   updateUndoBtn();
   dropZone.style.display = '';
   previewGrid.className = 'preview-grid';
@@ -1430,7 +1198,7 @@ function resetAll() {
   resultCanvas.classList.remove('erasing');
   eraserCursor.classList.remove('visible');
   setStatus(''); hideProgress();
-  endRun(runBtn); flatBgBtn.disabled = false; flatBgBtn.classList.remove('loading'); flatBgBtn.style.display = '';
+  endRun(runBtn);
 }
 
 // ── Utils ──────────────────────────────────────────────────────
