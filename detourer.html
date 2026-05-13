@@ -626,6 +626,7 @@ runBtn.addEventListener('click', () => { flatBgColor = null; runDetourage(); });
 // ── Fond uni (pipette) ──────────────────────────────────────────
 const flatBgBtn = document.getElementById('flat-bg-btn');
 let flatBgColor = null; // { r, g, b }
+let flatBgFloodMask = null; // Uint8Array calculé par flood fill
 let pickingMode = false;
 
 flatBgBtn.addEventListener('click', () => {
@@ -651,24 +652,17 @@ imgOriginal.addEventListener('click', async e => {
   oc.getContext('2d').drawImage(imgOriginal, 0, 0);
   const pixel = oc.getContext('2d').getImageData(px, py, 1, 1).data;
   flatBgColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
-  // Stocker les coords dans l'espace natif (= espace origPixels quand rawW==naturalWidth)
-  flatBgClickX = px;
-  flatBgClickY = py;
 
   // Quitter le mode pipette
   pickingMode = false;
   flatBgBtn.classList.remove('picking');
   imgOriginal.style.cursor = '';
 
-  // Si on a déjà des pixels (détourage IA fait), on peut supprimer le fond
-  // directement sans repasser par le modèle
   if (rawPixels) {
+    // Détourage IA déjà fait — recalcul direct
     flatBgBtn.disabled = true;
     flatBgBtn.classList.add('loading');
-    // Scaler les coords vers l'espace rawW x rawH (le modèle peut avoir redimensionné)
-    const ffx = Math.max(0, Math.min(rawW - 1, Math.round(flatBgClickX * rawW / imgOriginal.naturalWidth)));
-    const ffy = Math.max(0, Math.min(rawH - 1, Math.round(flatBgClickY * rawH / imgOriginal.naturalHeight)));
-    flatBgFloodMask = buildFloodMask(ffx, ffy, 40);
+    flatBgFloodMask = buildFloodMask(origPixels, rawW, rawH, flatBgColor, 40);
     const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
     const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
     await rebuild(tol, feather);
@@ -676,10 +670,91 @@ imgOriginal.addEventListener('click', async e => {
     endRun(flatBgBtn);
     setStatus('✓ Fond uni supprimé.', 'success');
   } else {
-    // Pas encore de détourage IA — on fait une suppression par couleur uniquement
     await removeFlatBgOnly();
   }
 });
+
+// Flood fill depuis les 4 coins, 8-connexité.
+// Retourne un Float32Array [0..1] : 1 = fond à supprimer, 0 = sujet à garder.
+// Les pixels "de bord" (distance proche du seuil) ont une valeur intermédiaire
+// pour un fondu doux.
+function buildFloodMask(pixels, w, h, bgColor, tolerance) {
+  const { r: br, g: bg, b: bb } = bgColor;
+  const n = w * h;
+
+  // Distance euclidienne RGB normalisée [0..1] par rapport à la couleur de fond
+  function dist(idx) {
+    const i = idx * 4;
+    const dr = pixels[i]   - br;
+    const dg = pixels[i+1] - bg;
+    const db = pixels[i+2] - bb;
+    return Math.sqrt(dr*dr + dg*dg + db*db);
+  }
+
+  const visited = new Uint8Array(n);
+  const isFg    = new Uint8Array(n); // 1 = fond (à supprimer)
+  const stack   = [];
+
+  // Ensemencer depuis les 4 bords entiers
+  for (let x = 0; x < w; x++) {
+    stack.push(x);             // bord haut
+    stack.push((h-1)*w + x);   // bord bas
+  }
+  for (let y = 1; y < h-1; y++) {
+    stack.push(y*w);           // bord gauche
+    stack.push(y*w + w-1);     // bord droit
+  }
+  for (const s of stack) visited[s] = 1;
+
+  while (stack.length) {
+    const idx = stack.pop();
+    if (dist(idx) > tolerance) continue; // hors tolérance : bord du sujet, on s'arrête
+    isFg[idx] = 1;
+    const x = idx % w, y = (idx / w) | 0;
+    // 8 voisins
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+        const ni = ny * w + nx;
+        if (!visited[ni]) { visited[ni] = 1; stack.push(ni); }
+      }
+    }
+  }
+
+  // Second passage : adoucir les bords (pixels voisins d'un pixel fond, avec distance < tolerance*1.5)
+  // → alpha proportionnel à la distance
+  const softZone = tolerance * 1.5;
+  const result = new Float32Array(n); // 0 = garder, 1 = supprimer
+  for (let i = 0; i < n; i++) {
+    if (isFg[i]) {
+      result[i] = 1;
+    } else {
+      // Pixel sujet — vérifier si un voisin est fond (zone de bord)
+      const d = dist(i);
+      if (d < softZone) {
+        // Chercher si adjacent à un pixel fond
+        const x = i % w, y = (i / w) | 0;
+        let nextToFg = false;
+        for (let dy = -1; dy <= 1 && !nextToFg; dy++) {
+          for (let dx = -1; dx <= 1 && !nextToFg; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x+dx, ny = y+dy;
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h && isFg[ny*w+nx]) nextToFg = true;
+          }
+        }
+        if (nextToFg) {
+          // Fondu : 0 à tolerance → alpha 1..0, tolerance à softZone → alpha 0
+          result[i] = Math.max(0, Math.min(1, (d - 0) / tolerance));
+          // Inverser : proche du fond = plus transparent
+          result[i] = 1 - result[i];
+        }
+      }
+    }
+  }
+  return result;
+}
 
 async function removeFlatBgOnly() {
   if (!srcFile || !flatBgColor) return;
@@ -698,13 +773,6 @@ async function removeFlatBgOnly() {
     oc.getContext('2d').drawImage(img, 0, 0);
     origPixels = oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
 
-    // rawW == naturalWidth ici, coords directement utilisables
-    flatBgFloodMask = buildFloodMask(
-      Math.max(0, Math.min(rawW - 1, flatBgClickX)),
-      Math.max(0, Math.min(rawH - 1, flatBgClickY)),
-      40
-    );
-
     // Masque alpha : tout visible par défaut
     rawPixels = new Uint8ClampedArray(rawW * rawH * 4);
     for (let i = 0; i < rawW * rawH; i++) {
@@ -713,6 +781,8 @@ async function removeFlatBgOnly() {
       rawPixels[i * 4 + 2] = origPixels[i * 4 + 2];
       rawPixels[i * 4 + 3] = 255;
     }
+
+    flatBgFloodMask = buildFloodMask(origPixels, rawW, rawH, flatBgColor, 40);
 
     eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; updateUndoBtn();
     tolActive = false; featherActive = false;
@@ -1175,47 +1245,17 @@ async function pixelsToBlob(data, w, h) {
   return oc.convertToBlob({ type: 'image/png' });
 }
 
-// ── Fond uni : flood fill ───────────────────────────────────────
-// Coordonnées du pixel cliqué (dans l'espace origPixels)
-let flatBgClickX = 0, flatBgClickY = 0; // coords dans l'espace natif de l'image (naturalWidth x naturalHeight)
-// Masque binaire calculé par flood fill (Uint8Array, 1 = pixel à supprimer)
-let flatBgFloodMask = null;
-
-// Flood fill depuis (cx, cy) sur origPixels avec une tolérance donnée.
-// Propage aux 4 voisins dont la distance RGB à la couleur de départ <= tolerance.
-function buildFloodMask(cx, cy, tolerance) {
-  const w = rawW, h = rawH, src = origPixels;
-  const si = (cy * w + cx) * 4;
-  const sr = src[si], sg = src[si + 1], sb = src[si + 2];
-  const mask    = new Uint8Array(w * h);
-  const visited = new Uint8Array(w * h);
-  const stack   = [cy * w + cx];
-  visited[cy * w + cx] = 1;
-  while (stack.length) {
-    const idx = stack.pop();
-    const pi = idx * 4;
-    const dr = src[pi] - sr, dg = src[pi + 1] - sg, db = src[pi + 2] - sb;
-    if (Math.sqrt(dr*dr + dg*dg + db*db) > tolerance) continue;
-    mask[idx] = 1;
-    const x = idx % w, y = (idx / w) | 0;
-    if (x > 0     && !visited[idx - 1]) { visited[idx - 1] = 1; stack.push(idx - 1); }
-    if (x < w - 1 && !visited[idx + 1]) { visited[idx + 1] = 1; stack.push(idx + 1); }
-    if (y > 0     && !visited[idx - w]) { visited[idx - w] = 1; stack.push(idx - w); }
-    if (y < h - 1 && !visited[idx + w]) { visited[idx + w] = 1; stack.push(idx + w); }
-  }
-  return mask;
-}
-
 // Recalcule et affiche le résultat avec les réglages courants
 async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
 
-  // Post-traitement fond uni : applique le masque de flood fill précalculé
+  // Post-traitement fond uni : applique le masque flood fill (valeur float 0..1)
   if (flatBgColor && flatBgFloodMask) {
     for (let i = 0; i < rawW * rawH; i++) {
-      if (flatBgFloodMask[i]) px[i * 4 + 3] = 0;
+      const v = flatBgFloodMask[i];
+      if (v > 0) px[i * 4 + 3] = Math.round(px[i * 4 + 3] * (1 - v));
     }
   }
   // Réappliquer le masque de gomme s'il existe
