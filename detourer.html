@@ -153,7 +153,8 @@ body::before {
 }
 
 /* Sélecteur de fond de prévisualisation */
-.bg-picker {
+.eraser-toggle.icon-btn { width: 28px; padding: 0; justify-content: center; }
+
   display: flex; align-items: center; gap: 5px;
 }
 .bg-swatch {
@@ -464,12 +465,18 @@ input[type=range].rng::-moz-range-thumb {
           <div class="slider-header">
             <span class="slider-label">Gommer / Restaurer</span>
             <div style="display:flex;gap:6px">
-              <button class="eraser-toggle" id="undo-btn" title="Annuler (Ctrl+Z)" disabled>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
-                Annuler
+              <button class="eraser-toggle icon-btn" id="undo-btn" title="Annuler" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
               </button>
-              <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Gommer</button>
-              <button class="eraser-toggle" id="restore-toggle" aria-pressed="false">Restaurer</button>
+              <button class="eraser-toggle icon-btn" id="redo-btn" title="Refaire" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C19 7 14 4 8 5.5a9 9 0 0 0-5 7.5"/></svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="eraser-toggle" aria-pressed="false" title="Gommer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16l10-10 7 7-2.5 2.5"/><path d="M6.5 17.5l5-5"/></svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="restore-toggle" aria-pressed="false" title="Restaurer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 3a3 3 0 0 1 0 6l-9 9a3 3 0 1 1-4-4l9-9a3 3 0 0 1 4-1z"/><path d="M6 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill="currentColor" stroke="none"/></svg>
+              </button>
             </div>
           </div>
           <div class="slider-track">
@@ -552,7 +559,6 @@ const featherToggle= document.getElementById('feather-toggle');
 const processingOverlay = document.getElementById('processing-overlay');
 const eraserToggle  = document.getElementById('eraser-toggle');
 const restoreToggle = document.getElementById('restore-toggle');
-const undoBtn       = document.getElementById('undo-btn');
 const eraserSize    = document.getElementById('eraser-size');
 const resultCanvas  = document.getElementById('img-result');
 const resultCtx     = resultCanvas.getContext('2d');
@@ -853,6 +859,7 @@ resultCanvas.addEventListener('mousedown', e => {
   // Sauvegarder l'état avant le tracé
   eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
   if (eraserHistory.length > 20) eraserHistory.shift();
+  redoHistory = [];
   updateUndoBtn();
   eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
 });
@@ -879,6 +886,7 @@ resultCanvas.addEventListener('touchstart', e => {
   e.preventDefault();
   eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
   if (eraserHistory.length > 20) eraserHistory.shift();
+  redoHistory = [];
   updateUndoBtn();
   eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
 }, { passive: false });
@@ -903,13 +911,22 @@ document.getElementById('bg-color-picker').addEventListener('input', e => {
   resultCanvas.style.background = '';
 });
 
-// ── Annuler (Ctrl+Z + bouton) ───────────────────────────────────
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
+
+// ── Annuler / Refaire ───────────────────────────────────────────
+let redoHistory = [];
+
 function updateUndoBtn() {
   undoBtn.disabled = eraserHistory.length === 0;
+  redoBtn.disabled = redoHistory.length === 0;
 }
 
 async function doUndo() {
   if (eraserHistory.length === 0) return;
+  // Sauvegarder l'état courant dans redo
+  redoHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+  if (redoHistory.length > 20) redoHistory.shift();
   const state = eraserHistory.pop();
   eraserMask  = state.eraser;
   restoreMask = state.restore;
@@ -919,10 +936,26 @@ async function doUndo() {
   await rebuild(tol, feather);
 }
 
+async function doRedo() {
+  if (redoHistory.length === 0) return;
+  // Sauvegarder l'état courant dans undo
+  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+  if (eraserHistory.length > 20) eraserHistory.shift();
+  const state = redoHistory.pop();
+  eraserMask  = state.eraser;
+  restoreMask = state.restore;
+  updateUndoBtn();
+  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+  await rebuild(tol, feather);
+}
+
 undoBtn.addEventListener('click', doUndo);
+redoBtn.addEventListener('click', doRedo);
 
 document.addEventListener('keydown', async e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); doUndo(); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); doRedo(); }
 });
 
 // Seuille le canal alpha : les semi-transparences sous le seuil passent à 0
@@ -1020,7 +1053,7 @@ async function rebuild(tol, feather) {
 // ── Détourage ──────────────────────────────────────────────────
 async function runDetourage() {
   if (!srcFile) return;
-  eraserMask = null; restoreMask = null; eraserHistory = []; updateUndoBtn();
+  eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; redoHistory = []; updateUndoBtn();
   runBtn.disabled = true;
   runBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
@@ -1115,7 +1148,7 @@ function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
-  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = [];
+  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = [];
 
   const reader = new FileReader();
   reader.onload = ev => {
@@ -1144,7 +1177,7 @@ function loadFile(file) {
 
 // ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
-  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = [];
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = [];
   updateUndoBtn();
   dropZone.style.display = '';
   previewGrid.className = 'preview-grid';
