@@ -651,6 +651,9 @@ imgOriginal.addEventListener('click', async e => {
   oc.getContext('2d').drawImage(imgOriginal, 0, 0);
   const pixel = oc.getContext('2d').getImageData(px, py, 1, 1).data;
   flatBgColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
+  // Stocker les coords dans l'espace natif (= espace origPixels quand rawW==naturalWidth)
+  flatBgClickX = px;
+  flatBgClickY = py;
 
   // Quitter le mode pipette
   pickingMode = false;
@@ -662,9 +665,14 @@ imgOriginal.addEventListener('click', async e => {
   if (rawPixels) {
     flatBgBtn.disabled = true;
     flatBgBtn.classList.add('loading');
+    // Scaler les coords vers l'espace rawW x rawH (le modèle peut avoir redimensionné)
+    const ffx = Math.max(0, Math.min(rawW - 1, Math.round(flatBgClickX * rawW / imgOriginal.naturalWidth)));
+    const ffy = Math.max(0, Math.min(rawH - 1, Math.round(flatBgClickY * rawH / imgOriginal.naturalHeight)));
+    flatBgFloodMask = buildFloodMask(ffx, ffy, 40);
     const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
     const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
     await rebuild(tol, feather);
+    flatBgBtn.style.display = 'none';
     endRun(flatBgBtn);
     setStatus('✓ Fond uni supprimé.', 'success');
   } else {
@@ -690,6 +698,13 @@ async function removeFlatBgOnly() {
     oc.getContext('2d').drawImage(img, 0, 0);
     origPixels = oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
 
+    // rawW == naturalWidth ici, coords directement utilisables
+    flatBgFloodMask = buildFloodMask(
+      Math.max(0, Math.min(rawW - 1, flatBgClickX)),
+      Math.max(0, Math.min(rawH - 1, flatBgClickY)),
+      40
+    );
+
     // Masque alpha : tout visible par défaut
     rawPixels = new Uint8ClampedArray(rawW * rawH * 4);
     for (let i = 0; i < rawW * rawH; i++) {
@@ -711,6 +726,7 @@ async function removeFlatBgOnly() {
     slidersPanel.classList.add('visible');
     dlBtn.classList.add('visible');
     runBtn.style.display = 'none';
+    flatBgBtn.style.display = 'none';
 
     setStatus('✓ Fond uni supprimé.', 'success');
     endRun(flatBgBtn);
@@ -1159,22 +1175,47 @@ async function pixelsToBlob(data, w, h) {
   return oc.convertToBlob({ type: 'image/png' });
 }
 
+// ── Fond uni : flood fill ───────────────────────────────────────
+// Coordonnées du pixel cliqué (dans l'espace origPixels)
+let flatBgClickX = 0, flatBgClickY = 0; // coords dans l'espace natif de l'image (naturalWidth x naturalHeight)
+// Masque binaire calculé par flood fill (Uint8Array, 1 = pixel à supprimer)
+let flatBgFloodMask = null;
+
+// Flood fill depuis (cx, cy) sur origPixels avec une tolérance donnée.
+// Propage aux 4 voisins dont la distance RGB à la couleur de départ <= tolerance.
+function buildFloodMask(cx, cy, tolerance) {
+  const w = rawW, h = rawH, src = origPixels;
+  const si = (cy * w + cx) * 4;
+  const sr = src[si], sg = src[si + 1], sb = src[si + 2];
+  const mask    = new Uint8Array(w * h);
+  const visited = new Uint8Array(w * h);
+  const stack   = [cy * w + cx];
+  visited[cy * w + cx] = 1;
+  while (stack.length) {
+    const idx = stack.pop();
+    const pi = idx * 4;
+    const dr = src[pi] - sr, dg = src[pi + 1] - sg, db = src[pi + 2] - sb;
+    if (Math.sqrt(dr*dr + dg*dg + db*db) > tolerance) continue;
+    mask[idx] = 1;
+    const x = idx % w, y = (idx / w) | 0;
+    if (x > 0     && !visited[idx - 1]) { visited[idx - 1] = 1; stack.push(idx - 1); }
+    if (x < w - 1 && !visited[idx + 1]) { visited[idx + 1] = 1; stack.push(idx + 1); }
+    if (y > 0     && !visited[idx - w]) { visited[idx - w] = 1; stack.push(idx - w); }
+    if (y < h - 1 && !visited[idx + w]) { visited[idx + w] = 1; stack.push(idx + w); }
+  }
+  return mask;
+}
+
 // Recalcule et affiche le résultat avec les réglages courants
 async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
 
-  // Post-traitement fond uni : supprime les pixels dont la couleur dans l'original
-  // est proche de la couleur capturée par la pipette
-  if (flatBgColor) {
-    const { r: fr, g: fg, b: fb } = flatBgColor;
-    const threshold = 15; // tolérance très basse — uniquement la couleur exacte et ses proches
+  // Post-traitement fond uni : applique le masque de flood fill précalculé
+  if (flatBgColor && flatBgFloodMask) {
     for (let i = 0; i < rawW * rawH; i++) {
-      const dr = origPixels[i * 4]     - fr;
-      const dg = origPixels[i * 4 + 1] - fg;
-      const db = origPixels[i * 4 + 2] - fb;
-      if (Math.sqrt(dr*dr + dg*dg + db*db) < threshold) px[i * 4 + 3] = 0;
+      if (flatBgFloodMask[i]) px[i * 4 + 3] = 0;
     }
   }
   // Réappliquer le masque de gomme s'il existe
@@ -1298,7 +1339,7 @@ function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
-  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; flatBgColor = null;
+  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; flatBgColor = null; flatBgFloodMask = null;
 
   const reader = new FileReader();
   reader.onload = ev => {
@@ -1328,7 +1369,7 @@ function loadFile(file) {
 
 // ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
-  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; flatBgColor = null;
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; flatBgColor = null; flatBgFloodMask = null;
   updateUndoBtn();
   dropZone.style.display = '';
   previewGrid.className = 'preview-grid';
