@@ -132,24 +132,24 @@ body::before {
   display: block; object-fit: contain;
 }
 .preview-img.original { width: 100%; max-height: 320px; background: var(--surface-2); border-radius: var(--radius-lg); border: 0.5px solid var(--border-md); }
-.preview-img.result { background: transparent; display: block; max-width: 100%; max-height: 320px; width: auto; height: auto; }
+.preview-img.result { background: transparent; max-height: 320px; width: auto; max-width: 100%; display: block; }
 
 .result-wrap {
   position: relative;
   display: flex; justify-content: center; align-items: center;
-  width: 100%; height: 320px;
+  width: 100%; min-height: 60px;
   background: var(--surface-2);
   border-radius: var(--radius-lg);
   border: 0.5px solid var(--border-md);
-  overflow: hidden;
 }
 
 .checker-wrap {
   display: inline-flex;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
   line-height: 0;
   max-width: 100%;
-  max-height: 100%;
 }
 
 /* Sélecteur de fond de prévisualisation */
@@ -186,6 +186,7 @@ body::before {
 /* Overlay de chargement sur l'image résultat */
 .processing-overlay {
   position: absolute; inset: 0;
+  border-radius: var(--radius-lg);
   background: rgba(0,0,0,0.45);
   backdrop-filter: blur(2px);
   display: none; align-items: center; justify-content: center;
@@ -279,6 +280,43 @@ input[type=range].rng::-moz-range-thumb {
 /* ACTIONS */
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
 
+/* Baguette magique */
+.wand-btn { position: relative; }
+.wand-btn.picking { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Panel baguette — sous l'image originale, visible pendant le mode baguette */
+.wand-panel {
+  display: none; flex-direction: column; gap: 10px;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 12px 16px; margin-top: 8px;
+}
+.wand-panel.visible { display: flex; }
+.wand-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.wand-panel-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
+}
+.wand-panel-actions { display: flex; gap: 6px; }
+.wand-validate-btn {
+  height: 26px; padding: 0 12px; border-radius: var(--radius-sm);
+  border: none; background: var(--accent); color: #0c0c0b;
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.wand-validate-btn:hover { background: #dcff6a; }
+.wand-cancel-btn {
+  height: 26px; padding: 0 12px; border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md); background: transparent; color: var(--text-3);
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: border-color .15s, color .15s;
+}
+.wand-cancel-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.wand-hint {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-3); font-style: italic;
+}
 .run-btn {
   height: 48px; padding: 0 24px; background: var(--accent);
   border: none; border-radius: var(--radius-lg);
@@ -404,6 +442,22 @@ input[type=range].rng::-moz-range-thumb {
         </button>
       </div>
       <img id="img-original" class="preview-img original" alt="Image originale" style="display:none">
+      <!-- Panel baguette magique -->
+      <div class="wand-panel" id="wand-panel">
+        <div class="wand-panel-header">
+          <span class="wand-panel-label">Tolérance baguette</span>
+          <div class="wand-panel-actions">
+            <button class="wand-cancel-btn" id="wand-cancel-btn">Annuler</button>
+            <button class="wand-validate-btn" id="wand-validate-btn">Valider</button>
+          </div>
+        </div>
+        <div class="slider-track">
+          <span class="slider-hint">Faible</span>
+          <input type="range" class="rng" id="wand-tol-slider" min="1" max="100" value="30">
+          <span class="slider-hint">Élevée</span>
+        </div>
+        <div class="wand-hint" id="wand-hint">Clique sur le fond de l'image pour sélectionner</div>
+      </div>
     </div>
 
     <!-- Colonne Résultat (masquée jusqu'au 1er détourage) -->
@@ -506,6 +560,14 @@ input[type=range].rng::-moz-range-thumb {
       <span class="run-label">Supprimer le fond</span>
       <div class="spinner"></div>
     </button>
+    <button class="run-btn wand-btn" id="wand-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/>
+        <path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/>
+        <path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>
+      </svg>
+      <span>Baguette magique</span>
+    </button>
     <button class="dl-btn" id="dl-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -587,8 +649,163 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
-// ── Boutons ────────────────────────────────────────────────────
 runBtn.addEventListener('click', () => { runDetourage(); });
+
+// ── Baguette magique ───────────────────────────────────────────
+const wandBtn       = document.getElementById('wand-btn');
+const wandPanel     = document.getElementById('wand-panel');
+const wandTolSlider = document.getElementById('wand-tol-slider');
+const wandHint      = document.getElementById('wand-hint');
+const wandValidateBtn = document.getElementById('wand-validate-btn');
+const wandCancelBtn   = document.getElementById('wand-cancel-btn');
+
+let wandMode      = false;  // en attente d'un clic sur l'image
+let wandClickX    = -1;
+let wandClickY    = -1;
+let wandMask      = null;   // Float32Array courant (0=garder, 1=supprimer)
+let wandDebounce  = null;
+
+// Flood fill depuis (cx,cy) sur pixels w×h avec tolérance donnée.
+// 8-connexité. Retourne Uint8Array (1 = fond à supprimer).
+function wandFloodFill(pixels, w, h, cx, cy, tolerance) {
+  const n = w * h;
+  const si = (cy * w + cx) * 4;
+  const sr = pixels[si], sg = pixels[si+1], sb = pixels[si+2];
+  const visited = new Uint8Array(n);
+  const mask    = new Uint8Array(n);
+  const stack   = [cy * w + cx];
+  visited[cy * w + cx] = 1;
+  while (stack.length) {
+    const idx = stack.pop();
+    const pi = idx * 4;
+    const dr = pixels[pi]-sr, dg = pixels[pi+1]-sg, db = pixels[pi+2]-sb;
+    if (Math.sqrt(dr*dr + dg*dg + db*db) > tolerance) continue;
+    mask[idx] = 1;
+    const x = idx % w, y = (idx / w) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x+dx, ny = y+dy;
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      const ni = ny*w+nx;
+      if (!visited[ni]) { visited[ni] = 1; stack.push(ni); }
+    }
+  }
+  return mask;
+}
+
+// Aperçu en live sur le canvas résultat
+function wandPreview() {
+  if (wandClickX < 0 || !origPixels) return;
+  const tol = parseInt(wandTolSlider.value) * 2.55; // 0-100 → 0-255 space
+  wandMask = wandFloodFill(origPixels, rawW, rawH, wandClickX, wandClickY, tol);
+
+  // Construire une prévisualisation : origPixels avec le masque appliqué
+  const preview = new Uint8ClampedArray(rawW * rawH * 4);
+  for (let i = 0; i < rawW * rawH; i++) {
+    preview[i*4]   = origPixels[i*4];
+    preview[i*4+1] = origPixels[i*4+1];
+    preview[i*4+2] = origPixels[i*4+2];
+    preview[i*4+3] = wandMask[i] ? 0 : 255;
+  }
+  resultCanvas.width  = rawW;
+  resultCanvas.height = rawH;
+  resultCtx.putImageData(new ImageData(preview, rawW, rawH), 0, 0);
+  colResult.style.display = 'block';
+  previewGrid.classList.add('visible');
+}
+
+function wandEnter() {
+  if (!srcFile) return;
+  wandMode = true;
+  wandBtn.classList.add('picking');
+  imgOriginal.style.cursor = 'crosshair';
+  wandPanel.classList.add('visible');
+  wandClickX = -1; wandClickY = -1; wandMask = null;
+  wandHint.textContent = 'Clique sur le fond de l\'image pour sélectionner';
+  // Charger origPixels si pas encore fait
+  if (!origPixels) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        rawW = img.naturalWidth; rawH = img.naturalHeight;
+        const oc = document.createElement('canvas');
+        oc.width = rawW; oc.height = rawH;
+        oc.getContext('2d').drawImage(img, 0, 0);
+        origPixels = oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+        // rawPixels = tout opaque (pas de détourage IA)
+        rawPixels = new Uint8ClampedArray(rawW * rawH * 4);
+        for (let i = 0; i < rawW*rawH; i++) {
+          rawPixels[i*4]=origPixels[i*4]; rawPixels[i*4+1]=origPixels[i*4+1];
+          rawPixels[i*4+2]=origPixels[i*4+2]; rawPixels[i*4+3]=255;
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(srcFile);
+  }
+}
+
+function wandLeave() {
+  wandMode = false;
+  wandBtn.classList.remove('picking');
+  imgOriginal.style.cursor = '';
+  wandPanel.classList.remove('visible');
+  wandClickX = -1; wandClickY = -1; wandMask = null;
+}
+
+wandBtn.addEventListener('click', () => {
+  if (wandMode) { wandLeave(); } else { wandEnter(); }
+});
+
+imgOriginal.addEventListener('click', e => {
+  if (!wandMode) return;
+  const rect = imgOriginal.getBoundingClientRect();
+  const scaleX = rawW / rect.width;
+  const scaleY = rawH / rect.height;
+  wandClickX = Math.max(0, Math.min(rawW-1, Math.round((e.clientX - rect.left) * scaleX)));
+  wandClickY = Math.max(0, Math.min(rawH-1, Math.round((e.clientY - rect.top)  * scaleY)));
+  wandHint.textContent = 'Ajuste la tolérance puis valide';
+  wandPreview();
+});
+
+wandTolSlider.addEventListener('input', () => {
+  if (wandClickX < 0) return;
+  clearTimeout(wandDebounce);
+  wandDebounce = setTimeout(wandPreview, 80);
+});
+
+wandValidateBtn.addEventListener('click', async () => {
+  if (!wandMask || !origPixels) return;
+  // Appliquer le masque baguette sur rawPixels (garder les pixels non-fond)
+  for (let i = 0; i < rawW*rawH; i++) {
+    if (wandMask[i]) rawPixels[i*4+3] = 0;
+  }
+  eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; updateUndoBtn();
+  tolActive = false; featherActive = false;
+  setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), false);
+  setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
+  await rebuild(0, 0);
+  slidersPanel.classList.add('visible');
+  dlBtn.classList.add('visible');
+  runBtn.style.display = 'none';
+  wandBtn.style.display = 'none';
+  wandLeave();
+  setStatus('✓ Fond supprimé par baguette magique.', 'success');
+});
+
+wandCancelBtn.addEventListener('click', () => {
+  // Effacer l'aperçu si pas encore validé
+  if (!dlBtn.classList.contains('visible')) {
+    colResult.style.display = 'none';
+  } else {
+    // Il y avait déjà un résultat — le restaurer
+    const tol     = tolActive     ? parseInt(tolSlider.value) : 0;
+    const feather = featherActive ? parseInt(featherSlider.value) : 0;
+    rebuild(tol, feather);
+  }
+  wandLeave();
+});
 
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
@@ -1122,7 +1339,8 @@ async function runDetourage() {
     previewGrid.classList.add('visible');
     slidersPanel.classList.add('visible');
     dlBtn.classList.add('visible');
-    runBtn.style.display = 'none'; // caché jusqu'au prochain reset
+    runBtn.style.display = 'none';
+    wandBtn.style.display = 'none';
 
     setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100); setTimeout(hideProgress, 800);
@@ -1163,6 +1381,8 @@ function loadFile(file) {
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
     runBtn.style.display = '';
+    wandBtn.style.display = '';
+    wandLeave();
     eraserActive = false; restoreActive = false;
     eraserToggle.classList.remove('active');
     restoreToggle.classList.remove('active');
@@ -1199,6 +1419,8 @@ function resetAll() {
   document.getElementById('eraser-row').classList.add('inactive');
   resultCanvas.classList.remove('erasing');
   eraserCursor.classList.remove('visible');
+  wandLeave();
+  runBtn.style.display = ''; wandBtn.style.display = '';
   setStatus(''); hideProgress();
   endRun(runBtn);
 }
