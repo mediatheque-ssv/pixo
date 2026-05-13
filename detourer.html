@@ -279,6 +279,32 @@ input[type=range].rng::-moz-range-thumb {
 
 /* ACTIONS */
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
+
+.flat-bg-btn {
+  height: 48px; padding: 0 20px;
+  background: transparent; border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); font-size: 13px; font-weight: 700;
+  font-family: 'Syne', sans-serif; cursor: pointer; color: var(--text-2);
+  transition: all .2s; display: flex; align-items: center; gap: 8px;
+  position: relative;
+}
+.flat-bg-btn:hover:not(.picking) { border-color: var(--border-hi); color: var(--text); }
+.flat-bg-btn.picking { border-color: var(--accent); color: var(--accent); }
+
+.flat-bg-hint {
+  position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  background: var(--surface-3); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius); padding: 5px 10px;
+  font-size: 11px; font-weight: 500; color: var(--text-2);
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .2s;
+}
+.flat-bg-hint::before {
+  content: '';
+  position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+  border: 5px solid transparent; border-right-color: var(--border-md);
+}
+.flat-bg-btn.picking .flat-bg-hint { opacity: 1; }
 .run-btn {
   height: 48px; padding: 0 24px; background: var(--accent);
   border: none; border-radius: var(--radius-lg);
@@ -506,6 +532,17 @@ input[type=range].rng::-moz-range-thumb {
       <span class="run-label">Supprimer le fond</span>
       <div class="spinner"></div>
     </button>
+    <button class="flat-bg-btn" id="flat-bg-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 11l-9-9-9 9 9 9z" opacity="0"/>
+        <path d="M2 22l4-4"/>
+        <path d="M8.5 15.5l-2 2 5 5 9-9-5-5-2 2"/>
+        <circle cx="17" cy="7" r="3" stroke="currentColor"/>
+        <path d="M14.5 9.5L8 16"/>
+      </svg>
+      Fond uni
+      <span class="flat-bg-hint">Clique sur le fond de ton image</span>
+    </button>
     <button class="dl-btn" id="dl-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -588,7 +625,46 @@ dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.
 fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
 // ── Boutons ────────────────────────────────────────────────────
-runBtn.addEventListener('click', runDetourage);
+runBtn.addEventListener('click', () => { flatBgColor = null; runDetourage(); });
+
+// ── Fond uni (pipette) ──────────────────────────────────────────
+const flatBgBtn = document.getElementById('flat-bg-btn');
+let flatBgColor = null; // { r, g, b }
+let pickingMode = false;
+
+flatBgBtn.addEventListener('click', () => {
+  if (!srcFile) return;
+  pickingMode = !pickingMode;
+  flatBgBtn.classList.toggle('picking', pickingMode);
+  imgOriginal.style.cursor = pickingMode ? 'crosshair' : '';
+});
+
+// Capture la couleur au clic sur l'image originale
+imgOriginal.addEventListener('click', async e => {
+  if (!pickingMode) return;
+
+  // Lire le pixel cliqué depuis l'image originale
+  const rect = imgOriginal.getBoundingClientRect();
+  const scaleX = imgOriginal.naturalWidth  / rect.width;
+  const scaleY = imgOriginal.naturalHeight / rect.height;
+  const px = Math.round((e.clientX - rect.left) * scaleX);
+  const py = Math.round((e.clientY - rect.top)  * scaleY);
+
+  const oc  = document.createElement('canvas');
+  oc.width  = imgOriginal.naturalWidth;
+  oc.height = imgOriginal.naturalHeight;
+  oc.getContext('2d').drawImage(imgOriginal, 0, 0);
+  const pixel = oc.getContext('2d').getImageData(px, py, 1, 1).data;
+  flatBgColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
+
+  // Quitter le mode pipette
+  pickingMode = false;
+  flatBgBtn.classList.remove('picking');
+  imgOriginal.style.cursor = '';
+
+  // Lancer le détourage avec post-traitement fond uni
+  await runDetourage();
+});
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
 eraserToggle.addEventListener('click', () => {
@@ -1032,6 +1108,20 @@ async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
+
+  // Post-traitement fond uni : supprimer les pixels proches de la couleur capturée
+  if (flatBgColor) {
+    const { r: fr, g: fg, b: fb } = flatBgColor;
+    const threshold = 40; // tolérance colorimétrique
+    for (let i = 0; i < rawW * rawH; i++) {
+      if (px[i * 4 + 3] === 0) continue; // déjà transparent
+      const dr = px[i * 4]     - fr;
+      const dg = px[i * 4 + 1] - fg;
+      const db = px[i * 4 + 2] - fb;
+      const dist = Math.sqrt(dr*dr + dg*dg + db*db);
+      if (dist < threshold) px[i * 4 + 3] = 0;
+    }
+  }
   // Réappliquer le masque de gomme s'il existe
   if (eraserMask) {
     for (let i = 0; i < eraserMask.length; i++) {
@@ -1148,7 +1238,7 @@ function loadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
   srcFile = file;
-  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = [];
+  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; flatBgColor = null;
 
   const reader = new FileReader();
   reader.onload = ev => {
@@ -1177,7 +1267,7 @@ function loadFile(file) {
 
 // ── Reset complet ──────────────────────────────────────────────
 function resetAll() {
-  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = [];
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; flatBgColor = null;
   updateUndoBtn();
   dropZone.style.display = '';
   previewGrid.className = 'preview-grid';
