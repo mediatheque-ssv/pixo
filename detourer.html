@@ -758,6 +758,9 @@ function eraserErase(pos) {
   resultCtx.globalCompositeOperation = 'destination-out';
   drawBrush(resultCtx, pos, eraserLast, r, 'rgba(0,0,0,1)');
   resultCtx.restore();
+  if (!eraserMask) eraserMask = new Uint8Array(rawW * rawH);
+  updateMaskFromBrush(eraserMask, pos, eraserLast, r, 1);
+  if (restoreMask) updateMaskFromBrush(restoreMask, pos, eraserLast, r, 0);
   eraserLast = pos;
 }
 
@@ -813,20 +816,9 @@ function eraserRestore(pos) {
   resultCtx.drawImage(clipOC, bx0, by0);
 }
 
-// Appelé une seule fois à la fin du trait — met à jour les masques et le blob
+// Appelé une seule fois à la fin du trait — met à jour le blob
 function finalizeStroke() {
   if (!rawW) return;
-  if (!eraserMask)  eraserMask  = new Uint8Array(rawW * rawH);
-  if (!restoreMask) restoreMask = new Uint8Array(rawW * rawH);
-  // Lire le canvas en une seule passe pour reconstruire les deux masques
-  const cur = resultCtx.getImageData(0, 0, rawW, rawH).data;
-  for (let i = 0; i < rawW * rawH; i++) {
-    const a  = cur[i * 4 + 3];
-    const oa = origPixels[i * 4 + 3];
-    if (a === 0 && oa > 0 && !restoreMask[i]) eraserMask[i]  = 1;
-    if (a > 0   && !eraserMask[i])            restoreMask[i] = (a > 0 && oa === 0) ? 1 : 0;
-    if (a > 0   && eraserMask[i])             eraserMask[i]  = 0;
-  }
   resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
 }
 
