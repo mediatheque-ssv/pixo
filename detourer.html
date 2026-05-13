@@ -132,7 +132,7 @@ body::before {
   display: block; object-fit: contain;
 }
 .preview-img.original { width: 100%; max-height: 320px; background: var(--surface-2); border-radius: var(--radius-lg); border: 0.5px solid var(--border-md); }
-.preview-img.result { background: transparent; max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; object-fit: contain; }
+.preview-img.result { background: transparent; display: block; max-width: 100%; max-height: 320px; width: auto; height: auto; }
 
 .result-wrap {
   position: relative;
@@ -145,10 +145,11 @@ body::before {
 }
 
 .checker-wrap {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; height: 100%;
+  display: inline-flex;
   background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
   line-height: 0;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 /* Sélecteur de fond de prévisualisation */
