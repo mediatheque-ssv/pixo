@@ -129,11 +129,19 @@ body::before {
 .change-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
 .preview-img {
-  border-radius: var(--radius-lg); border: 0.5px solid var(--border-md);
   display: block; object-fit: contain;
 }
-.preview-img.original { width: 100%; max-height: 320px; background: var(--surface-2); }
-.preview-img.result { background: transparent; max-height: 320px; width: auto; max-width: 100%; }
+.preview-img.original { width: 100%; max-height: 320px; background: var(--surface-2); border-radius: var(--radius-lg); border: 0.5px solid var(--border-md); }
+.preview-img.result { background: transparent; max-height: 320px; width: auto; max-width: 100%; display: block; }
+
+.result-wrap {
+  position: relative;
+  display: flex; justify-content: center; align-items: center;
+  width: 100%; min-height: 60px;
+  background: var(--surface-2);
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-md);
+}
 
 .checker-wrap {
   display: inline-flex;
@@ -172,7 +180,6 @@ body::before {
 }
 
 /* Wrap relatif pour l'overlay */
-.result-wrap { position: relative; display: flex; justify-content: center; }
 
 /* Overlay de chargement sur l'image résultat */
 .processing-overlay {
@@ -455,13 +462,13 @@ input[type=range].rng::-moz-range-thumb {
 
         <div class="slider-row inactive" id="eraser-row">
           <div class="slider-header">
-            <span class="slider-label">Gomme</span>
+            <span class="slider-label">Gommer / Restaurer</span>
             <div style="display:flex;gap:6px">
               <button class="eraser-toggle" id="undo-btn" title="Annuler (Ctrl+Z)" disabled>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
                 Annuler
               </button>
-              <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Gomme</button>
+              <button class="eraser-toggle" id="eraser-toggle" aria-pressed="false">Gommer</button>
               <button class="eraser-toggle" id="restore-toggle" aria-pressed="false">Restaurer</button>
             </div>
           </div>
@@ -482,7 +489,8 @@ input[type=range].rng::-moz-range-thumb {
   <div class="actions" id="actions">
     <button class="run-btn" id="run-btn">
       <svg class="run-label" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        <path d="M20 20H7L3 16l10-10 7 7-2.5 2.5"/>
+        <path d="M6.5 17.5l5-5"/>
       </svg>
       <span class="run-label">Supprimer le fond</span>
       <div class="spinner"></div>
