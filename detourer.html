@@ -282,8 +282,9 @@ input[type=range].rng::-moz-range-thumb {
 
 .flat-bg-btn-picking { outline: 2px solid var(--accent); }
 #flat-bg-btn .flat-bg-label { display: flex; align-items: center; gap: 8px; }
-#flat-bg-btn.picking .flat-bg-label { display: none; }
-#flat-bg-btn.picking .spinner { display: block; }
+#flat-bg-btn.loading .flat-bg-label { display: none; }
+#flat-bg-btn.loading .spinner { display: block; }
+#flat-bg-btn { position: relative; }
 #flat-bg-btn .flat-bg-hint {
   position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
   background: var(--surface-3); border: 0.5px solid var(--border-md);
@@ -291,6 +292,7 @@ input[type=range].rng::-moz-range-thumb {
   font-size: 11px; font-weight: 500; color: var(--text-2);
   white-space: nowrap; pointer-events: none;
   opacity: 0; transition: opacity .2s;
+  z-index: 10;
 }
 #flat-bg-btn .flat-bg-hint::before {
   content: '';
@@ -533,7 +535,7 @@ input[type=range].rng::-moz-range-thumb {
         <circle cx="17" cy="7" r="3" stroke="currentColor"/>
         <path d="M14.5 9.5L8 16"/>
       </svg>
-      <span class="flat-bg-label">Supprimer un fond uni (bêta)</span>
+      <span class="flat-bg-label">Supprimer un fond uni</span>
       <div class="spinner"></div>
       <span class="flat-bg-hint">Clique sur le fond de ton image</span>
     </button>
@@ -650,16 +652,75 @@ imgOriginal.addEventListener('click', async e => {
   const pixel = oc.getContext('2d').getImageData(px, py, 1, 1).data;
   flatBgColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
 
-  // Quitter le mode pipette, passer en loading
+  // Quitter le mode pipette
   pickingMode = false;
   flatBgBtn.classList.remove('picking');
-  flatBgBtn.classList.add('loading');
   imgOriginal.style.cursor = '';
 
-  await runDetourage();
-
-  flatBgBtn.classList.remove('loading');
+  // Si on a déjà des pixels (détourage IA fait), on peut supprimer le fond
+  // directement sans repasser par le modèle
+  if (rawPixels) {
+    flatBgBtn.disabled = true;
+    flatBgBtn.classList.add('loading');
+    const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+    const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+    await rebuild(tol, feather);
+    endRun(flatBgBtn);
+    setStatus('✓ Fond uni supprimé.', 'success');
+  } else {
+    // Pas encore de détourage IA — on fait une suppression par couleur uniquement
+    await removeFlatBgOnly();
+  }
 });
+
+async function removeFlatBgOnly() {
+  if (!srcFile || !flatBgColor) return;
+  flatBgBtn.disabled = true;
+  flatBgBtn.classList.add('loading');
+  setStatus('Suppression du fond uni…');
+  try {
+    const dataUrl = await fileToDataUrl(srcFile);
+    const img = await new Promise((res, rej) => {
+      const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl;
+    });
+    rawW = img.naturalWidth; rawH = img.naturalHeight;
+
+    const oc = document.createElement('canvas');
+    oc.width = rawW; oc.height = rawH;
+    oc.getContext('2d').drawImage(img, 0, 0);
+    origPixels = oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+
+    // Masque alpha : tout visible par défaut
+    rawPixels = new Uint8ClampedArray(rawW * rawH * 4);
+    for (let i = 0; i < rawW * rawH; i++) {
+      rawPixels[i * 4]     = origPixels[i * 4];
+      rawPixels[i * 4 + 1] = origPixels[i * 4 + 1];
+      rawPixels[i * 4 + 2] = origPixels[i * 4 + 2];
+      rawPixels[i * 4 + 3] = 255;
+    }
+
+    eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; updateUndoBtn();
+    tolActive = false; featherActive = false;
+    setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
+    setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
+
+    await rebuild(0, 0);
+
+    colResult.style.display = 'block';
+    previewGrid.classList.add('visible');
+    slidersPanel.classList.add('visible');
+    dlBtn.classList.add('visible');
+    runBtn.style.display = 'none';
+
+    setStatus('✓ Fond uni supprimé.', 'success');
+    endRun(flatBgBtn);
+  } catch(e) {
+    console.error(e);
+    setStatus('Erreur : ' + (e.message || 'impossible.'), 'error');
+    endRun(flatBgBtn);
+  }
+}
+
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
 eraserToggle.addEventListener('click', () => {
@@ -1104,12 +1165,12 @@ async function rebuild(tol, feather) {
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
 
-  // Post-traitement fond uni : flood-fill depuis la couleur capturée sur origPixels
+  // Post-traitement fond uni : supprime les pixels dont la couleur dans l'original
+  // est proche de la couleur capturée par la pipette
   if (flatBgColor) {
     const { r: fr, g: fg, b: fb } = flatBgColor;
-    const threshold = 35;
+    const threshold = 15; // tolérance très basse — uniquement la couleur exacte et ses proches
     for (let i = 0; i < rawW * rawH; i++) {
-      if (px[i * 4 + 3] === 0) continue;
       const dr = origPixels[i * 4]     - fr;
       const dg = origPixels[i * 4 + 1] - fg;
       const db = origPixels[i * 4 + 2] - fb;
@@ -1135,22 +1196,23 @@ async function rebuild(tol, feather) {
 }
 
 // ── Détourage ──────────────────────────────────────────────────
-async function runDetourage() {
+async function runDetourage(fromFlatBg = false) {
   if (!srcFile) return;
   eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; redoHistory = []; updateUndoBtn();
-  runBtn.disabled = true;
-  runBtn.classList.add('loading');
+  const activeBtn = fromFlatBg ? flatBgBtn : runBtn;
+  activeBtn.disabled = true;
+  activeBtn.classList.add('loading');
   dlBtn.classList.remove('visible');
   showProgress(10); setStatus('Chargement du modèle…');
 
   // Attendre le modèle (chargé en parallèle dès l'ouverture de la page)
   let waited = 0;
   while (!segmenter) {
-    if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(); return; }
+    if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(activeBtn); return; }
     await sleep(300); waited += 300;
   }
   if (segmenter === 'error') {
-    setStatus('Erreur de chargement du modèle — cela peut arriver lors de la première utilisation (~50 Mo à télécharger). Réessayez dans quelques instants.', 'error'); endRun(); return;
+    setStatus('Erreur de chargement du modèle — cela peut arriver lors de la première utilisation (~50 Mo à télécharger). Réessayez dans quelques instants.', 'error'); endRun(activeBtn); return;
   }
 
   try {
@@ -1208,12 +1270,16 @@ async function runDetourage() {
 
     setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100); setTimeout(hideProgress, 800);
-    endRun();
+    endRun(activeBtn);
+    // Après un détourage IA réussi, masquer le bouton fond uni (inutile après coup)
+    if (!fromFlatBg) {
+      flatBgBtn.style.display = 'none';
+    }
 
   } catch(e) {
     console.error(e);
     setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
-    hideProgress(); endRun();
+    hideProgress(); endRun(activeBtn);
   }
 }
 
@@ -1245,6 +1311,7 @@ function loadFile(file) {
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
     runBtn.style.display = '';
+    flatBgBtn.style.display = '';
     eraserActive = false; restoreActive = false;
     eraserToggle.classList.remove('active');
     restoreToggle.classList.remove('active');
@@ -1282,13 +1349,13 @@ function resetAll() {
   resultCanvas.classList.remove('erasing');
   eraserCursor.classList.remove('visible');
   setStatus(''); hideProgress();
-  endRun();
+  endRun(runBtn); flatBgBtn.disabled = false; flatBgBtn.classList.remove('loading'); flatBgBtn.style.display = '';
 }
 
 // ── Utils ──────────────────────────────────────────────────────
-function endRun() {
-  runBtn.disabled = false;
-  runBtn.classList.remove('loading');
+function endRun(btn) {
+  const b = btn || runBtn;
+  b.disabled = false; b.classList.remove('loading');
 }
 function fileToDataUrl(file) {
   return new Promise((res, rej) => {
