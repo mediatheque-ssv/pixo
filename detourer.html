@@ -1185,6 +1185,7 @@ function updateUndoBtn() {
 }
 
 async function doUndo() {
+  console.log('[doUndo] eraserHistory.length=', eraserHistory.length, 'eraserActive=', eraserActive, 'wandAddMode=', wandAddMode);
   if (eraserHistory.length === 0) return;
   redoHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
   if (redoHistory.length > 20) redoHistory.shift();
@@ -1194,6 +1195,7 @@ async function doUndo() {
   updateUndoBtn();
   const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
   const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+  console.log('[doUndo] after pop, eraserMask=', eraserMask ? 'set' : 'null', 'wandAccumMask=', wandAccumMask ? 'set' : 'null');
   await rebuild(tol, feather);
 }
 
