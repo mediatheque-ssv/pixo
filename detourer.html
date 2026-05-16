@@ -279,17 +279,7 @@ input[type=range].rng::-moz-range-thumb {
 .actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
 
 /* Baguette magique */
-.wand-btn.picking { outline: 2px solid var(--accent); outline-offset: 2px; }
-.wand-status {
-  display: none;
-  align-items: center; justify-content: space-between;
-  gap: 12px; margin-top: 8px;
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  color: var(--text-3); font-style: italic;
-}
-.wand-status.visible { display: flex; }
-.wand-status-text { flex: 1; }
-.wand-status-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.wand-btn.picking, #wand-add-btn.picking { outline: 2px solid var(--accent); outline-offset: 2px; }
 .run-btn {
   height: 48px; padding: 0 24px; background: var(--accent);
   border: none; border-radius: var(--radius-lg);
@@ -415,17 +405,6 @@ input[type=range].rng::-moz-range-thumb {
         </button>
       </div>
       <img id="img-original" class="preview-img original" alt="Image originale" style="display:none">
-      <div class="wand-status" id="wand-status">
-        <span class="wand-status-text" id="wand-status-text"></span>
-        <div class="wand-status-actions">
-          <button class="eraser-toggle icon-btn" id="wand-undo-btn" title="Annuler" disabled>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
-          </button>
-          <button class="eraser-toggle icon-btn" id="wand-redo-btn" title="Refaire" disabled>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C19 7 14 4 8 5.5a9 9 0 0 0-5 7.5"/></svg>
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Colonne Résultat (masquée jusqu'au 1er détourage) -->
@@ -459,7 +438,22 @@ input[type=range].rng::-moz-range-thumb {
         <div class="slider-row inactive" id="tol-row">
           <div class="slider-header">
             <span class="slider-label">Tolérance</span>
-            <button class="eraser-toggle" id="tol-toggle" aria-pressed="false">Activer</button>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="eraser-toggle icon-btn" id="wand-add-btn" title="Ajouter une zone" style="display:none">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/>
+                  <path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/>
+                  <path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>
+                </svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="wand-undo-btn" title="Annuler la dernière sélection" style="display:none" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="wand-redo-btn" title="Refaire" style="display:none" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C19 7 14 4 8 5.5a9 9 0 0 0-5 7.5"/></svg>
+              </button>
+              <button class="eraser-toggle" id="tol-toggle" aria-pressed="false">Activer</button>
+            </div>
           </div>
           <div class="slider-track">
             <span class="slider-hint">Faible</span>
@@ -621,8 +615,7 @@ runBtn.addEventListener('click', () => { runDetourage(); });
 
 // ── Baguette magique ───────────────────────────────────────────
 const wandBtn       = document.getElementById('wand-btn');
-const wandStatus    = document.getElementById('wand-status');
-const wandStatusText = document.getElementById('wand-status-text');
+const wandAddBtn    = document.getElementById('wand-add-btn');
 const wandUndoBtn   = document.getElementById('wand-undo-btn');
 const wandRedoBtn   = document.getElementById('wand-redo-btn');
 
@@ -630,9 +623,24 @@ const wandRedoBtn   = document.getElementById('wand-redo-btn');
 let wandUndoHistory = [];
 let wandRedoHistory = [];
 
+// Mode "ajouter une zone" : clic suivant sur l'image détourée ajoutera une zone
+let wandAddMode = false;
+
 function wandUpdateUndoBtns() {
   wandUndoBtn.disabled = wandUndoHistory.length === 0;
   wandRedoBtn.disabled = wandRedoHistory.length === 0;
+}
+
+// Afficher les contrôles baguette dans la ligne Tolérance (après "Supprimer un fond uni")
+function wandShowTolControls() {
+  wandAddBtn.style.display = '';
+  wandUndoBtn.style.display = '';
+  wandRedoBtn.style.display = '';
+}
+function wandHideTolControls() {
+  wandAddBtn.style.display = 'none';
+  wandUndoBtn.style.display = 'none';
+  wandRedoBtn.style.display = 'none';
 }
 
 let wandMode     = false;
@@ -695,11 +703,9 @@ function wandEnter() {
   wandMode = true;
   wandActive = false;
   wandBtn.classList.add('picking');
-  imgOriginal.style.cursor = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\'%3E%3Cline x1=\'1\' y1=\'31\' x2=\'22\' y2=\'10\' stroke=\'black\' stroke-width=\'3\' stroke-linecap=\'round\'/%3E%3Cline x1=\'1\' y1=\'31\' x2=\'22\' y2=\'10\' stroke=\'white\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'22\' y1=\'5\' x2=\'22\' y2=\'15\' stroke=\'black\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'17\' y1=\'10\' x2=\'27\' y2=\'10\' stroke=\'black\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'19\' y1=\'7\' x2=\'25\' y2=\'13\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'25\' y1=\'7\' x2=\'19\' y2=\'13\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'22\' y1=\'5\' x2=\'22\' y2=\'15\' stroke=\'%23d4ff4e\' stroke-width=\'1.2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'17\' y1=\'10\' x2=\'27\' y2=\'10\' stroke=\'%23d4ff4e\' stroke-width=\'1.2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'19\' y1=\'7\' x2=\'25\' y2=\'13\' stroke=\'%23d4ff4e\' stroke-width=\'1\' stroke-linecap=\'round\'/%3E%3Cline x1=\'25\' y1=\'7\' x2=\'19\' y2=\'13\' stroke=\'%23d4ff4e\' stroke-width=\'1\' stroke-linecap=\'round\'/%3E%3C/svg%3E") 1 31, crosshair';
+  imgOriginal.style.cursor = wandCursorUrl;
   wandClickX = -1; wandClickY = -1; wandAccumMask = null; wandClicks = [];
   wandUndoHistory = []; wandRedoHistory = []; wandUpdateUndoBtns();
-  wandStatus.classList.add('visible');
-  wandStatusText.textContent = 'Clique sur le fond pour sélectionner';
   // Charger origPixels si pas encore fait
   if (!origPixels) {
     const reader = new FileReader();
@@ -726,15 +732,17 @@ function wandEnter() {
 function wandLeave() {
   wandMode = false;
   wandActive = false;
+  wandAddMode = false;
   wandBtn.classList.remove('picking');
+  wandAddBtn.classList.remove('picking');
   imgOriginal.style.cursor = '';
+  resultCanvas.style.cursor = '';
   wandClickX = -1; wandClickY = -1; wandAccumMask = null; wandClicks = [];
   wandUndoHistory = []; wandRedoHistory = []; wandUpdateUndoBtns();
+  wandHideTolControls();
   // Retirer aussi les actions 'wand' de l'ordre global
   undoActionOrder = undoActionOrder.filter(a => a !== 'wand');
   redoActionOrder = redoActionOrder.filter(a => a !== 'wand');
-  wandStatus.classList.remove('visible');
-  wandStatusText.textContent = '';
   if (status) setStatus('');
 }
 
@@ -742,6 +750,21 @@ wandBtn.addEventListener('click', () => {
   if (wandMode) { wandLeave(); } else { wandEnter(); }
 });
 
+// Ajoute un clic à l'historique baguette (coords dans l'espace rawW x rawH)
+function wandAddClick(x, y) {
+  // Historique baguette
+  wandUndoHistory.push(wandClicks.slice());
+  if (wandUndoHistory.length > 20) wandUndoHistory.shift();
+  wandRedoHistory = [];
+  wandUpdateUndoBtns();
+  undoActionOrder.push('wand'); redoActionOrder = [];
+
+  wandClicks.push({ x, y });
+  wandRebuildMask();
+  wandPreview();
+}
+
+// Premier clic : sur l'image originale
 imgOriginal.addEventListener('click', e => {
   if (!wandMode || !origPixels) return;
   const rect = imgOriginal.getBoundingClientRect();
@@ -752,36 +775,52 @@ imgOriginal.addEventListener('click', e => {
   else { drawH = rect.height; drawW = rect.height * imgAspect; }
   const offsetX = rect.left + (rect.width  - drawW) / 2;
   const offsetY = rect.top  + (rect.height - drawH) / 2;
-  wandClickX = Math.max(0, Math.min(rawW-1, Math.round((e.clientX - offsetX) * rawW / drawW)));
-  wandClickY = Math.max(0, Math.min(rawH-1, Math.round((e.clientY - offsetY) * rawH / drawH)));
+  const x = Math.max(0, Math.min(rawW-1, Math.round((e.clientX - offsetX) * rawW / drawW)));
+  const y = Math.max(0, Math.min(rawH-1, Math.round((e.clientY - offsetY) * rawH / drawH)));
 
-  if (!wandActive) {
-    wandActive = true;
-    tolSlider.value = 30;
-    tolActive = true;
-    setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), true);
-    featherActive = false;
-    setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
-    eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; undoActionOrder = undoActionOrder.filter(a => a !== 'eraser'); redoActionOrder = redoActionOrder.filter(a => a !== 'eraser'); updateUndoBtn();
-    slidersPanel.classList.add('visible');
-    dlBtn.classList.add('visible');
-    runBtn.style.display = 'none';
-    wandBtn.style.display = 'none';
-    wandStatus.classList.add('visible');
-  }
+  // Premier clic : initialiser le mode "détourage baguette"
+  wandActive = true;
+  tolSlider.value = 30;
+  tolActive = true;
+  setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), true);
+  featherActive = false;
+  setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
+  eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; undoActionOrder = undoActionOrder.filter(a => a !== 'eraser'); redoActionOrder = redoActionOrder.filter(a => a !== 'eraser'); updateUndoBtn();
+  slidersPanel.classList.add('visible');
+  dlBtn.classList.add('visible');
+  runBtn.style.display = 'none';
+  wandBtn.style.display = 'none';
+  wandShowTolControls();
 
-  // Pousser l'état précédent dans l'historique baguette avant d'ajouter le nouveau clic
-  wandUndoHistory.push(wandClicks.slice());
-  if (wandUndoHistory.length > 20) wandUndoHistory.shift();
-  wandRedoHistory = [];
-  wandUpdateUndoBtns();
-  undoActionOrder.push('wand'); redoActionOrder = [];
+  // Quitter le mode pipette (on ne reste pas en sélection multiple sur l'originale)
+  wandMode = false;
+  wandBtn.classList.remove('picking');
+  imgOriginal.style.cursor = '';
 
-  // Enregistrer le clic et recalculer
-  wandClicks.push({ x: wandClickX, y: wandClickY });
-  wandRebuildMask();
-  wandPreview();
-  wandStatusText.textContent = `${wandClicks.length} sélection${wandClicks.length > 1 ? 's' : ''}`;
+  wandAddClick(x, y);
+});
+
+// Clics suivants : sur l'image détourée, uniquement en mode "ajouter une zone"
+resultCanvas.addEventListener('click', e => {
+  if (!wandAddMode || !wandActive || !origPixels) return;
+  // Ne pas interférer avec la gomme/restauration
+  if (eraserActive || restoreActive) return;
+  const { drawW, drawH, offsetX, offsetY } = getCanvasDisplayRect();
+  const x = Math.max(0, Math.min(rawW-1, Math.round((e.clientX - offsetX) * rawW / drawW)));
+  const y = Math.max(0, Math.min(rawH-1, Math.round((e.clientY - offsetY) * rawH / drawH)));
+  wandAddClick(x, y);
+  // Quitter le mode "ajouter" après un clic
+  wandAddMode = false;
+  wandAddBtn.classList.remove('picking');
+  resultCanvas.style.cursor = '';
+});
+
+// Toggle du mode "ajouter une zone"
+const wandCursorUrl = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\'%3E%3Cline x1=\'1\' y1=\'31\' x2=\'22\' y2=\'10\' stroke=\'black\' stroke-width=\'3\' stroke-linecap=\'round\'/%3E%3Cline x1=\'1\' y1=\'31\' x2=\'22\' y2=\'10\' stroke=\'white\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'22\' y1=\'5\' x2=\'22\' y2=\'15\' stroke=\'black\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'17\' y1=\'10\' x2=\'27\' y2=\'10\' stroke=\'black\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'19\' y1=\'7\' x2=\'25\' y2=\'13\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'25\' y1=\'7\' x2=\'19\' y2=\'13\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'22\' y1=\'5\' x2=\'22\' y2=\'15\' stroke=\'%23d4ff4e\' stroke-width=\'1.2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'17\' y1=\'10\' x2=\'27\' y2=\'10\' stroke=\'%23d4ff4e\' stroke-width=\'1.2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'19\' y1=\'7\' x2=\'25\' y2=\'13\' stroke=\'%23d4ff4e\' stroke-width=\'1\' stroke-linecap=\'round\'/%3E%3Cline x1=\'25\' y1=\'7\' x2=\'19\' y2=\'13\' stroke=\'%23d4ff4e\' stroke-width=\'1\' stroke-linecap=\'round\'/%3E%3C/svg%3E") 1 31, crosshair';
+wandAddBtn.addEventListener('click', () => {
+  wandAddMode = !wandAddMode;
+  wandAddBtn.classList.toggle('picking', wandAddMode);
+  resultCanvas.style.cursor = wandAddMode ? wandCursorUrl : '';
 });
 
 dlBtn.addEventListener('click', downloadResult);
@@ -1146,14 +1185,6 @@ async function doRedo() {
 }
 
 // Undo/Redo dédiés à la baguette
-function wandUpdateStatusText() {
-  if (wandClicks.length === 0) {
-    wandStatusText.textContent = 'Clique sur le fond pour sélectionner';
-  } else {
-    wandStatusText.textContent = `${wandClicks.length} sélection${wandClicks.length > 1 ? 's' : ''}`;
-  }
-}
-
 function wandDoUndo() {
   if (wandUndoHistory.length === 0) return;
   wandRedoHistory.push(wandClicks.slice());
@@ -1162,7 +1193,6 @@ function wandDoUndo() {
   wandRebuildMask();
   wandPreview();
   wandUpdateUndoBtns();
-  wandUpdateStatusText();
 }
 
 function wandDoRedo() {
@@ -1173,7 +1203,6 @@ function wandDoRedo() {
   wandRebuildMask();
   wandPreview();
   wandUpdateUndoBtns();
-  wandUpdateStatusText();
 }
 
 wandUndoBtn.addEventListener('click', () => {
