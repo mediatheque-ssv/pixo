@@ -681,21 +681,11 @@ function wandRebuildMask() {
   }
 }
 
-function wandPreview() {
+async function wandPreview() {
   if (!wandAccumMask || !origPixels) return;
-  // Appliquer le masque accumulé sur rawPixels
-  const tempRaw = rawPixels.slice();
-  for (let i = 0; i < rawW*rawH; i++) {
-    if (wandAccumMask[i]) tempRaw[i*4+3] = 0;
-  }
-  resultCanvas.width  = rawW;
-  resultCanvas.height = rawH;
-  // Appliquer feather si actif
-  let px = tempRaw;
-  const feather = featherActive ? parseInt(featherSlider.value) : 0;
-  if (feather > 0) px = applyFeather(px, rawW, rawH, feather);
-  px = mergeWithOrig(px, origPixels);
-  resultCtx.putImageData(new ImageData(px, rawW, rawH), 0, 0);
+  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+  await rebuild(tol, feather);
   colResult.style.display = 'block';
   previewGrid.classList.add('visible');
 }
@@ -822,16 +812,12 @@ function triggerRebuild() {
   processingOverlay.classList.add('visible');
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(async () => {
-    if (wandActive) {
-      wandRebuildMask();
-      wandPreview();
-      processingOverlay.classList.remove('visible');
-    } else {
-      const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
-      const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
-      await rebuild(tol, feather);
-      processingOverlay.classList.remove('visible');
-    }
+    // Si la baguette est active, recalculer le masque accumulé avec la tolérance courante
+    if (wandActive) wandRebuildMask();
+    const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+    const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+    await rebuild(tol, feather);
+    processingOverlay.classList.remove('visible');
   }, DEBOUNCE_MS);
 }
 
@@ -1315,6 +1301,12 @@ async function rebuild(tol, feather) {
   px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
 
+  // Appliquer le masque baguette (sélection de zones à supprimer)
+  if (wandAccumMask) {
+    for (let i = 0; i < wandAccumMask.length; i++) {
+      if (wandAccumMask[i]) px[i * 4 + 3] = 0;
+    }
+  }
   // Réappliquer le masque de gomme s'il existe
   if (eraserMask) {
     for (let i = 0; i < eraserMask.length; i++) {
