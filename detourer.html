@@ -608,6 +608,7 @@ const colResult    = document.getElementById('col-result');
 const imgOriginal  = document.getElementById('img-original');
 const imgResult    = document.getElementById('img-result');
 const actionsEl    = document.getElementById('actions');
+const actionsGroup = document.getElementById('actions-group');
 const runBtn       = document.getElementById('run-btn');
 const dlBtn        = document.getElementById('dl-btn');
 const changeBtn    = document.getElementById('change-btn');
@@ -740,7 +741,7 @@ function wandEnter() {
   imgOriginal.style.cursor = wandCursorUrl;
   wandClickX = -1; wandClickY = -1; wandAccumMask = null; wandClicks = [];
   wandUndoHistory = []; wandRedoHistory = []; wandUpdateUndoBtns();
-  setStatus('Clique sur le fond de l\'image pour sélectionner.');
+  setStatus('Clique sur la zone à rendre transparente.');
   // Charger origPixels si pas encore fait
   if (!origPixels) {
     const reader = new FileReader();
@@ -797,6 +798,7 @@ function wandAddClick(x, y) {
   wandClicks.push({ x, y });
   wandRebuildMask();
   wandPreview();
+  setStatus('');
 }
 
 // Premier clic : sur l'image originale
@@ -823,8 +825,7 @@ imgOriginal.addEventListener('click', e => {
   eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; undoActionOrder = undoActionOrder.filter(a => a !== 'eraser'); redoActionOrder = redoActionOrder.filter(a => a !== 'eraser'); updateUndoBtn();
   slidersPanel.classList.add('visible');
   dlBtn.classList.add('visible');
-  runBtn.style.display = 'none';
-  wandBtn.style.display = 'none';
+  actionsGroup.style.display = 'none';
   wandShowTolControls();
 
   // Quitter le mode pipette (on ne reste pas en sélection multiple sur l'originale)
@@ -863,9 +864,6 @@ wandAddBtn.addEventListener('click', () => {
       resultCanvas.classList.remove('erasing');
       eraserCursor.classList.remove('visible');
     }
-    setStatus('Clique sur l\'image détourée pour ajouter une zone à supprimer.');
-  } else {
-    setStatus('');
   }
 });
 
@@ -1489,8 +1487,7 @@ async function runDetourage() {
     previewGrid.classList.add('visible');
     slidersPanel.classList.add('visible');
     dlBtn.classList.add('visible');
-    runBtn.style.display = 'none';
-    wandBtn.style.display = 'none';
+    actionsGroup.style.display = 'none';
 
     setStatus('✓ Fond supprimé avec succès.', 'success');
     showProgress(100); setTimeout(hideProgress, 800);
@@ -1530,8 +1527,7 @@ function loadFile(file) {
     slidersPanel.classList.remove('visible');
     actionsEl.style.display = 'flex';
     dlBtn.classList.remove('visible');
-    runBtn.style.display = '';
-    wandBtn.style.display = '';
+    actionsGroup.style.display = '';
     wandLeave();
     eraserActive = false; restoreActive = false;
     eraserToggle.classList.remove('active');
@@ -1570,7 +1566,7 @@ function resetAll() {
   resultCanvas.classList.remove('erasing');
   eraserCursor.classList.remove('visible');
   wandLeave();
-  runBtn.style.display = ''; wandBtn.style.display = '';
+  actionsGroup.style.display = '';
   setStatus(''); hideProgress();
   endRun(runBtn);
 }
