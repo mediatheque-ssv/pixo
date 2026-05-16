@@ -167,6 +167,34 @@ body::before {
   border: 0.5px solid var(--border-md);
   display: none;
 }
+.preview-thumb-wrap {
+  position: relative;
+  display: flex; align-items: center;
+  flex-shrink: 0;
+}
+.pdf-nav-btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 24px;
+  background: rgba(0,0,0,0.6);
+  border: 0.5px solid var(--border-hi);
+  color: var(--text);
+  font-size: 14px; font-weight: 600; line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+  z-index: 2;
+}
+.pdf-nav-btn:hover { background: rgba(0,0,0,0.85); }
+.pdf-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.pdf-nav-prev { left: 2px; }
+.pdf-nav-next { right: 2px; }
+.pdf-page-indicator {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-3);
+  margin-top: 3px;
+}
 .preview-meta { flex: 1; min-width: 0; }
 .preview-name {
   font-size: 13px; font-weight: 600;
@@ -1109,21 +1137,26 @@ input[type=range]::-moz-range-thumb {
       </svg>
     </div>
     <div class="drop-label">Glissez une image ici ou cliquez pour parcourir</div>
-    <div class="drop-hint">JPG · PNG · WEBP · GIF</div>
+    <div class="drop-hint">JPG · PNG · WEBP · GIF · PDF</div>
   </div>
 
   <div class="preview-strip" id="preview-strip">
     <div class="preview-strip-top">
-      <img id="preview-thumb" class="preview-thumb" alt="Aperçu de l'image importée">
+      <div class="preview-thumb-wrap">
+        <img id="preview-thumb" class="preview-thumb" alt="Aperçu de l'image importée">
+        <button class="pdf-nav-btn pdf-nav-prev" id="pdf-prev-btn" type="button" aria-label="Page précédente" style="display:none">‹</button>
+        <button class="pdf-nav-btn pdf-nav-next" id="pdf-next-btn" type="button" aria-label="Page suivante" style="display:none">›</button>
+      </div>
       <div class="preview-meta">
         <div class="preview-name" id="preview-name">—</div>
         <div class="preview-size" id="preview-size">—</div>
+        <div class="pdf-page-indicator" id="pdf-page-indicator" style="display:none">Page <span id="pdf-page-cur">1</span> / <span id="pdf-page-total">1</span></div>
       </div>
       <button class="change-btn" onclick="clearImage()" aria-label="Changer l'image importée">Changer</button>
     </div>
   </div>
 
-  <input type="file" id="file-in" accept="image/*" style="display:none">
+  <input type="file" id="file-in" accept="image/*,application/pdf,.pdf" style="display:none">
 
   <!-- ALT TEXT SECTION -->
   <div class="alt-section" id="alt-section">
@@ -1363,6 +1396,12 @@ input[type=range]::-moz-range-thumb {
 <script>
 var srcImg = null, srcFile = null, srcDataUrl = null;
 var generatedResults = [];
+
+// ─── PDF state ───
+var pdfDoc = null;       // pdfjsLib document si PDF importé
+var pdfCurPage = 1;
+var pdfPageCount = 0;
+var pdfRendering = false;
 var formats = [
   { id: 1, name: 'Article portail (intro)', w: 300, h: 300, overflow: 'crop', bands: 'black', crop: null, text: true },
   { id: 2, name: 'Event portail (intro+miniature)', w: 500, h: 300, overflow: 'crop', bands: 'black', crop: null, text: true },
@@ -1507,6 +1546,10 @@ function addFormat() {
 
 function clearImage() {
   srcImg = null; srcFile = null; srcDataUrl = null;
+  pdfDoc = null; pdfCurPage = 1; pdfPageCount = 0;
+  document.getElementById('pdf-page-indicator').style.display = 'none';
+  document.getElementById('pdf-prev-btn').style.display = 'none';
+  document.getElementById('pdf-next-btn').style.display = 'none';
   var genBtn = document.getElementById('gen-btn');
   genBtn.disabled = true;
   genBtn.classList.add('gen-btn--disabled');
@@ -1532,13 +1575,14 @@ document.getElementById('file-in').onchange = function(e) { loadFile(e.target.fi
 
 function loadFile(file) {
   if (!file) return;
-  if (!file.type.startsWith('image/')) {
-    showToast('Format non supporté. Utilisez JPG, PNG, WEBP ou GIF.', 'error');
+  var isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (!isPdf && !file.type.startsWith('image/')) {
+    showToast('Format non supporté. Utilisez JPG, PNG, WEBP, GIF ou PDF.', 'error');
     return;
   }
   var MAX_SIZE_MB = 50;
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-    showToast('Image trop lourde (max ' + MAX_SIZE_MB + ' Mo).', 'error');
+    showToast('Fichier trop lourd (max ' + MAX_SIZE_MB + ' Mo).', 'error');
     return;
   }
   // Réinitialiser les résultats précédents si une image était déjà chargée
@@ -1550,7 +1594,19 @@ function loadFile(file) {
     document.getElementById('custom-filename').value = '';
     document.getElementById('filename-preview').innerHTML = '';
   }
+  // Réinitialiser l'état PDF précédent
+  pdfDoc = null; pdfCurPage = 1; pdfPageCount = 0;
+  document.getElementById('pdf-page-indicator').style.display = 'none';
+  document.getElementById('pdf-prev-btn').style.display = 'none';
+  document.getElementById('pdf-next-btn').style.display = 'none';
+
   srcFile = file;
+
+  if (isPdf) {
+    loadPdfFile(file);
+    return;
+  }
+
   var reader = new FileReader();
   reader.onerror = function() {
     showToast('Impossible de lire le fichier.', 'error');
@@ -1569,34 +1625,126 @@ function loadFile(file) {
         showToast('Image invalide (dimensions nulles).', 'error');
         return;
       }
-      srcImg = img;
-      var genBtn = document.getElementById('gen-btn');
-      genBtn.disabled = false;
-      genBtn.classList.remove('gen-btn--disabled');
-      formats.forEach(function(f) {
-        f.crop = null;
-        if (f.overflow === 'crop' && (img.width < f.w || img.height < f.h)) {
-          f.overflow = 'bands';
-          f.bands = 'transparent';
-        }
-      });
-      renderFormats();
-      var pt = document.getElementById('preview-thumb');
-      pt.src = ev.target.result; pt.alt = 'Aperçu de l\'image importée'; pt.style.display = 'block';
-      document.getElementById('preview-name').textContent = file.name;
-      document.getElementById('preview-size').textContent = img.width + ' × ' + img.height + ' px · ' + Math.round(file.size / 1024) + ' Ko';
-      document.getElementById('preview-strip').style.display = 'flex';
-      document.getElementById('drop-zone').style.display = 'none';
-      document.getElementById('alt-section').style.display = 'block';
-      document.getElementById('alt-text').value = '';
-      document.getElementById('alt-error').style.display = 'none';
-      updateAltHint();
-      setTimeout(generateAlt, 100);
+      setupImage(img, ev.target.result, file.name, Math.round(file.size / 1024) + ' Ko');
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 }
+
+// Appelée quand une image source est prête (image classique OU page PDF rendue)
+function setupImage(img, dataUrl, displayName, sizeStr) {
+  srcImg = img;
+  srcDataUrl = dataUrl;
+  var genBtn = document.getElementById('gen-btn');
+  genBtn.disabled = false;
+  genBtn.classList.remove('gen-btn--disabled');
+  formats.forEach(function(f) {
+    f.crop = null;
+    if (f.overflow === 'crop' && (img.width < f.w || img.height < f.h)) {
+      f.overflow = 'bands';
+      f.bands = 'transparent';
+    }
+  });
+  renderFormats();
+  var pt = document.getElementById('preview-thumb');
+  pt.src = dataUrl; pt.alt = 'Aperçu de l\'image importée'; pt.style.display = 'block';
+  document.getElementById('preview-name').textContent = displayName;
+  document.getElementById('preview-size').textContent = img.width + ' × ' + img.height + ' px · ' + sizeStr;
+  document.getElementById('preview-strip').style.display = 'flex';
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('alt-section').style.display = 'block';
+  document.getElementById('alt-text').value = '';
+  document.getElementById('alt-error').style.display = 'none';
+  updateAltHint();
+  setTimeout(generateAlt, 100);
+}
+
+// ─── PDF support ───
+function loadPdfFile(file) {
+  // Charger PDF.js à la demande
+  if (!window.pdfjsLib) {
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+    s.onload = function() {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+      readPdfFile(file);
+    };
+    s.onerror = function() { showToast('Impossible de charger PDF.js.', 'error'); srcFile = null; };
+    document.head.appendChild(s);
+  } else {
+    readPdfFile(file);
+  }
+}
+
+function readPdfFile(file) {
+  showToast('Chargement du PDF…');
+  var reader = new FileReader();
+  reader.onerror = function() { showToast('Impossible de lire le PDF.', 'error'); srcFile = null; };
+  reader.onload = function(ev) {
+    var typedArray = new Uint8Array(ev.target.result);
+    window.pdfjsLib.getDocument({ data: typedArray }).promise.then(function(doc) {
+      pdfDoc = doc;
+      pdfPageCount = doc.numPages;
+      pdfCurPage = 1;
+      // Boutons de navigation visibles seulement si > 1 page
+      var hasMultiple = pdfPageCount > 1;
+      document.getElementById('pdf-prev-btn').style.display = hasMultiple ? 'flex' : 'none';
+      document.getElementById('pdf-next-btn').style.display = hasMultiple ? 'flex' : 'none';
+      document.getElementById('pdf-page-indicator').style.display = hasMultiple ? 'block' : 'none';
+      document.getElementById('pdf-page-total').textContent = pdfPageCount;
+      document.getElementById('pdf-page-cur').textContent = '1';
+      renderPdfPage(1);
+    }).catch(function(e) {
+      console.error(e);
+      showToast('Impossible d\'ouvrir le PDF.', 'error');
+      srcFile = null; pdfDoc = null;
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderPdfPage(pageNum) {
+  if (!pdfDoc || pdfRendering) return;
+  pdfRendering = true;
+  pdfDoc.getPage(pageNum).then(function(page) {
+    // Rendre à une résolution suffisante pour les plus grands formats demandés
+    var maxFormatSide = 2000;
+    formats.forEach(function(f) { maxFormatSide = Math.max(maxFormatSide, f.w, f.h); });
+    var viewport1 = page.getViewport({ scale: 1 });
+    var targetScale = Math.min(4, (maxFormatSide * 2) / Math.max(viewport1.width, viewport1.height));
+    if (targetScale < 1.5) targetScale = 1.5;
+    var viewport = page.getViewport({ scale: targetScale });
+    var canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    var ctx = canvas.getContext('2d');
+    // Fond blanc pour les PDF (page papier)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
+      var dataUrl = canvas.toDataURL('image/png');
+      var sizeStr = Math.round(srcFile.size / 1024) + ' Ko';
+      var displayName = srcFile.name + (pdfPageCount > 1 ? ' (p.' + pageNum + '/' + pdfPageCount + ')' : '');
+      // Le canvas fait office d'image source
+      setupImage(canvas, dataUrl, displayName, sizeStr);
+      document.getElementById('pdf-page-cur').textContent = pageNum;
+      pdfCurPage = pageNum;
+      pdfRendering = false;
+    });
+  }).catch(function(e) {
+    console.error(e);
+    showToast('Erreur de rendu de la page PDF.', 'error');
+    pdfRendering = false;
+  });
+}
+
+document.getElementById('pdf-prev-btn').addEventListener('click', function() {
+  if (pdfCurPage > 1) renderPdfPage(pdfCurPage - 1);
+});
+document.getElementById('pdf-next-btn').addEventListener('click', function() {
+  if (pdfCurPage < pdfPageCount) renderPdfPage(pdfCurPage + 1);
+});
 
 function updateAltHint() {
   var val = document.getElementById('alt-text').value;
