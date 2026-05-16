@@ -280,6 +280,14 @@ input[type=range].rng::-moz-range-thumb {
 
 /* Baguette magique */
 .wand-btn.picking { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wand-status {
+  display: none;
+  margin-top: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-3); font-style: italic;
+  text-align: center;
+}
+.wand-status.visible { display: block; }
 .run-btn {
   height: 48px; padding: 0 24px; background: var(--accent);
   border: none; border-radius: var(--radius-lg);
@@ -405,6 +413,7 @@ input[type=range].rng::-moz-range-thumb {
         </button>
       </div>
       <img id="img-original" class="preview-img original" alt="Image originale" style="display:none">
+      <div class="wand-status" id="wand-status"></div>
     </div>
 
     <!-- Colonne Résultat (masquée jusqu'au 1er détourage) -->
@@ -600,6 +609,7 @@ runBtn.addEventListener('click', () => { runDetourage(); });
 
 // ── Baguette magique ───────────────────────────────────────────
 const wandBtn       = document.getElementById('wand-btn');
+const wandStatus    = document.getElementById('wand-status');
 
 let wandMode     = false;
 let wandActive   = false;
@@ -638,16 +648,12 @@ function wandFloodFill(pixels, w, h, cx, cy, tolerance) {
 
 // Rejoue tous les clics avec la tolérance courante
 function wandRebuildMask() {
-  if (!origPixels || !wandClicks.length) return;
+  if (!origPixels) return;
   const tol = parseInt(tolSlider.value) * 2.55;
   wandAccumMask = new Uint8Array(rawW * rawH);
   for (const click of wandClicks) {
     const clickMask = wandFloodFill(origPixels, rawW, rawH, click.x, click.y, tol);
-    if (click.shift) {
-      for (let i = 0; i < rawW*rawH; i++) if (clickMask[i]) wandAccumMask[i] = 0;
-    } else {
-      for (let i = 0; i < rawW*rawH; i++) if (clickMask[i]) wandAccumMask[i] = 1;
-    }
+    for (let i = 0; i < rawW*rawH; i++) if (clickMask[i]) wandAccumMask[i] = 1;
   }
 }
 
@@ -677,7 +683,8 @@ function wandEnter() {
   wandBtn.classList.add('picking');
   imgOriginal.style.cursor = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\'%3E%3Cline x1=\'1\' y1=\'31\' x2=\'22\' y2=\'10\' stroke=\'black\' stroke-width=\'3\' stroke-linecap=\'round\'/%3E%3Cline x1=\'1\' y1=\'31\' x2=\'22\' y2=\'10\' stroke=\'white\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'22\' y1=\'5\' x2=\'22\' y2=\'15\' stroke=\'black\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'17\' y1=\'10\' x2=\'27\' y2=\'10\' stroke=\'black\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'19\' y1=\'7\' x2=\'25\' y2=\'13\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'25\' y1=\'7\' x2=\'19\' y2=\'13\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'22\' y1=\'5\' x2=\'22\' y2=\'15\' stroke=\'%23d4ff4e\' stroke-width=\'1.2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'17\' y1=\'10\' x2=\'27\' y2=\'10\' stroke=\'%23d4ff4e\' stroke-width=\'1.2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'19\' y1=\'7\' x2=\'25\' y2=\'13\' stroke=\'%23d4ff4e\' stroke-width=\'1\' stroke-linecap=\'round\'/%3E%3Cline x1=\'25\' y1=\'7\' x2=\'19\' y2=\'13\' stroke=\'%23d4ff4e\' stroke-width=\'1\' stroke-linecap=\'round\'/%3E%3C/svg%3E") 1 31, crosshair';
   wandClickX = -1; wandClickY = -1; wandAccumMask = null; wandClicks = [];
-  setStatus('Clique sur le fond. Shift+clic pour retirer.');
+  wandStatus.classList.add('visible');
+  wandStatus.textContent = 'Clique sur le fond pour sélectionner';
   // Charger origPixels si pas encore fait
   if (!origPixels) {
     const reader = new FileReader();
@@ -707,6 +714,8 @@ function wandLeave() {
   wandBtn.classList.remove('picking');
   imgOriginal.style.cursor = '';
   wandClickX = -1; wandClickY = -1; wandAccumMask = null; wandClicks = [];
+  wandStatus.classList.remove('visible');
+  wandStatus.textContent = '';
   if (status) setStatus('');
 }
 
@@ -739,35 +748,20 @@ imgOriginal.addEventListener('click', e => {
     dlBtn.classList.add('visible');
     runBtn.style.display = 'none';
     wandBtn.style.display = 'none';
-    setStatus('Clique pour ajouter, Shift+clic pour retirer.');
+    wandStatus.classList.add('visible');
   }
 
-  // Calculer le flood fill au clic
-  const tol = parseInt(tolSlider.value) * 2.55;
-  const clickMask = wandFloodFill(origPixels, rawW, rawH, wandClickX, wandClickY, tol);
+  // Pousser l'état précédent dans l'historique avant d'ajouter le nouveau clic
+  eraserHistory.push({ type: 'wand', clicks: wandClicks.slice() });
+  if (eraserHistory.length > 20) eraserHistory.shift();
+  redoHistory = [];
+  updateUndoBtn();
 
-  // Initialiser le masque accumulé si première sélection
-  if (!wandAccumMask) {
-    wandAccumMask = new Uint8Array(rawW * rawH);
-  }
-
-  // Enregistrer le clic dans l'historique pour pouvoir recalculer si la tolérance change
-  wandClicks.push({ x: wandClickX, y: wandClickY, shift: e.shiftKey });
-
-  // Ajouter ou retirer selon Shift
-  if (e.shiftKey) {
-    for (let i = 0; i < rawW*rawH; i++) {
-      if (clickMask[i]) wandAccumMask[i] = 0;
-    }
-    setStatus('Zone retirée. Clique pour ajouter, Shift+clic pour retirer.');
-  } else {
-    for (let i = 0; i < rawW*rawH; i++) {
-      if (clickMask[i]) wandAccumMask[i] = 1;
-    }
-    setStatus('Zone ajoutée. Clique pour ajouter, Shift+clic pour retirer.');
-  }
-
+  // Enregistrer le clic et recalculer
+  wandClicks.push({ x: wandClickX, y: wandClickY });
+  wandRebuildMask();
   wandPreview();
+  wandStatus.textContent = `Zone ajoutée (${wandClicks.length} sélection${wandClicks.length > 1 ? 's' : ''})`;
 });
 
 dlBtn.addEventListener('click', downloadResult);
@@ -1044,7 +1038,7 @@ resultCanvas.addEventListener('mousemove', e => {
 resultCanvas.addEventListener('mousedown', e => {
   if (!eraserActive && !restoreActive) return;
   // Sauvegarder l'état avant le tracé
-  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+  eraserHistory.push({ type: 'eraser', eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
   if (eraserHistory.length > 20) eraserHistory.shift();
   redoHistory = [];
   updateUndoBtn();
@@ -1071,7 +1065,7 @@ eraserSize.addEventListener('input', () => {
 resultCanvas.addEventListener('touchstart', e => {
   if (!eraserActive && !restoreActive) return;
   e.preventDefault();
-  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+  eraserHistory.push({ type: 'eraser', eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
   if (eraserHistory.length > 20) eraserHistory.shift();
   redoHistory = [];
   updateUndoBtn();
@@ -1111,30 +1105,58 @@ function updateUndoBtn() {
 
 async function doUndo() {
   if (eraserHistory.length === 0) return;
-  // Sauvegarder l'état courant dans redo
-  redoHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
-  if (redoHistory.length > 20) redoHistory.shift();
   const state = eraserHistory.pop();
-  eraserMask  = state.eraser;
-  restoreMask = state.restore;
+
+  if (state.type === 'wand') {
+    // Sauvegarder l'état courant de la baguette dans redo
+    redoHistory.push({ type: 'wand', clicks: wandClicks.slice() });
+    if (redoHistory.length > 20) redoHistory.shift();
+    wandClicks = state.clicks.slice();
+    wandRebuildMask();
+    wandPreview();
+    if (wandClicks.length === 0) {
+      wandStatus.textContent = 'Clique sur le fond pour sélectionner';
+    } else {
+      wandStatus.textContent = `${wandClicks.length} sélection${wandClicks.length > 1 ? 's' : ''}`;
+    }
+  } else {
+    // Sauvegarder l'état gomme courant dans redo
+    redoHistory.push({ type: 'eraser', eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+    if (redoHistory.length > 20) redoHistory.shift();
+    eraserMask  = state.eraser;
+    restoreMask = state.restore;
+    const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+    const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+    await rebuild(tol, feather);
+  }
   updateUndoBtn();
-  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
-  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
-  await rebuild(tol, feather);
 }
 
 async function doRedo() {
   if (redoHistory.length === 0) return;
-  // Sauvegarder l'état courant dans undo
-  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
-  if (eraserHistory.length > 20) eraserHistory.shift();
   const state = redoHistory.pop();
-  eraserMask  = state.eraser;
-  restoreMask = state.restore;
+
+  if (state.type === 'wand') {
+    eraserHistory.push({ type: 'wand', clicks: wandClicks.slice() });
+    if (eraserHistory.length > 20) eraserHistory.shift();
+    wandClicks = state.clicks.slice();
+    wandRebuildMask();
+    wandPreview();
+    if (wandClicks.length === 0) {
+      wandStatus.textContent = 'Clique sur le fond pour sélectionner';
+    } else {
+      wandStatus.textContent = `${wandClicks.length} sélection${wandClicks.length > 1 ? 's' : ''}`;
+    }
+  } else {
+    eraserHistory.push({ type: 'eraser', eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+    if (eraserHistory.length > 20) eraserHistory.shift();
+    eraserMask  = state.eraser;
+    restoreMask = state.restore;
+    const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+    const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+    await rebuild(tol, feather);
+  }
   updateUndoBtn();
-  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
-  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
-  await rebuild(tol, feather);
 }
 
 undoBtn.addEventListener('click', doUndo);
