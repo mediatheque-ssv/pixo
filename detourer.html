@@ -276,16 +276,31 @@ input[type=range].rng::-moz-range-thumb {
 #eraser-cursor.visible { display: block; }
 
 /* ACTIONS */
-.actions { display: none; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
+.actions { display: none; align-items: center; gap: 14px; margin-top: 1.5rem; flex-wrap: wrap; }
+.actions-group {
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 12px 14px;
+}
+.actions-heading {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
+}
+.actions-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .actions-group { width: 100%; }
+  .actions-buttons { flex-direction: column; }
+  .actions-buttons .run-btn { width: 100%; }
+}
 
 /* Baguette magique */
 .wand-btn.picking, #wand-add-btn.picking { outline: 2px solid var(--accent); outline-offset: 2px; }
 .run-btn {
-  height: 48px; padding: 0 24px; background: var(--accent);
+  min-height: 48px; padding: 8px 24px; background: var(--accent);
   border: none; border-radius: var(--radius-lg);
   font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif;
   cursor: pointer; color: #0c0c0b;
-  transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 10px;
 }
 .run-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
 .run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -296,6 +311,12 @@ input[type=range].rng::-moz-range-thumb {
 }
 .run-btn.loading .spinner { display: block; }
 .run-btn.loading .run-label { display: none; }
+.run-label-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; gap: 2px; }
+.run-label-text .btn-title { font-size: 14px; font-weight: 700; }
+.run-label-text .btn-sub {
+  font-size: 10px; font-weight: 500; font-family: 'JetBrains Mono', monospace;
+  opacity: 0.7; text-transform: none; letter-spacing: 0;
+}
 
 .dl-btn {
   height: 48px; padding: 0 20px;
@@ -514,22 +535,33 @@ input[type=range].rng::-moz-range-thumb {
 
   <!-- Boutons principaux -->
   <div class="actions" id="actions">
-    <button class="run-btn" id="run-btn">
-      <svg class="run-label" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 20H7L3 16l10-10 7 7-2.5 2.5"/>
-        <path d="M6.5 17.5l5-5"/>
-      </svg>
-      <span class="run-label">Supprimer le fond</span>
-      <div class="spinner"></div>
-    </button>
-    <button class="run-btn wand-btn" id="wand-btn">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/>
-        <path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/>
-        <path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>
-      </svg>
-      <span>Supprimer un fond uni</span>
-    </button>
+    <div class="actions-group" id="actions-group">
+      <span class="actions-heading">Suppression du fond</span>
+      <div class="actions-buttons">
+        <button class="run-btn" id="run-btn">
+          <svg class="run-label" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 20H7L3 16l10-10 7 7-2.5 2.5"/>
+            <path d="M6.5 17.5l5-5"/>
+          </svg>
+          <span class="run-label run-label-text">
+            <span class="btn-title">Automatique</span>
+            <span class="btn-sub">Détection par IA du sujet</span>
+          </span>
+          <div class="spinner"></div>
+        </button>
+        <button class="run-btn wand-btn" id="wand-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/>
+            <path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/>
+            <path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>
+          </svg>
+          <span class="run-label-text">
+            <span class="btn-title">Sélection manuelle</span>
+            <span class="btn-sub">Recommandé pour les fonds unis</span>
+          </span>
+        </button>
+      </div>
+    </div>
     <button class="dl-btn" id="dl-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
