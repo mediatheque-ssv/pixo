@@ -636,11 +636,13 @@ function wandShowTolControls() {
   wandAddBtn.style.display = '';
   wandUndoBtn.style.display = '';
   wandRedoBtn.style.display = '';
+  tolToggle.style.display = 'none'; // Pas de toggle Activer/Désactiver en mode baguette
 }
 function wandHideTolControls() {
   wandAddBtn.style.display = 'none';
   wandUndoBtn.style.display = 'none';
   wandRedoBtn.style.display = 'none';
+  tolToggle.style.display = '';
 }
 
 let wandMode     = false;
@@ -809,10 +811,7 @@ resultCanvas.addEventListener('click', e => {
   const x = Math.max(0, Math.min(rawW-1, Math.round((e.clientX - offsetX) * rawW / drawW)));
   const y = Math.max(0, Math.min(rawH-1, Math.round((e.clientY - offsetY) * rawH / drawH)));
   wandAddClick(x, y);
-  // Quitter le mode "ajouter" après un clic
-  wandAddMode = false;
-  wandAddBtn.classList.remove('picking');
-  resultCanvas.style.cursor = '';
+  // La baguette reste active jusqu'à ce qu'on choisisse un autre outil
 });
 
 // Toggle du mode "ajouter une zone"
@@ -821,13 +820,32 @@ wandAddBtn.addEventListener('click', () => {
   wandAddMode = !wandAddMode;
   wandAddBtn.classList.toggle('picking', wandAddMode);
   resultCanvas.style.cursor = wandAddMode ? wandCursorUrl : '';
+  if (wandAddMode) {
+    // Désactiver gomme/restauration
+    if (eraserActive || restoreActive) {
+      eraserActive = false; restoreActive = false;
+      eraserToggle.classList.remove('active');
+      restoreToggle.classList.remove('active');
+      document.getElementById('eraser-row').classList.add('inactive');
+      resultCanvas.classList.remove('erasing');
+      eraserCursor.classList.remove('visible');
+    }
+  }
 });
 
 dlBtn.addEventListener('click', downloadResult);
 changeBtn.addEventListener('click', resetAll);
 eraserToggle.addEventListener('click', () => {
   eraserActive = !eraserActive;
-  if (eraserActive) { restoreActive = false; restoreToggle.classList.remove('active'); }
+  if (eraserActive) {
+    restoreActive = false; restoreToggle.classList.remove('active');
+    // Désactiver le mode "ajouter baguette"
+    if (wandAddMode) {
+      wandAddMode = false;
+      wandAddBtn.classList.remove('picking');
+      resultCanvas.style.cursor = '';
+    }
+  }
   eraserToggle.classList.toggle('active', eraserActive);
   document.getElementById('eraser-row').classList.toggle('inactive', !eraserActive && !restoreActive);
   resultCanvas.classList.toggle('erasing', eraserActive || restoreActive);
@@ -836,7 +854,15 @@ eraserToggle.addEventListener('click', () => {
 
 restoreToggle.addEventListener('click', () => {
   restoreActive = !restoreActive;
-  if (restoreActive) { eraserActive = false; eraserToggle.classList.remove('active'); }
+  if (restoreActive) {
+    eraserActive = false; eraserToggle.classList.remove('active');
+    // Désactiver le mode "ajouter baguette"
+    if (wandAddMode) {
+      wandAddMode = false;
+      wandAddBtn.classList.remove('picking');
+      resultCanvas.style.cursor = '';
+    }
+  }
   restoreToggle.classList.toggle('active', restoreActive);
   document.getElementById('eraser-row').classList.toggle('inactive', !eraserActive && !restoreActive);
   resultCanvas.classList.toggle('erasing', eraserActive || restoreActive);
