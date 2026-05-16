@@ -1189,10 +1189,10 @@ input[type=range]::-moz-range-thumb {
     <div class="export-group">
       <label for="out-format">Format</label>
       <select id="out-format" onchange="updateQuality()">
-        <option value="image/png-compressed">PNG (allégé)</option>
-        <option value="image/png">PNG (sans perte)</option>
-        <option value="image/webp">WebP</option>
-        <option value="image/jpeg">JPEG</option>
+        <option value="image/png-compressed" title="Format PNG optimisé : poids fortement réduit grâce à une réduction du nombre de couleurs. La perte visuelle est minime, idéal pour la plupart des usages.">PNG (allégé)</option>
+        <option value="image/png" title="Format PNG classique sans aucune perte de qualité. Fichiers plus lourds, à privilégier pour des images très détaillées ou avec dégradés subtils.">PNG (sans perte)</option>
+        <option value="image/webp" title="Format moderne offrant un excellent rapport qualité/poids. Attention : n'est pas accepté par tous les hébergeurs ou logiciels.">WebP</option>
+        <option value="image/jpeg" title="Format universel, bon rapport qualité/poids. Ne gère pas la transparence (fond transparent rendu en noir ou blanc).">JPEG</option>
       </select>
     </div>
     <div class="quality-wrap" id="quality-wrap" style="display:none">
