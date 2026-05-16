@@ -482,12 +482,6 @@ input[type=range].rng::-moz-range-thumb {
           <div class="slider-header">
             <span class="slider-label">Gommer / Restaurer</span>
             <div style="display:flex;gap:6px">
-              <button class="eraser-toggle icon-btn" id="undo-btn" title="Annuler" disabled>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
-              </button>
-              <button class="eraser-toggle icon-btn" id="redo-btn" title="Refaire" disabled>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C19 7 14 4 8 5.5a9 9 0 0 0-5 7.5"/></svg>
-              </button>
               <button class="eraser-toggle icon-btn" id="eraser-toggle" aria-pressed="false" title="Gommer">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16l10-10 7 7-2.5 2.5"/><path d="M6.5 17.5l5-5"/></svg>
               </button>
@@ -496,6 +490,12 @@ input[type=range].rng::-moz-range-thumb {
                   <path d="M5 19 L13 5 L17 9 L5 19 Z"/>
                   <path d="M5 19 Q3 22 4 23 Q5 24 8 22 Z" fill="currentColor"/>
                 </svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="undo-btn" title="Annuler" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="redo-btn" title="Refaire" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C19 7 14 4 8 5.5a9 9 0 0 0-5 7.5"/></svg>
               </button>
             </div>
           </div>
@@ -1185,7 +1185,6 @@ function updateUndoBtn() {
 }
 
 async function doUndo() {
-  console.log('[doUndo] eraserHistory.length=', eraserHistory.length, 'eraserActive=', eraserActive, 'wandAddMode=', wandAddMode);
   if (eraserHistory.length === 0) return;
   redoHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
   if (redoHistory.length > 20) redoHistory.shift();
@@ -1195,7 +1194,6 @@ async function doUndo() {
   updateUndoBtn();
   const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
   const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
-  console.log('[doUndo] after pop, eraserMask=', eraserMask ? 'set' : 'null', 'wandAccumMask=', wandAccumMask ? 'set' : 'null');
   await rebuild(tol, feather);
 }
 
@@ -1355,15 +1353,18 @@ async function pixelsToBlob(data, w, h) {
 // Recalcule et affiche le résultat avec les réglages courants
 async function rebuild(tol, feather) {
   let px = applySharpen(rawPixels, tol);
-  px = applyFeather(px, rawW, rawH, feather);
   px = mergeWithOrig(px, origPixels);
 
-  // Appliquer le masque baguette (sélection de zones à supprimer)
+  // Appliquer le masque baguette AVANT le feather pour qu'il puisse flouter les bords créés
   if (wandAccumMask) {
     for (let i = 0; i < wandAccumMask.length; i++) {
       if (wandAccumMask[i]) px[i * 4 + 3] = 0;
     }
   }
+
+  // Lissage (floute l'alpha, y compris les bords créés par la baguette)
+  px = applyFeather(px, rawW, rawH, feather);
+
   // Réappliquer le masque de gomme s'il existe
   if (eraserMask) {
     for (let i = 0; i < eraserMask.length; i++) {
