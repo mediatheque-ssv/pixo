@@ -740,6 +740,7 @@ function wandEnter() {
   imgOriginal.style.cursor = wandCursorUrl;
   wandClickX = -1; wandClickY = -1; wandAccumMask = null; wandClicks = [];
   wandUndoHistory = []; wandRedoHistory = []; wandUpdateUndoBtns();
+  setStatus('Clique sur le fond de l\'image pour sélectionner.');
   // Charger origPixels si pas encore fait
   if (!origPixels) {
     const reader = new FileReader();
@@ -862,6 +863,9 @@ wandAddBtn.addEventListener('click', () => {
       resultCanvas.classList.remove('erasing');
       eraserCursor.classList.remove('visible');
     }
+    setStatus('Clique sur l\'image détourée pour ajouter une zone à supprimer.');
+  } else {
+    setStatus('');
   }
 });
 
