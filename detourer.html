@@ -1427,22 +1427,22 @@ async function rebuild(tol, feather) {
 // le cadre 320px tout en gardant ses proportions.
 function fitResultCanvasDisplay() {
   const wrap = document.querySelector('.result-wrap');
-  if (!wrap) return;
-  const maxH = wrap.clientHeight || 320;
-  const maxW = wrap.clientWidth  || 600;
-  if (!rawW || !rawH) return;
+  if (!wrap || !rawW || !rawH) return;
+  // Hauteur fixe = 320px (définie en CSS), largeur dépend du conteneur
+  const maxH = 320;
+  // Largeur : on prend clientWidth mais on s'assure qu'il est mesuré quand le wrap est visible
+  const maxW = wrap.clientWidth || wrap.getBoundingClientRect().width || 600;
   const ratio = rawW / rawH;
   let dispW, dispH;
   if (maxW / maxH > ratio) {
-    // limité par la hauteur
     dispH = maxH;
     dispW = maxH * ratio;
   } else {
     dispW = maxW;
     dispH = maxW / ratio;
   }
-  resultCanvas.style.width  = dispW + 'px';
-  resultCanvas.style.height = dispH + 'px';
+  resultCanvas.style.width  = Math.floor(dispW) + 'px';
+  resultCanvas.style.height = Math.floor(dispH) + 'px';
 }
 
 window.addEventListener('resize', fitResultCanvasDisplay);
