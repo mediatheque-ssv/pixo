@@ -1166,6 +1166,12 @@ eraserSize.addEventListener('input', () => {
     eraserToggle.classList.add('active');
     document.getElementById('eraser-row').classList.remove('inactive');
     resultCanvas.classList.add('erasing');
+    // Désactiver le mode baguette si actif
+    if (wandAddMode) {
+      wandAddMode = false;
+      wandAddBtn.classList.remove('picking');
+      resultCanvas.style.cursor = '';
+    }
   }
   if (eraserCursor.classList.contains('visible')) {
     const { drawW } = getCanvasDisplayRect();
