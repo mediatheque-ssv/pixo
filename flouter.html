@@ -571,12 +571,22 @@ function loadFile(file) {
 }
 
 // Render live (recalcule tout depuis la source)
+// Taille de bloc EFFECTIVE : on n'autorise jamais une mosaïque trop fine
+// par rapport à la zone, sinon le visage reste reconnaissable.
+// Règle : au moins ~9 blocs sur le plus petit côté de la zone.
+function effectiveSize(z, requested) {
+  const minSide = Math.min(z.w, z.h);
+  const safeMin = Math.max(6, Math.round(minSide / 9));
+  return Math.max(requested, safeMin);
+}
+
 function render() {
   if (!srcCanvas) return;
   ctx.clearRect(0, 0, imgW, imgH);
   ctx.drawImage(srcCanvas, 0, 0);
-  const size = parseInt(pixelSlider.value, 10);
+  const req = parseInt(pixelSlider.value, 10);
   zones.forEach(z => {
+    const size = effectiveSize(z, req);
     if (blurStyle === 'mosaic') pixelizeZoneOn(ctx, z.x, z.y, z.w, z.h, size);
     else softBlurZoneOn(ctx, z.x, z.y, z.w, z.h, size);
   });
@@ -600,8 +610,9 @@ function buildExportCanvas() {
   out.width = imgW; out.height = imgH;
   const octx = out.getContext('2d');
   octx.drawImage(srcCanvas, 0, 0);
-  const size = parseInt(pixelSlider.value, 10);
+  const req = parseInt(pixelSlider.value, 10);
   zones.forEach(z => {
+    const size = effectiveSize(z, req);
     if (blurStyle === 'mosaic') pixelizeZoneOn(octx, z.x, z.y, z.w, z.h, size);
     else softBlurZoneOn(octx, z.x, z.y, z.w, z.h, size);
   });
@@ -704,16 +715,22 @@ detectBtn.addEventListener('click', async () => {
       let added = 0;
       detections.forEach(d => {
         const box = d.box;
-        const margin = Math.round(Math.max(box.width, box.height) * 0.08);
-        const z = {
-          x: Math.max(0, Math.round(box.x * scaleX) - margin),
-          y: Math.max(0, Math.round(box.y * scaleY) - margin),
-          w: Math.round(box.width * scaleX) + margin * 2,
-          h: Math.round(box.height * scaleY) + margin * 2,
-          label: '', confidence: Math.round(d.score * 100),
-        };
-        z.w = Math.min(z.w, imgW - z.x);
-        z.h = Math.min(z.h, imgH - z.y);
+        const bw = box.width * scaleX, bh = box.height * scaleY;
+        const bx = box.x * scaleX,     by = box.y * scaleY;
+        // Marges asymétriques : le détecteur cadre serré sur les traits centraux.
+        // On élargit pour couvrir front/cheveux (haut), menton/mâchoire (bas) et oreilles (côtés).
+        const mTop    = bh * 0.45;
+        const mBottom = bh * 0.25;
+        const mSide   = bw * 0.22;
+        let zx = Math.round(bx - mSide);
+        let zy = Math.round(by - mTop);
+        let zw = Math.round(bw + mSide * 2);
+        let zh = Math.round(bh + mTop + mBottom);
+        zx = Math.max(0, zx);
+        zy = Math.max(0, zy);
+        zw = Math.min(zw, imgW - zx);
+        zh = Math.min(zh, imgH - zy);
+        const z = { x: zx, y: zy, w: zw, h: zh, label: '', confidence: Math.round(d.score * 100) };
         z.id = nextZoneId++;
         zones.push(z);
         added++;
@@ -772,6 +789,16 @@ function renderZonesList() {
   });
 }
 
+// Bruit anti-appariement : ajoute un grain aléatoire par bloc.
+// Empêche qu'un attaquant re-floute une photo de référence avec les mêmes
+// réglages et obtienne un résultat identique (le bruit ne sera jamais le même).
+// AMP = amplitude du bruit (0-255). ~10 reste invisible mais casse l'appariement exact.
+const NOISE_AMP = 12;
+function jitter(v) {
+  const n = v + (Math.random() - 0.5) * 2 * NOISE_AMP;
+  return n < 0 ? 0 : n > 255 ? 255 : n;
+}
+
 // Mosaïque
 function pixelizeZoneOn(targetCtx, x, y, w, h, size) {
   x = Math.max(0, Math.round(x)); y = Math.max(0, Math.round(y));
@@ -788,7 +815,9 @@ function pixelizeZoneOn(targetCtx, x, y, w, h, size) {
           const idx = ((by + py) * w + (bx + px)) * 4;
           r += data[idx]; g += data[idx+1]; b += data[idx+2]; a += data[idx+3]; count++;
         }
-      r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count); a = Math.round(a/count);
+      // couleur moyenne + grain aléatoire par bloc
+      r = Math.round(jitter(r/count)); g = Math.round(jitter(g/count)); b = Math.round(jitter(b/count));
+      a = Math.round(a/count);
       for (let py = 0; py < bh; py++)
         for (let px = 0; px < bw; px++) {
           const idx = ((by + py) * w + (bx + px)) * 4;
@@ -816,6 +845,14 @@ function softBlurZoneOn(targetCtx, x, y, w, h, size) {
   const tctx = tmp.getContext('2d');
   tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = 'high';
   tctx.drawImage(regCanvas, 0, 0, w, h, 0, 0, smallW, smallH);
+  // grain aléatoire sur la version réduite, avant ré-agrandissement
+  const sd = tctx.getImageData(0, 0, smallW, smallH);
+  for (let i = 0; i < sd.data.length; i += 4) {
+    sd.data[i]   = jitter(sd.data[i]);
+    sd.data[i+1] = jitter(sd.data[i+1]);
+    sd.data[i+2] = jitter(sd.data[i+2]);
+  }
+  tctx.putImageData(sd, 0, 0);
   targetCtx.imageSmoothingEnabled = true; targetCtx.imageSmoothingQuality = 'high';
   targetCtx.drawImage(tmp, 0, 0, smallW, smallH, x, y, w, h);
 }
