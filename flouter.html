@@ -99,7 +99,7 @@ body::before {
 .drop-label { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
 .drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.04em; }
 
-/* MODEL LOADING */
+/* MODEL LOADING STATUS */
 .model-status {
   display: none; align-items: center; gap: 8px; margin-top: 1rem;
   padding: 10px 14px; background: var(--surface); border: 0.5px solid var(--border-md);
@@ -107,20 +107,19 @@ body::before {
 }
 .model-status.visible { display: flex; }
 .model-spinner {
-  width: 14px; height: 14px; flex-shrink: 0;
+  width: 13px; height: 13px; flex-shrink: 0;
   border: 2px solid rgba(212,255,78,0.2); border-top-color: var(--accent);
   border-radius: 50%; animation: spin .7s linear infinite;
 }
-.model-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
-}
+.model-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(212,255,78,0.5); }
 
-/* EDITOR AREA */
+/* EDITOR */
 .editor { display: none; margin-top: 1.5rem; }
 .editor.visible { display: block; }
 
 .col-label-row {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; min-height: 22px;
 }
 .col-label {
   font-family: 'JetBrains Mono', monospace; font-size: 10px;
@@ -144,17 +143,15 @@ body::before {
 }
 #main-canvas {
   display: block; max-width: 100%; max-height: 520px;
-  object-fit: contain; cursor: crosshair;
-  user-select: none; -webkit-user-select: none;
+  object-fit: contain; cursor: default;
+  user-select: none; -webkit-user-select: none; touch-action: none;
 }
-/* rectangle de sélection manuelle */
+#main-canvas.drawing-mode { cursor: crosshair; }
 #sel-rect {
   position: absolute; border: 1.5px solid var(--accent);
-  background: rgba(212,255,78,0.08);
-  pointer-events: none; display: none;
-  border-radius: 2px;
+  background: rgba(212,255,78,0.08); box-shadow: 0 0 10px rgba(212,255,78,0.25);
+  pointer-events: none; display: none; border-radius: 2px;
 }
-/* overlay chargement */
 .processing-overlay {
   position: absolute; inset: 0; border-radius: var(--radius-lg);
   background: rgba(0,0,0,0.52); backdrop-filter: blur(2px);
@@ -166,42 +163,68 @@ body::before {
   border: 2.5px solid rgba(212,255,78,0.25); border-top-color: var(--accent);
   border-radius: 50%; animation: spin .7s linear infinite;
 }
-.processing-label {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
-}
+.processing-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); }
 
-/* CONTROLS PANEL */
-.controls-panel {
-  margin-top: 14px; background: var(--surface);
-  border: 0.5px solid var(--border-md); border-radius: var(--radius-lg);
-  overflow: hidden;
+/* PANEL */
+.panel {
+  display: flex; flex-direction: column; gap: 14px; margin-top: 14px;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 14px 16px;
 }
-.panel-section {
-  padding: 14px 16px;
+.panel-block { display: flex; flex-direction: column; gap: 10px; }
+.panel-sep { height: 0.5px; background: var(--border-md); }
+.block-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
 }
-.panel-section + .panel-section {
-  border-top: 0.5px solid var(--border);
-}
-.panel-title {
-  font-size: 11px; font-weight: 700; color: var(--text-3);
-  text-transform: uppercase; letter-spacing: .08em;
-  font-family: 'JetBrains Mono', monospace; margin-bottom: 12px;
-}
+.block-header { display: flex; align-items: center; justify-content: space-between; }
 
-/* Zones list */
-.zones-list { display: flex; flex-direction: column; gap: 6px; min-height: 20px; }
+/* MODE SEGMENT */
+.mode-row {
+  display: flex; gap: 4px; background: var(--surface-2);
+  border: 0.5px solid var(--border); border-radius: var(--radius); padding: 4px;
+}
+.mode-btn {
+  flex: 1; height: 30px; border-radius: var(--radius-sm);
+  border: none; background: transparent;
+  color: var(--text-3); font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.mode-btn:hover { color: var(--text); }
+.mode-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
+
+/* DETECT BUTTON */
+.detect-btn {
+  width: 100%; height: 34px; border-radius: var(--radius);
+  border: 0.5px solid var(--border-md); background: transparent;
+  color: var(--text-2); font-family: 'Syne', sans-serif; font-size: 12px;
+  font-weight: 600; cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.detect-btn:hover:not(:disabled) { border-color: var(--accent-border); color: var(--accent); background: var(--accent-dim); }
+.detect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.detect-btn .mini-spinner {
+  width: 13px; height: 13px; border: 2px solid rgba(212,255,78,0.25);
+  border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; display: none;
+}
+.detect-btn.loading .mini-spinner { display: block; }
+.detect-btn.loading .detect-ico { display: none; }
+
+/* ZONES LIST */
+.zones-list { display: flex; flex-direction: column; gap: 6px; }
 .zone-item {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 10px; border-radius: var(--radius);
   background: var(--surface-2); border: 0.5px solid var(--border);
-  font-size: 12px; color: var(--text-2);
+  font-size: 12px; color: var(--text-2); transition: border-color .15s, background .15s;
 }
-.zone-item.selected { border-color: var(--accent-border); background: var(--accent-dim); color: var(--text); }
+.zone-item:hover { border-color: var(--border-md); }
+.zone-dot { width: 7px; height: 7px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
 .zone-label { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 .zone-confidence {
   font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: var(--text-3); padding: 2px 6px;
-  background: var(--surface-3); border-radius: 3px;
+  color: var(--text-3); padding: 2px 6px; background: var(--surface-3); border-radius: 3px;
 }
 .zone-del {
   width: 20px; height: 20px; border-radius: 4px; border: none;
@@ -212,91 +235,77 @@ body::before {
 .zone-del:hover { color: var(--danger); background: rgba(255,107,107,0.08); }
 .zones-empty {
   font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
-  padding: 4px 0; text-align: center;
+  padding: 10px 0; text-align: center;
 }
 
-/* DETECT BUTTON */
-.detect-btn {
-  width: 100%; height: 36px; border-radius: var(--radius);
-  border: 0.5px solid var(--border-md); background: var(--surface-2);
-  color: var(--text-2); font-family: 'Syne', sans-serif; font-size: 13px;
-  font-weight: 600; cursor: pointer; transition: all .15s;
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-}
-.detect-btn:hover:not(:disabled) { border-color: var(--border-hi); color: var(--text); background: var(--surface-3); }
-.detect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* SLIDER ROW */
+/* SLIDER */
 .slider-row { display: flex; flex-direction: column; gap: 8px; }
-.slider-header { display: flex; align-items: center; justify-content: space-between; }
-.slider-label { font-size: 12px; color: var(--text-2); }
-.slider-val {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
-  min-width: 28px; text-align: right;
+.slider-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); }
+.slider-track { display: flex; align-items: center; gap: 8px; }
+.slider-hint {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-3); white-space: nowrap; flex-shrink: 0;
 }
-.slider-track { display: flex; align-items: center; gap: 10px; }
-.slider-hint { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); white-space: nowrap; }
-input[type="range"].rng {
-  flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
+input[type=range].rng {
+  -webkit-appearance: none; flex: 1; height: 4px;
   background: var(--surface-3); border-radius: 2px; outline: none; cursor: pointer;
 }
-input[type="range"].rng::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
-  background: var(--accent); cursor: pointer; transition: transform .1s;
+input[type=range].rng::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0c0c0b;
+  box-shadow: 0 0 6px rgba(212,255,78,0.35); transition: box-shadow .15s;
 }
-input[type="range"].rng::-webkit-slider-thumb:hover { transform: scale(1.2); }
+input[type=range].rng:hover::-webkit-slider-thumb { box-shadow: 0 0 12px rgba(212,255,78,0.55); }
+input[type=range].rng::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: none; cursor: pointer;
+}
 
-/* DRAW MODE TOGGLE */
-.mode-row { display: flex; gap: 4px; }
-.mode-btn {
-  flex: 1; height: 30px; border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border-md); background: transparent;
+/* STYLE SEGMENT */
+.style-row { display: flex; gap: 4px; }
+.style-btn {
+  flex: 1; height: 52px; border-radius: var(--radius);
+  border: 0.5px solid var(--border-md); background: var(--surface-2);
   color: var(--text-3); font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
   cursor: pointer; transition: all .15s;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
 }
-.mode-btn:hover { color: var(--text); border-color: var(--border-hi); }
-.mode-btn.active { background: var(--surface-3); color: var(--text); border-color: var(--border-md); }
+.style-btn:hover { color: var(--text); border-color: var(--border-hi); }
+.style-btn.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.style-btn .style-sub {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 400;
+  opacity: 0.75; letter-spacing: 0.02em;
+}
 
 /* ACTIONS */
-.actions { display: flex; gap: 8px; margin-top: 14px; }
-.run-btn {
-  flex: 1; height: 42px; border-radius: var(--radius);
-  border: none; background: var(--accent); color: #000;
-  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
-  cursor: pointer; transition: opacity .15s, transform .1s;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  letter-spacing: -0.01em;
-}
-.run-btn:hover:not(:disabled) { opacity: 0.88; }
-.run-btn:active:not(:disabled) { transform: scale(0.98); }
-.run-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
+.actions { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
 .dl-btn {
-  height: 42px; padding: 0 18px; border-radius: var(--radius);
-  border: 0.5px solid var(--border-md); background: transparent; color: var(--text);
-  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
-  cursor: pointer; transition: all .15s; white-space: nowrap;
-  display: flex; align-items: center; gap: 7px;
+  flex: 1; min-height: 48px; padding: 0 22px;
+  background: var(--accent); border: none;
+  border-radius: var(--radius-lg); font-size: 14px; font-weight: 700;
+  font-family: 'Syne', sans-serif; cursor: pointer; color: #0c0c0b;
+  transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
 }
-.dl-btn:hover:not(:disabled) { border-color: var(--border-hi); background: var(--surface-2); }
-.dl-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.dl-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
+.dl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* INFO BANNER */
-.info-banner {
-  display: flex; align-items: flex-start; gap: 10px; margin-top: 14px;
-  padding: 11px 14px; background: var(--surface); border: 0.5px solid var(--border-md);
-  border-radius: var(--radius); font-size: 12px; color: var(--text-3); line-height: 1.5;
+/* INFO BOX */
+.info-box {
+  margin-top: 1.5rem; padding: 14px 16px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-3); line-height: 1.8;
 }
-.info-banner svg { flex-shrink: 0; margin-top: 1px; color: var(--text-3); }
+.info-box .label { color: var(--accent); font-weight: 500; }
 
 /* TOAST */
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(8px);
-  background: var(--surface-3); border: 0.5px solid var(--border-hi);
-  color: var(--text); padding: 9px 16px; border-radius: var(--radius);
-  font-size: 12px; opacity: 0; transition: opacity .2s, transform .2s;
+  background: var(--surface-3); border: 0.5px solid var(--border-md);
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; padding: 10px 18px; border-radius: var(--radius);
   pointer-events: none; z-index: 9999; white-space: nowrap;
+  opacity: 0; transition: opacity .2s, transform .2s;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.error { border-color: rgba(255,107,107,0.3); color: var(--danger); }
@@ -308,7 +317,7 @@ input[type="range"].rng::-webkit-slider-thumb:hover { transform: scale(1.2); }
   .logo { width: 64px; height: 64px; }
   .header h1 { font-size: 18px; }
   .actions { flex-direction: column; }
-  .run-btn, .dl-btn { width: 100%; }
+  .dl-btn { width: 100%; justify-content: center; }
 }
 </style>
 </head>
@@ -358,7 +367,7 @@ input[type="range"].rng::-webkit-slider-thumb:hover { transform: scale(1.2); }
   <div class="editor" id="editor">
 
     <div class="col-label-row">
-      <span class="col-label">Aperçu</span>
+      <span class="col-label">Aperçu — en direct</span>
       <button class="change-btn" id="change-btn">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M9 9l3-3 3 3M12 6v9"/></svg>
         Changer
@@ -374,12 +383,12 @@ input[type="range"].rng::-webkit-slider-thumb:hover { transform: scale(1.2); }
       </div>
     </div>
 
-    <!-- Controls -->
-    <div class="controls-panel">
+    <!-- Panel -->
+    <div class="panel">
 
-      <!-- Section : Mode -->
-      <div class="panel-section">
-        <div class="panel-title">Mode</div>
+      <!-- Mode -->
+      <div class="panel-block">
+        <span class="block-label">Comment ajouter une zone</span>
         <div class="mode-row">
           <button class="mode-btn active" id="mode-detect" title="Détecter les visages automatiquement">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -394,35 +403,47 @@ input[type="range"].rng::-webkit-slider-thumb:hover { transform: scale(1.2); }
             Zone manuelle
           </button>
         </div>
+        <button class="detect-btn" id="detect-btn">
+          <span class="mini-spinner"></span>
+          <svg class="detect-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <span id="detect-label">Détecter les visages</span>
+        </button>
+        <div class="zones-list" id="zones-list">
+          <div class="zones-empty" id="zones-empty">Aucune zone — lancez la détection ou dessinez une zone sur l'image.</div>
+        </div>
       </div>
 
-      <!-- Section : Zones détectées -->
-      <div class="panel-section">
-        <div class="panel-title">Zones à flouter</div>
-        <div class="zones-list" id="zones-list">
-          <div class="zones-empty" id="zones-empty">Aucune zone — lancez la détection ou dessinez une zone.</div>
-        </div>
-        <div style="margin-top:10px;">
-          <button class="detect-btn" id="detect-btn">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            Détecter les visages
+      <div class="panel-sep"></div>
+
+      <!-- Style -->
+      <div class="panel-block">
+        <span class="block-label">Type de floutage</span>
+        <div class="style-row">
+          <button class="style-btn active" id="style-mosaic">
+            Mosaïque
+            <span class="style-sub">net, irréversible</span>
+          </button>
+          <button class="style-btn" id="style-soft">
+            Flou doux
+            <span class="style-sub">organique, irréversible</span>
           </button>
         </div>
       </div>
 
-      <!-- Section : Intensité -->
-      <div class="panel-section">
-        <div class="panel-title">Intensité du floutage</div>
+      <div class="panel-sep"></div>
+
+      <!-- Intensité -->
+      <div class="panel-block">
         <div class="slider-row">
-          <div class="slider-header">
-            <span class="slider-label">Taille des pixels (mosaïque)</span>
+          <div class="block-header">
+            <span class="block-label">Intensité</span>
             <span class="slider-val" id="pixel-val">18</span>
           </div>
           <div class="slider-track">
             <span class="slider-hint">Discret</span>
-            <input type="range" class="rng" id="pixel-slider" min="6" max="40" value="18">
+            <input type="range" class="rng" id="pixel-slider" min="6" max="44" value="18">
             <span class="slider-hint">Fort</span>
           </div>
         </div>
@@ -432,34 +453,19 @@ input[type="range"].rng::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
     <!-- Actions -->
     <div class="actions">
-      <button class="run-btn" id="run-btn" disabled>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="2" width="5" height="5" rx="1"/>
-          <rect x="9.5" y="2" width="5" height="5" rx="1"/>
-          <rect x="17" y="2" width="5" height="5" rx="1"/>
-          <rect x="2" y="9.5" width="5" height="5" rx="1"/>
-          <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
-          <rect x="17" y="9.5" width="5" height="5" rx="1"/>
-          <rect x="2" y="17" width="5" height="5" rx="1"/>
-          <rect x="9.5" y="17" width="5" height="5" rx="1"/>
-          <rect x="17" y="17" width="5" height="5" rx="1"/>
-        </svg>
-        Appliquer le floutage
-      </button>
       <button class="dl-btn" id="dl-btn" disabled>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Télécharger
+        Télécharger l'image floutée
       </button>
     </div>
 
-    <div class="info-banner">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <span>Le floutage par mosaïque est irréversible : les données originales ne sont pas enregistrées dans le fichier exporté. Tout le traitement s'effectue dans votre navigateur, aucune image n'est envoyée sur un serveur.</span>
+    <div class="info-box">
+      <span class="label">// confidentialité</span><br>
+      Le floutage est <span class="label">irréversible</span> : les pixels d'origine sont écrasés et ne figurent pas dans le fichier exporté.<br>
+      Tout le traitement se fait dans votre navigateur — <span class="label">aucune image n'est envoyée sur un serveur</span>.
     </div>
 
   </div>
@@ -474,75 +480,70 @@ input[type="range"].rng::-webkit-slider-thumb:hover { transform: scale(1.2); }
 <script>
 'use strict';
 
-// ── State ──────────────────────────────────────────────────────────────
-let srcImg       = null;   // HTMLImageElement source
-let imgW = 0, imgH = 0;   // dimensions réelles de l'image
-let zones        = [];     // [{id, x, y, w, h, label, confidence}]  coordonnées dans l'espace image réel
-let nextZoneId   = 0;
-let modelReady   = false;
-let applied      = false;  // true quand le floutage a été applié sur le canvas
-let drawMode     = false;  // true = mode tracé manuel
-let drawing      = false;
-let drawStart    = null;
+// State
+let srcImg = null, imgW = 0, imgH = 0, srcCanvas = null;
+let zones = [], nextZoneId = 0;
+let modelReady = false, drawMode = false, blurStyle = 'mosaic';
+let drawing = false, drawStart = null;
 
-// ── DOM refs ────────────────────────────────────────────────────────────
-const dropZone        = document.getElementById('drop-zone');
-const fileInput       = document.getElementById('file-in');
-const editor          = document.getElementById('editor');
-const mainCanvas      = document.getElementById('main-canvas');
-const ctx             = mainCanvas.getContext('2d');
+// DOM
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-in');
+const editor = document.getElementById('editor');
+const mainCanvas = document.getElementById('main-canvas');
+const ctx = mainCanvas.getContext('2d');
 const processingOverlay = document.getElementById('processing-overlay');
 const processingLabel = document.getElementById('processing-label');
-const selRect         = document.getElementById('sel-rect');
-const zonesList       = document.getElementById('zones-list');
-const zonesEmpty      = document.getElementById('zones-empty');
-const detectBtn       = document.getElementById('detect-btn');
-const runBtn          = document.getElementById('run-btn');
-const dlBtn           = document.getElementById('dl-btn');
-const changeBtn       = document.getElementById('change-btn');
-const pixelSlider     = document.getElementById('pixel-slider');
-const pixelVal        = document.getElementById('pixel-val');
-const modelStatus     = document.getElementById('model-status');
-const modelSpinner    = document.getElementById('model-spinner');
-const modelDot        = document.getElementById('model-dot');
-const modelLabel      = document.getElementById('model-label');
-const modeDetect      = document.getElementById('mode-detect');
-const modeDraw        = document.getElementById('mode-draw');
+const selRect = document.getElementById('sel-rect');
+const zonesList = document.getElementById('zones-list');
+const zonesEmpty = document.getElementById('zones-empty');
+const detectBtn = document.getElementById('detect-btn');
+const detectLabel = document.getElementById('detect-label');
+const dlBtn = document.getElementById('dl-btn');
+const changeBtn = document.getElementById('change-btn');
+const pixelSlider = document.getElementById('pixel-slider');
+const pixelVal = document.getElementById('pixel-val');
+const modelStatus = document.getElementById('model-status');
+const modelSpinner = document.getElementById('model-spinner');
+const modelDot = document.getElementById('model-dot');
+const modelLabel = document.getElementById('model-label');
+const modeDetect = document.getElementById('mode-detect');
+const modeDraw = document.getElementById('mode-draw');
+const styleMosaic = document.getElementById('style-mosaic');
+const styleSoft = document.getElementById('style-soft');
 const canvasContainer = document.getElementById('canvas-container');
 
-// ── Toast ───────────────────────────────────────────────────────────────
+// Toast
 let toastTimer = null;
-function toast(msg, isErr = false) {
+function toast(msg, isErr) {
   const el = document.getElementById('toast');
   el.textContent = msg;
-  el.classList.toggle('error', isErr);
+  el.classList.toggle('error', !!isErr);
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// ── Model loading ────────────────────────────────────────────────────────
+// Model
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
-
 modelStatus.classList.add('visible');
-
 async function loadModels() {
   try {
     await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
     modelReady = true;
     modelSpinner.style.display = 'none';
     modelDot.style.display = 'block';
-    modelLabel.textContent = 'Modèle prêt';
+    modelLabel.textContent = 'Modèle de détection prêt';
     setTimeout(() => modelStatus.classList.remove('visible'), 2000);
   } catch(e) {
-    modelLabel.textContent = 'Erreur de chargement du modèle (mode manuel disponible)';
+    modelLabel.textContent = 'Détection auto indisponible — utilisez le mode manuel';
     detectBtn.disabled = true;
   }
 }
 loadModels();
 
-// ── Drag & drop / import ────────────────────────────────────────────────
-dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
+// Import
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', e => { loadFile(e.target.files[0]); fileInput.value = ''; });
@@ -553,16 +554,15 @@ function loadFile(file) {
   reader.onload = ev => {
     const img = new Image();
     img.onload = () => {
-      srcImg = img;
-      imgW = img.naturalWidth;
-      imgH = img.naturalHeight;
+      srcImg = img; imgW = img.naturalWidth; imgH = img.naturalHeight;
       zones = [];
-      applied = false;
-      resetCanvasToSource();
-      renderZonesList();
+      srcCanvas = document.createElement('canvas');
+      srcCanvas.width = imgW; srcCanvas.height = imgH;
+      srcCanvas.getContext('2d').drawImage(img, 0, 0);
+      mainCanvas.width = imgW; mainCanvas.height = imgH;
+      render(); renderZonesList();
       editor.classList.add('visible');
       dropZone.style.display = 'none';
-      updateRunBtn();
       dlBtn.disabled = true;
     };
     img.src = ev.target.result;
@@ -570,382 +570,285 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
-// ── Canvas ─────────────────────────────────────────────────────────────
-function resetCanvasToSource() {
-  mainCanvas.width  = imgW;
-  mainCanvas.height = imgH;
+// Render live (recalcule tout depuis la source)
+function render() {
+  if (!srcCanvas) return;
   ctx.clearRect(0, 0, imgW, imgH);
-  ctx.drawImage(srcImg, 0, 0);
-  applied = false;
-  drawOverlays();
+  ctx.drawImage(srcCanvas, 0, 0);
+  const size = parseInt(pixelSlider.value, 10);
+  zones.forEach(z => {
+    if (blurStyle === 'mosaic') pixelizeZoneOn(ctx, z.x, z.y, z.w, z.h, size);
+    else softBlurZoneOn(ctx, z.x, z.y, z.w, z.h, size);
+  });
+  drawZoneOutlines();
+  dlBtn.disabled = zones.length === 0;
 }
-
-function drawOverlays() {
-  // Re-draw source then overlays (without touching applied pixels)
-  if (!applied) {
-    ctx.clearRect(0, 0, imgW, imgH);
-    ctx.drawImage(srcImg, 0, 0);
-  }
-  // Draw zone outlines on top
-  zones.forEach((z, i) => {
+function drawZoneOutlines() {
+  zones.forEach(z => {
     ctx.save();
-    ctx.strokeStyle = 'rgba(212,255,78,0.85)';
-    ctx.lineWidth = Math.max(1.5, imgW / 500);
+    ctx.strokeStyle = 'rgba(212,255,78,0.7)';
+    ctx.lineWidth = Math.max(1.5, imgW / 600);
     ctx.setLineDash([6, 4]);
     ctx.strokeRect(z.x, z.y, z.w, z.h);
     ctx.restore();
   });
 }
 
-// ── Canvas coordinate helpers ──────────────────────────────────────────
-function getCanvasRect() {
-  return mainCanvas.getBoundingClientRect();
+// Export propre (sans contours)
+function buildExportCanvas() {
+  const out = document.createElement('canvas');
+  out.width = imgW; out.height = imgH;
+  const octx = out.getContext('2d');
+  octx.drawImage(srcCanvas, 0, 0);
+  const size = parseInt(pixelSlider.value, 10);
+  zones.forEach(z => {
+    if (blurStyle === 'mosaic') pixelizeZoneOn(octx, z.x, z.y, z.w, z.h, size);
+    else softBlurZoneOn(octx, z.x, z.y, z.w, z.h, size);
+  });
+  return out;
 }
 
+// Coords
 function canvasToImage(clientX, clientY) {
-  const rect = getCanvasRect();
-  const scaleX = imgW / rect.width;
-  const scaleY = imgH / rect.height;
+  const rect = mainCanvas.getBoundingClientRect();
   return {
-    x: (clientX - rect.left) * scaleX,
-    y: (clientY - rect.top)  * scaleY,
+    x: (clientX - rect.left) * (imgW / rect.width),
+    y: (clientY - rect.top) * (imgH / rect.height),
   };
 }
 
-function imageToCanvas(ix, iy) {
-  const rect = getCanvasRect();
-  return {
-    x: ix / imgW * rect.width  + rect.left,
-    y: iy / imgH * rect.height + rect.top,
-  };
-}
-
-// ── Mode toggle ────────────────────────────────────────────────────────
+// Mode
 modeDetect.addEventListener('click', () => {
   drawMode = false;
-  modeDetect.classList.add('active');
-  modeDraw.classList.remove('active');
-  mainCanvas.style.cursor = 'default';
-  selRect.style.display = 'none';
-  detectBtn.style.display = '';
+  modeDetect.classList.add('active'); modeDraw.classList.remove('active');
+  mainCanvas.classList.remove('drawing-mode');
+  detectBtn.style.display = ''; selRect.style.display = 'none';
 });
-
 modeDraw.addEventListener('click', () => {
   drawMode = true;
-  modeDraw.classList.add('active');
-  modeDetect.classList.remove('active');
-  mainCanvas.style.cursor = 'crosshair';
+  modeDraw.classList.add('active'); modeDetect.classList.remove('active');
+  mainCanvas.classList.add('drawing-mode');
   detectBtn.style.display = 'none';
 });
 
-// ── Manual drawing ─────────────────────────────────────────────────────
-mainCanvas.addEventListener('mousedown', e => {
-  if (!drawMode || applied) return;
-  drawing = true;
-  const p = canvasToImage(e.clientX, e.clientY);
-  drawStart = p;
-  selRect.style.display = 'block';
-  updateSelRect(p, p);
+// Style
+styleMosaic.addEventListener('click', () => {
+  blurStyle = 'mosaic';
+  styleMosaic.classList.add('active'); styleSoft.classList.remove('active');
+  render();
+});
+styleSoft.addEventListener('click', () => {
+  blurStyle = 'soft';
+  styleSoft.classList.add('active'); styleMosaic.classList.remove('active');
+  render();
 });
 
-mainCanvas.addEventListener('mousemove', e => {
+// Drawing
+function startDraw(cx, cy) {
+  if (!drawMode) return;
+  drawing = true; drawStart = canvasToImage(cx, cy);
+  selRect.style.display = 'block'; updateSelRect(drawStart, drawStart);
+}
+function moveDraw(cx, cy) {
   if (!drawing) return;
-  const p = canvasToImage(e.clientX, e.clientY);
-  updateSelRect(drawStart, p);
-});
-
-mainCanvas.addEventListener('mouseup', e => {
+  updateSelRect(drawStart, canvasToImage(cx, cy));
+}
+function endDraw(cx, cy) {
   if (!drawing) return;
-  drawing = false;
-  const p = canvasToImage(e.clientX, e.clientY);
-  selRect.style.display = 'none';
+  drawing = false; selRect.style.display = 'none';
+  const p = canvasToImage(cx, cy);
   const x = Math.round(Math.min(drawStart.x, p.x));
   const y = Math.round(Math.min(drawStart.y, p.y));
   const w = Math.round(Math.abs(p.x - drawStart.x));
   const h = Math.round(Math.abs(p.y - drawStart.y));
-  if (w > 10 && h > 10) {
-    addZone({ x, y, w, h, label: 'Zone manuelle', confidence: null });
-  }
-});
-
-mainCanvas.addEventListener('mouseleave', () => {
-  if (drawing) {
-    drawing = false;
-    selRect.style.display = 'none';
-  }
-});
-
-// Touch support
-mainCanvas.addEventListener('touchstart', e => {
-  if (!drawMode || applied) return;
-  e.preventDefault();
-  drawing = true;
-  const t = e.touches[0];
-  const p = canvasToImage(t.clientX, t.clientY);
-  drawStart = p;
-  selRect.style.display = 'block';
-  updateSelRect(p, p);
-}, { passive: false });
-
-mainCanvas.addEventListener('touchmove', e => {
-  if (!drawing) return;
-  e.preventDefault();
-  const t = e.touches[0];
-  const p = canvasToImage(t.clientX, t.clientY);
-  updateSelRect(drawStart, p);
-}, { passive: false });
-
-mainCanvas.addEventListener('touchend', e => {
-  if (!drawing) return;
-  drawing = false;
-  selRect.style.display = 'none';
-  const t = e.changedTouches[0];
-  const p = canvasToImage(t.clientX, t.clientY);
-  const x = Math.round(Math.min(drawStart.x, p.x));
-  const y = Math.round(Math.min(drawStart.y, p.y));
-  const w = Math.round(Math.abs(p.x - drawStart.x));
-  const h = Math.round(Math.abs(p.y - drawStart.y));
-  if (w > 10 && h > 10) {
-    addZone({ x, y, w, h, label: 'Zone manuelle', confidence: null });
-  }
-});
+  if (w > 10 && h > 10) addZone({ x, y, w, h, label: '', confidence: null });
+}
+mainCanvas.addEventListener('mousedown', e => startDraw(e.clientX, e.clientY));
+mainCanvas.addEventListener('mousemove', e => moveDraw(e.clientX, e.clientY));
+mainCanvas.addEventListener('mouseup', e => endDraw(e.clientX, e.clientY));
+mainCanvas.addEventListener('mouseleave', () => { if (drawing) { drawing = false; selRect.style.display = 'none'; } });
+mainCanvas.addEventListener('touchstart', e => { if (drawMode) { e.preventDefault(); startDraw(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
+mainCanvas.addEventListener('touchmove', e => { if (drawing) { e.preventDefault(); moveDraw(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
+mainCanvas.addEventListener('touchend', e => { if (drawing) { const t = e.changedTouches[0]; endDraw(t.clientX, t.clientY); } });
 
 function updateSelRect(a, b) {
-  const rect = getCanvasRect();
-  const ax = a.x / imgW * rect.width + rect.left - canvasContainer.getBoundingClientRect().left;
-  const ay = a.y / imgH * rect.height + rect.top  - canvasContainer.getBoundingClientRect().top;
-  const bx = b.x / imgW * rect.width + rect.left - canvasContainer.getBoundingClientRect().left;
-  const by = b.y / imgH * rect.height + rect.top  - canvasContainer.getBoundingClientRect().top;
-  selRect.style.left   = Math.min(ax, bx) + 'px';
-  selRect.style.top    = Math.min(ay, by) + 'px';
-  selRect.style.width  = Math.abs(bx - ax) + 'px';
-  selRect.style.height = Math.abs(by - ay) + 'px';
+  const rect = mainCanvas.getBoundingClientRect();
+  const cont = canvasContainer.getBoundingClientRect();
+  const toScreen = (ix, iy) => ({
+    x: ix / imgW * rect.width + rect.left - cont.left,
+    y: iy / imgH * rect.height + rect.top - cont.top,
+  });
+  const pa = toScreen(a.x, a.y), pb = toScreen(b.x, b.y);
+  selRect.style.left = Math.min(pa.x, pb.x) + 'px';
+  selRect.style.top = Math.min(pa.y, pb.y) + 'px';
+  selRect.style.width = Math.abs(pb.x - pa.x) + 'px';
+  selRect.style.height = Math.abs(pb.y - pa.y) + 'px';
 }
 
-// ── Detection ────────────────────────────────────────────────────────────
+// Detection
 detectBtn.addEventListener('click', async () => {
   if (!srcImg) return;
   if (!modelReady) { toast('Modèle pas encore chargé, patientez…', true); return; }
-  processingLabel.textContent = 'Détection en cours…';
-  processingOverlay.classList.add('visible');
+  detectBtn.classList.add('loading');
+  detectLabel.textContent = 'Détection…';
   detectBtn.disabled = true;
+  processingLabel.textContent = 'Détection des visages…';
+  processingOverlay.classList.add('visible');
   try {
     const detections = await faceapi.detectAllFaces(srcImg,
       new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.45 }));
-    processingOverlay.classList.remove('visible');
     if (!detections.length) {
       toast('Aucun visage détecté. Essayez le mode manuel.', false);
     } else {
-      // Convertir les coordonnées — face-api retourne des coords dans l'espace de l'image naturelle
-      const scaleX = imgW / srcImg.width;
-      const scaleY = imgH / srcImg.height;
-      detections.forEach((d, i) => {
+      const scaleX = imgW / srcImg.width, scaleY = imgH / srcImg.height;
+      let added = 0;
+      detections.forEach(d => {
         const box = d.box;
-        // Marge légère autour du visage
         const margin = Math.round(Math.max(box.width, box.height) * 0.08);
-        addZone({
+        const z = {
           x: Math.max(0, Math.round(box.x * scaleX) - margin),
           y: Math.max(0, Math.round(box.y * scaleY) - margin),
-          w: Math.min(imgW, Math.round(box.width * scaleX) + margin * 2),
-          h: Math.min(imgH, Math.round(box.height * scaleY) + margin * 2),
-          label: `Visage ${i + 1}`,
-          confidence: Math.round(d.score * 100),
-        });
+          w: Math.round(box.width * scaleX) + margin * 2,
+          h: Math.round(box.height * scaleY) + margin * 2,
+          label: '', confidence: Math.round(d.score * 100),
+        };
+        z.w = Math.min(z.w, imgW - z.x);
+        z.h = Math.min(z.h, imgH - z.y);
+        z.id = nextZoneId++;
+        zones.push(z);
+        added++;
       });
-      toast(`${detections.length} visage${detections.length > 1 ? 's' : ''} détecté${detections.length > 1 ? 's' : ''}.`);
+      relabel(); renderZonesList(); render();
+      toast(added + ' visage' + (added > 1 ? 's' : '') + ' détecté' + (added > 1 ? 's' : '') + '.');
     }
   } catch(e) {
-    processingOverlay.classList.remove('visible');
     toast('Erreur lors de la détection.', true);
     console.error(e);
   }
+  processingOverlay.classList.remove('visible');
+  detectBtn.classList.remove('loading');
+  detectLabel.textContent = 'Détecter les visages';
   detectBtn.disabled = false;
 });
 
-// ── Zones management ───────────────────────────────────────────────────
+// Zones
 function addZone(zone) {
   zone.id = nextZoneId++;
   zones.push(zone);
-  renderZonesList();
-  drawOverlays();
-  updateRunBtn();
+  relabel(); renderZonesList(); render();
 }
-
 function removeZone(id) {
   zones = zones.filter(z => z.id !== id);
-  renderZonesList();
-  if (!applied) drawOverlays();
-  updateRunBtn();
+  relabel(); renderZonesList(); render();
 }
-
+function relabel() {
+  let f = 0, m = 0;
+  zones.forEach(z => { z.label = z.confidence !== null ? 'Visage ' + (++f) : 'Zone ' + (++m); });
+}
 function renderZonesList() {
-  // Clear
   zonesList.querySelectorAll('.zone-item').forEach(el => el.remove());
-  if (zones.length === 0) {
-    zonesEmpty.style.display = 'block';
-    return;
-  }
+  if (!zones.length) { zonesEmpty.style.display = 'block'; return; }
   zonesEmpty.style.display = 'none';
   zones.forEach(z => {
     const item = document.createElement('div');
     item.className = 'zone-item';
-    item.dataset.id = z.id;
-
-    const label = document.createElement('span');
-    label.className = 'zone-label';
-    label.textContent = z.label;
-
+    const dot = document.createElement('span'); dot.className = 'zone-dot';
+    const label = document.createElement('span'); label.className = 'zone-label'; label.textContent = z.label;
     const right = document.createElement('div');
-    right.style.display = 'flex';
-    right.style.alignItems = 'center';
-    right.style.gap = '6px';
-
+    right.style.cssText = 'display:flex;align-items:center;gap:6px';
     if (z.confidence !== null) {
       const badge = document.createElement('span');
       badge.className = 'zone-confidence';
       badge.textContent = z.confidence + '%';
       right.appendChild(badge);
     }
-
     const del = document.createElement('button');
-    del.className = 'zone-del';
-    del.title = 'Supprimer cette zone';
-    del.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    del.className = 'zone-del'; del.title = 'Supprimer cette zone';
+    del.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
     del.addEventListener('click', () => removeZone(z.id));
     right.appendChild(del);
-
-    item.appendChild(label);
-    item.appendChild(right);
+    item.appendChild(dot); item.appendChild(label); item.appendChild(right);
     zonesList.appendChild(item);
   });
 }
 
-// ── Pixelize blur (irréversible) ────────────────────────────────────────
-/**
- * Applique une mosaïque (pixelisation) sur une zone du canvas.
- * Chaque bloc de `size` pixels est remplacé par la couleur moyenne du bloc.
- * L'opération est irréversible une fois le canvas exporté.
- */
-function pixelizeZone(x, y, w, h, size) {
-  x = Math.max(0, x); y = Math.max(0, y);
-  w = Math.min(w, imgW - x); h = Math.min(h, imgH - y);
+// Mosaïque
+function pixelizeZoneOn(targetCtx, x, y, w, h, size) {
+  x = Math.max(0, Math.round(x)); y = Math.max(0, Math.round(y));
+  w = Math.min(Math.round(w), imgW - x); h = Math.min(Math.round(h), imgH - y);
   if (w <= 0 || h <= 0) return;
-
-  const imageData = ctx.getImageData(x, y, w, h);
+  const imageData = targetCtx.getImageData(x, y, w, h);
   const data = imageData.data;
-
   for (let by = 0; by < h; by += size) {
     for (let bx = 0; bx < w; bx += size) {
-      const bw = Math.min(size, w - bx);
-      const bh = Math.min(size, h - by);
-
-      // Moyenne des couleurs du bloc
+      const bw = Math.min(size, w - bx), bh = Math.min(size, h - by);
       let r = 0, g = 0, b = 0, a = 0, count = 0;
-      for (let py = 0; py < bh; py++) {
+      for (let py = 0; py < bh; py++)
         for (let px = 0; px < bw; px++) {
           const idx = ((by + py) * w + (bx + px)) * 4;
-          r += data[idx];
-          g += data[idx + 1];
-          b += data[idx + 2];
-          a += data[idx + 3];
-          count++;
+          r += data[idx]; g += data[idx+1]; b += data[idx+2]; a += data[idx+3]; count++;
         }
-      }
-      r = Math.round(r / count);
-      g = Math.round(g / count);
-      b = Math.round(b / count);
-      a = Math.round(a / count);
-
-      // Remplir tout le bloc avec la couleur moyenne
-      for (let py = 0; py < bh; py++) {
+      r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count); a = Math.round(a/count);
+      for (let py = 0; py < bh; py++)
         for (let px = 0; px < bw; px++) {
           const idx = ((by + py) * w + (bx + px)) * 4;
-          data[idx]     = r;
-          data[idx + 1] = g;
-          data[idx + 2] = b;
-          data[idx + 3] = a;
+          data[idx]=r; data[idx+1]=g; data[idx+2]=b; data[idx+3]=a;
         }
-      }
     }
   }
-
-  ctx.putImageData(imageData, x, y);
+  targetCtx.putImageData(imageData, x, y);
 }
 
-// ── Apply ───────────────────────────────────────────────────────────────
-runBtn.addEventListener('click', () => {
-  if (!zones.length) return;
-  // Reset canvas to source first (in case overlays were drawn)
-  ctx.clearRect(0, 0, imgW, imgH);
-  ctx.drawImage(srcImg, 0, 0);
+// Flou doux (downscale puis upscale lissé = irréversible)
+function softBlurZoneOn(targetCtx, x, y, w, h, size) {
+  x = Math.max(0, Math.round(x)); y = Math.max(0, Math.round(y));
+  w = Math.min(Math.round(w), imgW - x); h = Math.min(Math.round(h), imgH - y);
+  if (w <= 0 || h <= 0) return;
+  const factor = Math.max(2, size);
+  const smallW = Math.max(1, Math.round(w / factor));
+  const smallH = Math.max(1, Math.round(h / factor));
+  const region = targetCtx.getImageData(x, y, w, h);
+  const regCanvas = document.createElement('canvas');
+  regCanvas.width = w; regCanvas.height = h;
+  regCanvas.getContext('2d').putImageData(region, 0, 0);
+  const tmp = document.createElement('canvas');
+  tmp.width = smallW; tmp.height = smallH;
+  const tctx = tmp.getContext('2d');
+  tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = 'high';
+  tctx.drawImage(regCanvas, 0, 0, w, h, 0, 0, smallW, smallH);
+  targetCtx.imageSmoothingEnabled = true; targetCtx.imageSmoothingQuality = 'high';
+  targetCtx.drawImage(tmp, 0, 0, smallW, smallH, x, y, w, h);
+}
 
-  const size = parseInt(pixelSlider.value, 10);
-  zones.forEach(z => pixelizeZone(z.x, z.y, z.w, z.h, size));
-
-  applied = true;
-  dlBtn.disabled = false;
-  runBtn.textContent = ''; // rebuild content
-  runBtn.innerHTML = `
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-    Floutage appliqué`;
-  runBtn.disabled = true;
-  mainCanvas.style.cursor = 'default';
-  toast('Floutage appliqué. Téléchargez votre image.');
+// Slider live
+pixelSlider.addEventListener('input', () => {
+  pixelVal.textContent = pixelSlider.value;
+  render();
 });
 
-// ── Download ─────────────────────────────────────────────────────────────
+// Download
 dlBtn.addEventListener('click', () => {
-  if (!applied) return;
-  mainCanvas.toBlob(blob => {
+  if (!zones.length) { toast('Ajoutez au moins une zone à flouter.', true); return; }
+  const out = buildExportCanvas();
+  out.toBlob(blob => {
     if (!blob) { toast('Erreur lors de l\'export.', true); return; }
     const url = URL.createObjectURL(blob);
-    const a   = document.createElement('a');
-    a.href    = url;
-    a.download = 'pixo-floute.png';
-    a.click();
+    const a = document.createElement('a');
+    a.href = url; a.download = 'pixo-floute.png'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('Image floutée téléchargée.');
   }, 'image/png');
 });
 
-// ── Change image ──────────────────────────────────────────────────────────
-changeBtn.addEventListener('click', resetAll);
-
-function resetAll() {
-  srcImg = null; imgW = 0; imgH = 0;
-  zones = []; applied = false;
+// Change
+changeBtn.addEventListener('click', () => {
+  srcImg = null; srcCanvas = null; imgW = 0; imgH = 0; zones = [];
   ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
   renderZonesList();
   editor.classList.remove('visible');
   dropZone.style.display = '';
   dlBtn.disabled = true;
-  runBtn.disabled = true;
-  runBtn.innerHTML = `
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="2" width="5" height="5" rx="1"/>
-      <rect x="9.5" y="2" width="5" height="5" rx="1"/>
-      <rect x="17" y="2" width="5" height="5" rx="1"/>
-      <rect x="2" y="9.5" width="5" height="5" rx="1"/>
-      <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
-      <rect x="17" y="9.5" width="5" height="5" rx="1"/>
-      <rect x="2" y="17" width="5" height="5" rx="1"/>
-      <rect x="9.5" y="17" width="5" height="5" rx="1"/>
-      <rect x="17" y="17" width="5" height="5" rx="1"/>
-    </svg>
-    Appliquer le floutage`;
-  mainCanvas.style.cursor = drawMode ? 'crosshair' : 'default';
-}
-
-// ── Slider ────────────────────────────────────────────────────────────────
-pixelSlider.addEventListener('input', () => {
-  pixelVal.textContent = pixelSlider.value;
 });
-
-// ── Helpers ───────────────────────────────────────────────────────────────
-function updateRunBtn() {
-  runBtn.disabled = zones.length === 0 || applied;
-}
 </script>
 </body>
 </html>
