@@ -1106,6 +1106,22 @@ input[type=range]::-moz-range-thumb {
   .modal-actions { width: 100%; justify-content: flex-end; }
 }
 /* ─── END MOBILE ─── */
+
+/* NAV */
+.nav {
+  display: flex; gap: 4px; margin-bottom: 2rem;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 4px;
+}
+.nav-btn {
+  flex: 1; height: 34px; font-size: 13px; font-weight: 600;
+  font-family: 'Syne', sans-serif; border: none; border-radius: var(--radius);
+  cursor: pointer; background: transparent; color: var(--text-3); transition: all .15s;
+  text-decoration: none; display: flex; align-items: center; justify-content: center;
+  letter-spacing: -0.01em;
+}
+.nav-btn:hover { color: var(--text); }
+.nav-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
 </style>
 </head>
 <body>
@@ -1121,9 +1137,10 @@ input[type=range]::-moz-range-thumb {
     </div>
   </div>
 
-  <nav style="display:flex;gap:4px;margin-bottom:2rem;background:var(--surface);border:0.5px solid var(--border-md);border-radius:var(--radius-lg);padding:4px;">
-    <a href="index.html" style="flex:1;height:34px;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;letter-spacing:-0.01em;border:0.5px solid var(--border-md);border-radius:var(--radius);background:var(--surface-3);color:var(--text);text-decoration:none;display:flex;align-items:center;justify-content:center;">Redimensionner</a>
-    <a href="detourer.html" style="flex:1;height:34px;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;letter-spacing:-0.01em;border:none;border-radius:var(--radius);background:transparent;color:var(--text-3);text-decoration:none;display:flex;align-items:center;justify-content:center;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">Détourer</a>
+  <nav class="nav" role="tablist">
+    <a class="nav-btn active" href="index.html" role="tab" aria-selected="true">Redimensionner</a>
+    <a class="nav-btn" href="detourer.html" role="tab">Détourer</a>
+    <a class="nav-btn" href="flouter.html" role="tab">Flouter</a>
   </nav>
 
   <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()"
