@@ -168,6 +168,12 @@ body::before {
   pointer-events: auto; touch-action: none;
   box-shadow: 0 0 4px rgba(212,255,78,0.4);
 }
+/* zone tactile élargie invisible autour du point visuel */
+.zhandle::after {
+  content: ''; position: absolute;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 26px; height: 26px; border-radius: 50%;
+}
 .zhandle.nw { top: -5px; left: -5px; cursor: nwse-resize; }
 .zhandle.ne { top: -5px; right: -5px; cursor: nesw-resize; }
 .zhandle.sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
