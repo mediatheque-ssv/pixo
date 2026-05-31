@@ -526,19 +526,29 @@ function toast(msg, isErr) {
 
 // Model
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+let detectorKind = null; // 'ssd' | 'tiny'
 modelStatus.classList.add('visible');
 async function loadModels() {
+  // SSD MobileNet : bien meilleur rappel que TinyFaceDetector (petits visages, profils, foules).
   try {
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-    modelReady = true;
-    modelSpinner.style.display = 'none';
-    modelDot.style.display = 'block';
-    modelLabel.textContent = 'Modèle de détection prêt';
-    setTimeout(() => modelStatus.classList.remove('visible'), 2000);
+    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+    detectorKind = 'ssd';
   } catch(e) {
-    modelLabel.textContent = 'Détection auto indisponible — utilisez le mode manuel';
-    detectBtn.disabled = true;
+    // Repli sur TinyFaceDetector si le SSD ne charge pas
+    try {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      detectorKind = 'tiny';
+    } catch(e2) {
+      modelLabel.textContent = 'Détection auto indisponible — utilisez le mode manuel';
+      detectBtn.disabled = true;
+      return;
+    }
   }
+  modelReady = true;
+  modelSpinner.style.display = 'none';
+  modelDot.style.display = 'block';
+  modelLabel.textContent = 'Modèle de détection prêt';
+  setTimeout(() => modelStatus.classList.remove('visible'), 2000);
 }
 loadModels();
 
@@ -706,8 +716,10 @@ detectBtn.addEventListener('click', async () => {
   processingLabel.textContent = 'Détection des visages…';
   processingOverlay.classList.add('visible');
   try {
-    const detections = await faceapi.detectAllFaces(srcImg,
-      new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.45 }));
+    const opts = detectorKind === 'ssd'
+      ? new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 })
+      : new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.3 });
+    const detections = await faceapi.detectAllFaces(srcImg, opts);
     if (!detections.length) {
       toast('Aucun visage détecté. Essayez le mode manuel.', false);
     } else {
@@ -719,9 +731,9 @@ detectBtn.addEventListener('click', async () => {
         const bx = box.x * scaleX,     by = box.y * scaleY;
         // Marges asymétriques : le détecteur cadre serré sur les traits centraux.
         // On élargit pour couvrir front/cheveux (haut), menton/mâchoire (bas) et oreilles (côtés).
-        const mTop    = bh * 0.45;
-        const mBottom = bh * 0.25;
-        const mSide   = bw * 0.22;
+        const mTop    = bh * 0.42;
+        const mBottom = bh * 0.10;
+        const mSide   = bw * 0.20;
         let zx = Math.round(bx - mSide);
         let zy = Math.round(by - mTop);
         let zw = Math.round(bw + mSide * 2);
