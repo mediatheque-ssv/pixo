@@ -597,8 +597,8 @@ function render() {
   const req = parseInt(pixelSlider.value, 10);
   zones.forEach(z => {
     const size = effectiveSize(z, req);
-    if (blurStyle === 'mosaic') pixelizeZoneOn(ctx, z.x, z.y, z.w, z.h, size);
-    else softBlurZoneOn(ctx, z.x, z.y, z.w, z.h, size);
+    const r = makeBlurZone(z, size, blurStyle);
+    if (r) ctx.drawImage(r.canvas, r.x, r.y);
   });
   drawZoneOutlines();
   dlBtn.disabled = zones.length === 0;
@@ -609,7 +609,9 @@ function drawZoneOutlines() {
     ctx.strokeStyle = 'rgba(212,255,78,0.7)';
     ctx.lineWidth = Math.max(1.5, imgW / 600);
     ctx.setLineDash([6, 4]);
-    ctx.strokeRect(z.x, z.y, z.w, z.h);
+    ctx.beginPath();
+    ctx.ellipse(z.x + z.w / 2, z.y + z.h / 2, z.w / 2, z.h / 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
   });
 }
@@ -623,8 +625,8 @@ function buildExportCanvas() {
   const req = parseInt(pixelSlider.value, 10);
   zones.forEach(z => {
     const size = effectiveSize(z, req);
-    if (blurStyle === 'mosaic') pixelizeZoneOn(octx, z.x, z.y, z.w, z.h, size);
-    else softBlurZoneOn(octx, z.x, z.y, z.w, z.h, size);
+    const r = makeBlurZone(z, size, blurStyle);
+    if (r) octx.drawImage(r.canvas, r.x, r.y);
   });
   return out;
 }
@@ -733,7 +735,7 @@ detectBtn.addEventListener('click', async () => {
         // On élargit pour couvrir front/cheveux (haut), menton/mâchoire (bas) et oreilles (côtés).
         const mTop    = bh * 0.42;
         const mBottom = bh * 0.10;
-        const mSide   = bw * 0.20;
+        const mSide   = bw * 0.26;
         let zx = Math.round(bx - mSide);
         let zy = Math.round(by - mTop);
         let zw = Math.round(bw + mSide * 2);
@@ -811,12 +813,22 @@ function jitter(v) {
   return n < 0 ? 0 : n > 255 ? 255 : n;
 }
 
-// Mosaïque
-function pixelizeZoneOn(targetCtx, x, y, w, h, size) {
+// Extrait la région source (rectangle englobant) dans un canvas autonome.
+function extractRegion(x, y, w, h) {
   x = Math.max(0, Math.round(x)); y = Math.max(0, Math.round(y));
   w = Math.min(Math.round(w), imgW - x); h = Math.min(Math.round(h), imgH - y);
-  if (w <= 0 || h <= 0) return;
-  const imageData = targetCtx.getImageData(x, y, w, h);
+  if (w <= 0 || h <= 0) return null;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(srcCanvas, x, y, w, h, 0, 0, w, h);
+  return { canvas: c, x, y, w, h };
+}
+
+// Mosaïque sur un canvas entier (en place)
+function pixelateCanvas(c, size) {
+  const cx = c.getContext('2d');
+  const w = c.width, h = c.height;
+  const imageData = cx.getImageData(0, 0, w, h);
   const data = imageData.data;
   for (let by = 0; by < h; by += size) {
     for (let bx = 0; bx < w; bx += size) {
@@ -827,7 +839,6 @@ function pixelizeZoneOn(targetCtx, x, y, w, h, size) {
           const idx = ((by + py) * w + (bx + px)) * 4;
           r += data[idx]; g += data[idx+1]; b += data[idx+2]; a += data[idx+3]; count++;
         }
-      // couleur moyenne + grain aléatoire par bloc
       r = Math.round(jitter(r/count)); g = Math.round(jitter(g/count)); b = Math.round(jitter(b/count));
       a = Math.round(a/count);
       for (let py = 0; py < bh; py++)
@@ -837,36 +848,63 @@ function pixelizeZoneOn(targetCtx, x, y, w, h, size) {
         }
     }
   }
-  targetCtx.putImageData(imageData, x, y);
+  cx.putImageData(imageData, 0, 0);
 }
 
-// Flou doux (downscale puis upscale lissé = irréversible)
-function softBlurZoneOn(targetCtx, x, y, w, h, size) {
-  x = Math.max(0, Math.round(x)); y = Math.max(0, Math.round(y));
-  w = Math.min(Math.round(w), imgW - x); h = Math.min(Math.round(h), imgH - y);
-  if (w <= 0 || h <= 0) return;
+// Flou doux sur un canvas entier (downscale + upscale lissé, en place)
+function softBlurCanvas(c, size) {
+  const w = c.width, h = c.height;
   const factor = Math.max(2, size);
-  const smallW = Math.max(1, Math.round(w / factor));
-  const smallH = Math.max(1, Math.round(h / factor));
-  const region = targetCtx.getImageData(x, y, w, h);
-  const regCanvas = document.createElement('canvas');
-  regCanvas.width = w; regCanvas.height = h;
-  regCanvas.getContext('2d').putImageData(region, 0, 0);
+  const sw = Math.max(1, Math.round(w / factor)), sh = Math.max(1, Math.round(h / factor));
   const tmp = document.createElement('canvas');
-  tmp.width = smallW; tmp.height = smallH;
+  tmp.width = sw; tmp.height = sh;
   const tctx = tmp.getContext('2d');
   tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = 'high';
-  tctx.drawImage(regCanvas, 0, 0, w, h, 0, 0, smallW, smallH);
-  // grain aléatoire sur la version réduite, avant ré-agrandissement
-  const sd = tctx.getImageData(0, 0, smallW, smallH);
+  tctx.drawImage(c, 0, 0, w, h, 0, 0, sw, sh);
+  const sd = tctx.getImageData(0, 0, sw, sh);
   for (let i = 0; i < sd.data.length; i += 4) {
-    sd.data[i]   = jitter(sd.data[i]);
-    sd.data[i+1] = jitter(sd.data[i+1]);
-    sd.data[i+2] = jitter(sd.data[i+2]);
+    sd.data[i] = jitter(sd.data[i]); sd.data[i+1] = jitter(sd.data[i+1]); sd.data[i+2] = jitter(sd.data[i+2]);
   }
   tctx.putImageData(sd, 0, 0);
-  targetCtx.imageSmoothingEnabled = true; targetCtx.imageSmoothingQuality = 'high';
-  targetCtx.drawImage(tmp, 0, 0, smallW, smallH, x, y, w, h);
+  const cx = c.getContext('2d');
+  cx.clearRect(0, 0, w, h);
+  cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+  cx.drawImage(tmp, 0, 0, sw, sh, 0, 0, w, h);
+}
+
+// Masque elliptique à bords adoucis : le flou s'estompe vers l'extérieur
+// au lieu de s'arrêter net, et épouse la forme ovale du visage.
+// feather = proportion du rayon consacrée au dégradé (0.3 = 30 % extérieurs).
+function applyEllipseMask(c, feather) {
+  const w = c.width, h = c.height;
+  const m = document.createElement('canvas');
+  m.width = w; m.height = h;
+  const mctx = m.getContext('2d');
+  mctx.save();
+  mctx.translate(w / 2, h / 2);
+  mctx.scale(w / 2, h / 2);            // espace cercle unité -> ellipse
+  const g = mctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  const solid = Math.max(0, 1 - feather);
+  g.addColorStop(0, 'rgba(0,0,0,1)');
+  g.addColorStop(solid, 'rgba(0,0,0,1)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  mctx.fillStyle = g;
+  mctx.fillRect(-1, -1, 2, 2);
+  mctx.restore();
+  const cx = c.getContext('2d');
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(m, 0, 0);
+  cx.globalCompositeOperation = 'source-over';
+}
+
+// Construit la zone floutée prête à composer : { canvas, x, y }
+function makeBlurZone(z, size, style) {
+  const reg = extractRegion(z.x, z.y, z.w, z.h);
+  if (!reg) return null;
+  if (style === 'mosaic') pixelateCanvas(reg.canvas, size);
+  else softBlurCanvas(reg.canvas, size);
+  applyEllipseMask(reg.canvas, 0.30);
+  return reg;
 }
 
 // Slider live
