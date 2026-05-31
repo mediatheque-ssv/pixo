@@ -152,6 +152,39 @@ body::before {
   background: rgba(212,255,78,0.08); box-shadow: 0 0 10px rgba(212,255,78,0.25);
   pointer-events: none; display: none; border-radius: 2px;
 }
+
+/* ZONES OVERLAY (édition interactive) */
+#zones-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.zbox {
+  position: absolute; box-sizing: border-box;
+  border: 1.5px dashed var(--accent-border); border-radius: 50%;
+  pointer-events: auto; cursor: move; touch-action: none;
+  transition: border-color .12s;
+}
+.zbox:hover, .zbox.active { border-color: var(--accent); }
+.zhandle {
+  position: absolute; width: 12px; height: 12px;
+  background: var(--accent); border: 1.5px solid #0c0c0b; border-radius: 50%;
+  pointer-events: auto; touch-action: none;
+  box-shadow: 0 0 5px rgba(212,255,78,0.4);
+}
+.zhandle.nw { top: -7px; left: -7px; cursor: nwse-resize; }
+.zhandle.ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.zhandle.sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.zhandle.se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+.zhandle.n  { top: -7px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+.zhandle.s  { bottom: -7px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+.zhandle.w  { left: -7px; top: 50%; margin-top: -6px; cursor: ew-resize; }
+.zhandle.e  { right: -7px; top: 50%; margin-top: -6px; cursor: ew-resize; }
+.zdel {
+  position: absolute; top: -10px; right: -10px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface-3); border: 1px solid var(--border-hi); color: var(--text-2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; pointer-events: auto; padding: 0; line-height: 0;
+  transition: color .12s, border-color .12s, background .12s;
+}
+.zdel:hover { color: var(--danger); border-color: rgba(255,107,107,0.5); background: rgba(255,107,107,0.1); }
 .processing-overlay {
   position: absolute; inset: 0; border-radius: var(--radius-lg);
   background: rgba(0,0,0,0.52); backdrop-filter: blur(2px);
@@ -376,6 +409,7 @@ input[type=range].rng::-moz-range-thumb {
 
     <div class="canvas-container" id="canvas-container">
       <canvas id="main-canvas"></canvas>
+      <div id="zones-overlay"></div>
       <div id="sel-rect"></div>
       <div class="processing-overlay" id="processing-overlay">
         <div class="processing-spinner"></div>
@@ -421,13 +455,13 @@ input[type=range].rng::-moz-range-thumb {
       <div class="panel-block">
         <span class="block-label">Type de floutage</span>
         <div class="style-row">
-          <button class="style-btn active" id="style-mosaic">
-            Mosaïque
-            <span class="style-sub">net, irréversible</span>
-          </button>
-          <button class="style-btn" id="style-soft">
+          <button class="style-btn active" id="style-soft">
             Flou doux
             <span class="style-sub">organique, irréversible</span>
+          </button>
+          <button class="style-btn" id="style-mosaic">
+            Mosaïque
+            <span class="style-sub">net, irréversible</span>
           </button>
         </div>
       </div>
@@ -439,11 +473,11 @@ input[type=range].rng::-moz-range-thumb {
         <div class="slider-row">
           <div class="block-header">
             <span class="block-label">Intensité</span>
-            <span class="slider-val" id="pixel-val">18</span>
+            <span class="slider-val" id="pixel-val">6</span>
           </div>
           <div class="slider-track">
             <span class="slider-hint">Discret</span>
-            <input type="range" class="rng" id="pixel-slider" min="6" max="44" value="18">
+            <input type="range" class="rng" id="pixel-slider" min="1" max="10" value="6">
             <span class="slider-hint">Fort</span>
           </div>
         </div>
@@ -483,8 +517,19 @@ input[type=range].rng::-moz-range-thumb {
 // State
 let srcImg = null, imgW = 0, imgH = 0, srcCanvas = null;
 let zones = [], nextZoneId = 0;
-let modelReady = false, drawMode = false, blurStyle = 'mosaic';
+let modelReady = false, drawMode = false, blurStyle = 'soft';
 let drawing = false, drawStart = null;
+
+// Intensité : échelle 1-10 affichée, mappée sur une taille de bloc 6-44 px.
+const INTENSITY_DEFAULT = 6;          // compromis par défaut (rétabli à chaque image)
+const BLOCK_MIN = 6, BLOCK_MAX = 44;  // plage interne inchangée
+function blockSize(v) {
+  return Math.round(BLOCK_MIN + (v - 1) * (BLOCK_MAX - BLOCK_MIN) / 9);
+}
+function resetIntensity() {
+  pixelSlider.value = INTENSITY_DEFAULT;
+  pixelVal.textContent = INTENSITY_DEFAULT;
+}
 
 // DOM
 const dropZone = document.getElementById('drop-zone');
@@ -512,6 +557,7 @@ const modeDraw = document.getElementById('mode-draw');
 const styleMosaic = document.getElementById('style-mosaic');
 const styleSoft = document.getElementById('style-soft');
 const canvasContainer = document.getElementById('canvas-container');
+const zonesOverlay = document.getElementById('zones-overlay');
 
 // Toast
 let toastTimer = null;
@@ -566,6 +612,7 @@ function loadFile(file) {
     img.onload = () => {
       srcImg = img; imgW = img.naturalWidth; imgH = img.naturalHeight;
       zones = [];
+      resetIntensity();
       srcCanvas = document.createElement('canvas');
       srcCanvas.width = imgW; srcCanvas.height = imgH;
       srcCanvas.getContext('2d').drawImage(img, 0, 0);
@@ -590,30 +637,24 @@ function effectiveSize(z, requested) {
   return Math.max(requested, safeMin);
 }
 
-function render() {
+// Redessine uniquement le canvas (image + zones floutées), sans l'overlay.
+function renderCanvas() {
   if (!srcCanvas) return;
   ctx.clearRect(0, 0, imgW, imgH);
   ctx.drawImage(srcCanvas, 0, 0);
-  const req = parseInt(pixelSlider.value, 10);
+  const req = blockSize(parseInt(pixelSlider.value, 10));
   zones.forEach(z => {
     const size = effectiveSize(z, req);
     const r = makeBlurZone(z, size, blurStyle);
     if (r) ctx.drawImage(r.canvas, r.x, r.y);
   });
-  drawZoneOutlines();
   dlBtn.disabled = zones.length === 0;
 }
-function drawZoneOutlines() {
-  zones.forEach(z => {
-    ctx.save();
-    ctx.strokeStyle = 'rgba(212,255,78,0.7)';
-    ctx.lineWidth = Math.max(1.5, imgW / 600);
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.ellipse(z.x + z.w / 2, z.y + z.h / 2, z.w / 2, z.h / 2, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  });
+
+// Rendu complet : canvas + reconstruction des boîtes d'édition.
+function render() {
+  renderCanvas();
+  syncOverlay();
 }
 
 // Export propre (sans contours)
@@ -622,7 +663,7 @@ function buildExportCanvas() {
   out.width = imgW; out.height = imgH;
   const octx = out.getContext('2d');
   octx.drawImage(srcCanvas, 0, 0);
-  const req = parseInt(pixelSlider.value, 10);
+  const req = blockSize(parseInt(pixelSlider.value, 10));
   zones.forEach(z => {
     const size = effectiveSize(z, req);
     const r = makeBlurZone(z, size, blurStyle);
@@ -639,6 +680,128 @@ function canvasToImage(clientX, clientY) {
     y: (clientY - rect.top) * (imgH / rect.height),
   };
 }
+
+// ── Overlay d'édition : boîtes redimensionnables sur chaque zone ──────────
+const HANDLES = ['nw','n','ne','e','se','s','sw','w'];
+const MIN_ZONE = 20; // px image minimum
+
+// Convertit la géométrie image d'une zone en pixels écran (relatifs au conteneur)
+function zoneScreenRect(z) {
+  const rect = mainCanvas.getBoundingClientRect();
+  const cont = canvasContainer.getBoundingClientRect();
+  const sx = rect.width / imgW, sy = rect.height / imgH;
+  return {
+    left: z.x * sx + rect.left - cont.left,
+    top:  z.y * sy + rect.top - cont.top,
+    width:  z.w * sx,
+    height: z.h * sy,
+  };
+}
+
+// (Re)construit toutes les boîtes d'édition
+function syncOverlay() {
+  zonesOverlay.innerHTML = '';
+  if (!srcCanvas) return;
+  zones.forEach(z => {
+    const box = document.createElement('div');
+    box.className = 'zbox';
+    box.dataset.id = z.id;
+    const sr = zoneScreenRect(z);
+    box.style.left = sr.left + 'px';
+    box.style.top = sr.top + 'px';
+    box.style.width = sr.width + 'px';
+    box.style.height = sr.height + 'px';
+
+    HANDLES.forEach(h => {
+      const hd = document.createElement('div');
+      hd.className = 'zhandle ' + h;
+      hd.dataset.handle = h;
+      box.appendChild(hd);
+    });
+
+    const del = document.createElement('button');
+    del.className = 'zdel';
+    del.title = 'Supprimer cette zone';
+    del.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    del.addEventListener('pointerdown', e => { e.stopPropagation(); });
+    del.addEventListener('click', e => { e.stopPropagation(); removeZone(z.id); });
+    box.appendChild(del);
+
+    box.addEventListener('pointerdown', e => startEdit(e, z, null));
+    box.querySelectorAll('.zhandle').forEach(hd => {
+      hd.addEventListener('pointerdown', e => { e.stopPropagation(); startEdit(e, z, hd.dataset.handle); });
+    });
+
+    zonesOverlay.appendChild(box);
+  });
+}
+
+// Édition (déplacement / redimensionnement) d'une zone
+let editState = null;
+function startEdit(e, z, handle) {
+  e.preventDefault();
+  const start = canvasToImage(e.clientX, e.clientY);
+  editState = {
+    id: z.id, handle,
+    sx: start.x, sy: start.y,
+    ox: z.x, oy: z.y, ow: z.w, oh: z.h,
+    el: zonesOverlay.querySelector('.zbox[data-id="' + z.id + '"]'),
+  };
+  if (editState.el) editState.el.classList.add('active');
+  try { e.target.setPointerCapture(e.pointerId); } catch(_) {}
+  window.addEventListener('pointermove', moveEdit);
+  window.addEventListener('pointerup', endEdit);
+}
+function moveEdit(e) {
+  if (!editState) return;
+  const p = canvasToImage(e.clientX, e.clientY);
+  const dx = p.x - editState.sx, dy = p.y - editState.sy;
+  const z = zones.find(z => z.id === editState.id);
+  if (!z) return;
+  let { ox, oy, ow, oh, handle } = editState;
+  let nx = ox, ny = oy, nw = ow, nh = oh;
+
+  if (!handle) {
+    // déplacement
+    nx = ox + dx; ny = oy + dy;
+  } else {
+    if (handle.includes('w')) { nx = ox + dx; nw = ow - dx; }
+    if (handle.includes('e')) { nw = ow + dx; }
+    if (handle.includes('n')) { ny = oy + dy; nh = oh - dy; }
+    if (handle.includes('s')) { nh = oh + dy; }
+    // empêche l'inversion
+    if (nw < MIN_ZONE) { if (handle.includes('w')) nx = ox + ow - MIN_ZONE; nw = MIN_ZONE; }
+    if (nh < MIN_ZONE) { if (handle.includes('n')) ny = oy + oh - MIN_ZONE; nh = MIN_ZONE; }
+  }
+  // clamp aux bords de l'image
+  nx = Math.max(0, Math.min(nx, imgW - MIN_ZONE));
+  ny = Math.max(0, Math.min(ny, imgH - MIN_ZONE));
+  nw = Math.min(nw, imgW - nx);
+  nh = Math.min(nh, imgH - ny);
+
+  z.x = Math.round(nx); z.y = Math.round(ny);
+  z.w = Math.round(nw); z.h = Math.round(nh);
+
+  renderCanvas();
+  // repositionne la boîte en cours sans tout reconstruire (préserve le pointer capture)
+  if (editState.el) {
+    const sr = zoneScreenRect(z);
+    editState.el.style.left = sr.left + 'px';
+    editState.el.style.top = sr.top + 'px';
+    editState.el.style.width = sr.width + 'px';
+    editState.el.style.height = sr.height + 'px';
+  }
+}
+function endEdit() {
+  if (editState && editState.el) editState.el.classList.remove('active');
+  editState = null;
+  window.removeEventListener('pointermove', moveEdit);
+  window.removeEventListener('pointerup', endEdit);
+  syncOverlay();
+}
+
+// Repositionne les boîtes si la fenêtre change de taille
+window.addEventListener('resize', () => { if (srcCanvas) syncOverlay(); });
 
 // Mode
 modeDetect.addEventListener('click', () => {
@@ -658,12 +821,12 @@ modeDraw.addEventListener('click', () => {
 styleMosaic.addEventListener('click', () => {
   blurStyle = 'mosaic';
   styleMosaic.classList.add('active'); styleSoft.classList.remove('active');
-  render();
+  renderCanvas();
 });
 styleSoft.addEventListener('click', () => {
   blurStyle = 'soft';
   styleSoft.classList.add('active'); styleMosaic.classList.remove('active');
-  render();
+  renderCanvas();
 });
 
 // Drawing
@@ -910,7 +1073,7 @@ function makeBlurZone(z, size, style) {
 // Slider live
 pixelSlider.addEventListener('input', () => {
   pixelVal.textContent = pixelSlider.value;
-  render();
+  renderCanvas();
 });
 
 // Download
@@ -930,6 +1093,8 @@ dlBtn.addEventListener('click', () => {
 // Change
 changeBtn.addEventListener('click', () => {
   srcImg = null; srcCanvas = null; imgW = 0; imgH = 0; zones = [];
+  resetIntensity();
+  zonesOverlay.innerHTML = '';
   ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
   renderZonesList();
   editor.classList.remove('visible');
