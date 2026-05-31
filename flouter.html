@@ -452,6 +452,20 @@ input[type=range].rng::-moz-range-thumb {
           </svg>
           <span id="detect-label">Détecter les visages</span>
         </button>
+        <div class="mode-row" id="shape-row" style="display:none">
+          <button class="mode-btn active" id="shape-ellipse" data-shape="ellipse" title="Forme ellipse (idéale pour les visages)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <ellipse cx="12" cy="12" rx="9" ry="6.5"/>
+            </svg>
+            Ellipse
+          </button>
+          <button class="mode-btn" id="shape-rect" data-shape="rect" title="Forme rectangle (badges, plaques, panneaux…)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3.5" y="6" width="17" height="12" rx="1.5"/>
+            </svg>
+            Rectangle
+          </button>
+        </div>
         <div class="zones-list" id="zones-list">
           <div class="zones-empty" id="zones-empty">Aucune zone — lancez la détection ou dessinez une zone sur l'image.</div>
         </div>
@@ -526,6 +540,7 @@ input[type=range].rng::-moz-range-thumb {
 let srcImg = null, imgW = 0, imgH = 0, srcCanvas = null;
 let zones = [], nextZoneId = 0, selectedZoneId = null;
 let modelReady = false, drawMode = false, blurStyle = 'soft';
+let manualShape = 'ellipse'; // forme des zones manuelles : 'ellipse' | 'rect'
 let drawing = false, drawStart = null;
 
 // Intensité : échelle 1-10 affichée, mappée sur une taille de bloc 6-44 px.
@@ -564,6 +579,9 @@ const modeDetect = document.getElementById('mode-detect');
 const modeDraw = document.getElementById('mode-draw');
 const styleMosaic = document.getElementById('style-mosaic');
 const styleSoft = document.getElementById('style-soft');
+const shapeRow = document.getElementById('shape-row');
+const shapeEllipse = document.getElementById('shape-ellipse');
+const shapeRect = document.getElementById('shape-rect');
 const canvasContainer = document.getElementById('canvas-container');
 const zonesOverlay = document.getElementById('zones-overlay');
 
@@ -665,7 +683,12 @@ function renderCanvas() {
     ctx.lineWidth = Math.max(1, imgW / 700);
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.ellipse(z.x + z.w / 2, z.y + z.h / 2, z.w / 2, z.h / 2, 0, 0, Math.PI * 2);
+    if ((z.shape || 'ellipse') === 'rect') {
+      const r = Math.min(z.w, z.h) * 0.06;
+      roundRect(ctx, z.x, z.y, z.w, z.h, r);
+    } else {
+      ctx.ellipse(z.x + z.w / 2, z.y + z.h / 2, z.w / 2, z.h / 2, 0, 0, Math.PI * 2);
+    }
     ctx.stroke();
     ctx.restore();
   });
@@ -751,6 +774,7 @@ function syncOverlay() {
   const box = document.createElement('div');
   box.className = 'zbox active';
   box.dataset.id = z.id;
+  if ((z.shape || 'ellipse') === 'rect') box.style.borderRadius = '4px';
   const sr = zoneScreenRect(z);
   box.style.left = sr.left + 'px';
   box.style.top = sr.top + 'px';
@@ -852,14 +876,29 @@ modeDetect.addEventListener('click', () => {
   drawMode = false;
   modeDetect.classList.add('active'); modeDraw.classList.remove('active');
   mainCanvas.classList.remove('drawing-mode');
-  detectBtn.style.display = ''; selRect.style.display = 'none';
+  detectBtn.style.display = ''; shapeRow.style.display = 'none'; selRect.style.display = 'none';
 });
 modeDraw.addEventListener('click', () => {
   drawMode = true;
   modeDraw.classList.add('active'); modeDetect.classList.remove('active');
   mainCanvas.classList.add('drawing-mode');
-  detectBtn.style.display = 'none';
+  detectBtn.style.display = 'none'; shapeRow.style.display = 'flex';
 });
+
+// Forme des zones manuelles
+function setManualShape(shape) {
+  manualShape = shape;
+  shapeEllipse.classList.toggle('active', shape === 'ellipse');
+  shapeRect.classList.toggle('active', shape === 'rect');
+  // applique aussi à la zone manuelle actuellement sélectionnée, le cas échéant
+  const z = zones.find(z => z.id === selectedZoneId);
+  if (z && z.confidence === null) {
+    z.shape = shape;
+    renderCanvas(); syncOverlay();
+  }
+}
+shapeEllipse.addEventListener('click', () => setManualShape('ellipse'));
+shapeRect.addEventListener('click', () => setManualShape('rect'));
 
 // Style
 styleMosaic.addEventListener('click', () => {
@@ -877,6 +916,7 @@ styleSoft.addEventListener('click', () => {
 function startDraw(cx, cy) {
   if (!drawMode) return;
   drawing = true; drawStart = canvasToImage(cx, cy);
+  selRect.style.borderRadius = manualShape === 'ellipse' ? '50%' : '3px';
   selRect.style.display = 'block'; updateSelRect(drawStart, drawStart);
 }
 function moveDraw(cx, cy) {
@@ -892,7 +932,7 @@ function endDraw(cx, cy) {
   const w = Math.round(Math.abs(p.x - drawStart.x));
   const h = Math.round(Math.abs(p.y - drawStart.y));
   if (w > 10 && h > 10) {
-    const z = { x, y, w, h, label: '', confidence: null };
+    const z = { x, y, w, h, label: '', confidence: null, shape: manualShape };
     addZone(z);
     selectedZoneId = z.id;   // sélectionne la zone fraîchement tracée
     render(); renderZonesList();
@@ -967,7 +1007,7 @@ detectBtn.addEventListener('click', async () => {
         zy = Math.max(0, zy);
         zw = Math.min(zw, imgW - zx);
         zh = Math.min(zh, imgH - zy);
-        const z = { x: zx, y: zy, w: zw, h: zh, label: '', confidence: Math.round(d.score * 100) };
+        const z = { x: zx, y: zy, w: zw, h: zh, label: '', confidence: Math.round(d.score * 100), shape: 'ellipse' };
         z.id = nextZoneId++;
         zones.push(z);
         added++;
@@ -1123,13 +1163,48 @@ function applyEllipseMask(c, feather) {
   cx.globalCompositeOperation = 'source-over';
 }
 
+// Masque rectangulaire à bords adoucis (pour badges, plaques, panneaux…).
+// Cœur plein, dégradé doux sur le pourtour via un flou de masque.
+function applyRectMask(c, feather) {
+  const w = c.width, h = c.height;
+  const m = document.createElement('canvas');
+  m.width = w; m.height = h;
+  const mctx = m.getContext('2d');
+  const blurPx = Math.max(3, Math.round(Math.min(w, h) * feather * 0.5));
+  const inset = blurPx;
+  const rad = Math.min(w, h) * 0.06;
+  if ('filter' in mctx) mctx.filter = 'blur(' + blurPx + 'px)';
+  mctx.fillStyle = 'rgba(0,0,0,1)';
+  roundRect(mctx, inset, inset, w - inset * 2, h - inset * 2, rad);
+  mctx.fill();
+  const cx = c.getContext('2d');
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(m, 0, 0);
+  cx.globalCompositeOperation = 'source-over';
+}
+function roundRect(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function applyShapeMask(c, shape) {
+  if (shape === 'rect') applyRectMask(c, 0.30);
+  else applyEllipseMask(c, 0.30);
+}
+
 // Construit la zone floutée prête à composer : { canvas, x, y }
 function makeBlurZone(z, size, style) {
   const reg = extractRegion(z.x, z.y, z.w, z.h);
   if (!reg) return null;
   if (style === 'mosaic') pixelateCanvas(reg.canvas, size);
   else softBlurCanvas(reg.canvas, size);
-  applyEllipseMask(reg.canvas, 0.30);
+  applyShapeMask(reg.canvas, z.shape || 'ellipse');
   return reg;
 }
 
