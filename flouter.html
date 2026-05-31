@@ -182,15 +182,6 @@ body::before {
 .zhandle.s  { bottom: -5px; left: 50%; margin-left: -4px; cursor: ns-resize; }
 .zhandle.w  { left: -5px; top: 50%; margin-top: -4px; cursor: ew-resize; }
 .zhandle.e  { right: -5px; top: 50%; margin-top: -4px; cursor: ew-resize; }
-.zdel {
-  position: absolute; top: -10px; right: -10px;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--surface-3); border: 1px solid var(--border-hi); color: var(--text-2);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; pointer-events: auto; padding: 0; line-height: 0;
-  transition: color .12s, border-color .12s, background .12s;
-}
-.zdel:hover { color: var(--danger); border-color: rgba(255,107,107,0.5); background: rgba(255,107,107,0.1); }
 .processing-overlay {
   position: absolute; inset: 0; border-radius: var(--radius-lg);
   background: rgba(0,0,0,0.52); backdrop-filter: blur(2px);
@@ -788,14 +779,6 @@ function syncOverlay() {
     box.appendChild(hd);
   });
 
-  const del = document.createElement('button');
-  del.className = 'zdel';
-  del.title = 'Supprimer cette zone';
-  del.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-  del.addEventListener('pointerdown', e => { e.stopPropagation(); });
-  del.addEventListener('click', e => { e.stopPropagation(); removeZone(z.id); });
-  box.appendChild(del);
-
   box.addEventListener('pointerdown', e => startEdit(e, z, null));
   box.querySelectorAll('.zhandle').forEach(hd => {
     hd.addEventListener('pointerdown', e => { e.stopPropagation(); startEdit(e, z, hd.dataset.handle); });
@@ -871,6 +854,31 @@ function endEdit() {
 // Repositionne les boîtes si la fenêtre change de taille
 window.addEventListener('resize', () => { if (srcCanvas) syncOverlay(); });
 
+// Déplacement de la zone sélectionnée aux flèches du clavier (Maj = pas de 10 px).
+// Suppr / Retour arrière supprime la zone sélectionnée.
+window.addEventListener('keydown', e => {
+  if (selectedZoneId === null) return;
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return; // laisse le slider
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    removeZone(selectedZoneId);
+    return;
+  }
+  const step = e.shiftKey ? 10 : 1;
+  let dx = 0, dy = 0;
+  if (e.key === 'ArrowLeft') dx = -step;
+  else if (e.key === 'ArrowRight') dx = step;
+  else if (e.key === 'ArrowUp') dy = -step;
+  else if (e.key === 'ArrowDown') dy = step;
+  else return;
+  e.preventDefault();
+  const z = zones.find(z => z.id === selectedZoneId);
+  if (!z) return;
+  z.x = Math.max(0, Math.min(z.x + dx, imgW - z.w));
+  z.y = Math.max(0, Math.min(z.y + dy, imgH - z.h));
+  renderCanvas(); syncOverlay();
+});
+
 // Mode
 modeDetect.addEventListener('click', () => {
   drawMode = false;
@@ -915,7 +923,11 @@ styleSoft.addEventListener('click', () => {
 // Drawing
 function startDraw(cx, cy) {
   if (!drawMode) return;
-  drawing = true; drawStart = canvasToImage(cx, cy);
+  const p = canvasToImage(cx, cy);
+  // clic sur une zone existante -> sélection (pas de nouveau tracé)
+  const hit = zoneAtPoint(p.x, p.y);
+  if (hit) { selectZone(hit.id); return; }
+  drawing = true; drawStart = p;
   selRect.style.borderRadius = manualShape === 'ellipse' ? '50%' : '3px';
   selRect.style.display = 'block'; updateSelRect(drawStart, drawStart);
 }
