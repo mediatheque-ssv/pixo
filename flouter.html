@@ -259,6 +259,8 @@ body::before {
   font-size: 12px; color: var(--text-2); transition: border-color .15s, background .15s;
 }
 .zone-item:hover { border-color: var(--border-md); }
+.zone-item.selected { border-color: var(--accent-border); background: var(--accent-dim); }
+.zone-item.selected .zone-dot { box-shadow: 0 0 6px rgba(212,255,78,0.6); }
 .zone-dot { width: 7px; height: 7px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
 .zone-label { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 .zone-confidence {
@@ -522,7 +524,7 @@ input[type=range].rng::-moz-range-thumb {
 
 // State
 let srcImg = null, imgW = 0, imgH = 0, srcCanvas = null;
-let zones = [], nextZoneId = 0;
+let zones = [], nextZoneId = 0, selectedZoneId = null;
 let modelReady = false, drawMode = false, blurStyle = 'soft';
 let drawing = false, drawStart = null;
 
@@ -617,7 +619,7 @@ function loadFile(file) {
     const img = new Image();
     img.onload = () => {
       srcImg = img; imgW = img.naturalWidth; imgH = img.naturalHeight;
-      zones = [];
+      zones = []; selectedZoneId = null;
       resetIntensity();
       srcCanvas = document.createElement('canvas');
       srcCanvas.width = imgW; srcCanvas.height = imgH;
@@ -654,7 +656,42 @@ function renderCanvas() {
     const r = makeBlurZone(z, size, blurStyle);
     if (r) ctx.drawImage(r.canvas, r.x, r.y);
   });
+  // Liseré discret sur les zones NON sélectionnées (repère cliquable).
+  // La zone sélectionnée est matérialisée par son cadre d'édition (overlay DOM).
+  zones.forEach(z => {
+    if (z.id === selectedZoneId) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(212,255,78,0.32)';
+    ctx.lineWidth = Math.max(1, imgW / 700);
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.ellipse(z.x + z.w / 2, z.y + z.h / 2, z.w / 2, z.h / 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  });
   dlBtn.disabled = zones.length === 0;
+}
+
+// Renvoie la zone (ellipse) située sous un point image, la plus petite si chevauchement.
+function zoneAtPoint(px, py) {
+  let best = null, bestArea = Infinity;
+  zones.forEach(z => {
+    const cx = z.x + z.w / 2, cy = z.y + z.h / 2;
+    const rx = z.w / 2, ry = z.h / 2;
+    const d = ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2;
+    if (d <= 1) {
+      const area = z.w * z.h;
+      if (area < bestArea) { best = z; bestArea = area; }
+    }
+  });
+  return best;
+}
+
+function selectZone(id) {
+  selectedZoneId = id;
+  renderCanvas();
+  syncOverlay();
+  renderZonesList();
 }
 
 // Rendu complet : canvas + reconstruction des boîtes d'édition.
@@ -704,42 +741,43 @@ function zoneScreenRect(z) {
   };
 }
 
-// (Re)construit toutes les boîtes d'édition
+// Construit la boîte d'édition UNIQUEMENT pour la zone sélectionnée.
 function syncOverlay() {
   zonesOverlay.innerHTML = '';
-  if (!srcCanvas) return;
-  zones.forEach(z => {
-    const box = document.createElement('div');
-    box.className = 'zbox';
-    box.dataset.id = z.id;
-    const sr = zoneScreenRect(z);
-    box.style.left = sr.left + 'px';
-    box.style.top = sr.top + 'px';
-    box.style.width = sr.width + 'px';
-    box.style.height = sr.height + 'px';
+  if (!srcCanvas || selectedZoneId === null) return;
+  const z = zones.find(z => z.id === selectedZoneId);
+  if (!z) return;
 
-    HANDLES.forEach(h => {
-      const hd = document.createElement('div');
-      hd.className = 'zhandle ' + h;
-      hd.dataset.handle = h;
-      box.appendChild(hd);
-    });
+  const box = document.createElement('div');
+  box.className = 'zbox active';
+  box.dataset.id = z.id;
+  const sr = zoneScreenRect(z);
+  box.style.left = sr.left + 'px';
+  box.style.top = sr.top + 'px';
+  box.style.width = sr.width + 'px';
+  box.style.height = sr.height + 'px';
 
-    const del = document.createElement('button');
-    del.className = 'zdel';
-    del.title = 'Supprimer cette zone';
-    del.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-    del.addEventListener('pointerdown', e => { e.stopPropagation(); });
-    del.addEventListener('click', e => { e.stopPropagation(); removeZone(z.id); });
-    box.appendChild(del);
-
-    box.addEventListener('pointerdown', e => startEdit(e, z, null));
-    box.querySelectorAll('.zhandle').forEach(hd => {
-      hd.addEventListener('pointerdown', e => { e.stopPropagation(); startEdit(e, z, hd.dataset.handle); });
-    });
-
-    zonesOverlay.appendChild(box);
+  HANDLES.forEach(h => {
+    const hd = document.createElement('div');
+    hd.className = 'zhandle ' + h;
+    hd.dataset.handle = h;
+    box.appendChild(hd);
   });
+
+  const del = document.createElement('button');
+  del.className = 'zdel';
+  del.title = 'Supprimer cette zone';
+  del.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  del.addEventListener('pointerdown', e => { e.stopPropagation(); });
+  del.addEventListener('click', e => { e.stopPropagation(); removeZone(z.id); });
+  box.appendChild(del);
+
+  box.addEventListener('pointerdown', e => startEdit(e, z, null));
+  box.querySelectorAll('.zhandle').forEach(hd => {
+    hd.addEventListener('pointerdown', e => { e.stopPropagation(); startEdit(e, z, hd.dataset.handle); });
+  });
+
+  zonesOverlay.appendChild(box);
 }
 
 // Édition (déplacement / redimensionnement) d'une zone
@@ -853,7 +891,15 @@ function endDraw(cx, cy) {
   const y = Math.round(Math.min(drawStart.y, p.y));
   const w = Math.round(Math.abs(p.x - drawStart.x));
   const h = Math.round(Math.abs(p.y - drawStart.y));
-  if (w > 10 && h > 10) addZone({ x, y, w, h, label: '', confidence: null });
+  if (w > 10 && h > 10) {
+    const z = { x, y, w, h, label: '', confidence: null };
+    addZone(z);
+    selectedZoneId = z.id;   // sélectionne la zone fraîchement tracée
+    render(); renderZonesList();
+  } else if (selectedZoneId !== null) {
+    // simple clic dans le vide (pas de tracé) : désélectionne
+    selectZone(null);
+  }
 }
 mainCanvas.addEventListener('mousedown', e => startDraw(e.clientX, e.clientY));
 mainCanvas.addEventListener('mousemove', e => moveDraw(e.clientX, e.clientY));
@@ -862,6 +908,14 @@ mainCanvas.addEventListener('mouseleave', () => { if (drawing) { drawing = false
 mainCanvas.addEventListener('touchstart', e => { if (drawMode) { e.preventDefault(); startDraw(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
 mainCanvas.addEventListener('touchmove', e => { if (drawing) { e.preventDefault(); moveDraw(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
 mainCanvas.addEventListener('touchend', e => { if (drawing) { const t = e.changedTouches[0]; endDraw(t.clientX, t.clientY); } });
+
+// Sélection au clic (hors mode tracé) : révèle le cadre de la zone visée.
+mainCanvas.addEventListener('pointerdown', e => {
+  if (drawMode) return;
+  const p = canvasToImage(e.clientX, e.clientY);
+  const z = zoneAtPoint(p.x, p.y);
+  selectZone(z ? z.id : null);
+});
 
 function updateSelRect(a, b) {
   const rect = mainCanvas.getBoundingClientRect();
@@ -939,6 +993,7 @@ function addZone(zone) {
 }
 function removeZone(id) {
   zones = zones.filter(z => z.id !== id);
+  if (selectedZoneId === id) selectedZoneId = null;
   relabel(); renderZonesList(); render();
 }
 function relabel() {
@@ -951,7 +1006,9 @@ function renderZonesList() {
   zonesEmpty.style.display = 'none';
   zones.forEach(z => {
     const item = document.createElement('div');
-    item.className = 'zone-item';
+    item.className = 'zone-item' + (z.id === selectedZoneId ? ' selected' : '');
+    item.style.cursor = 'pointer';
+    item.addEventListener('click', () => selectZone(z.id));
     const dot = document.createElement('span'); dot.className = 'zone-dot';
     const label = document.createElement('span'); label.className = 'zone-label'; label.textContent = z.label;
     const right = document.createElement('div');
@@ -965,7 +1022,7 @@ function renderZonesList() {
     const del = document.createElement('button');
     del.className = 'zone-del'; del.title = 'Supprimer cette zone';
     del.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-    del.addEventListener('click', () => removeZone(z.id));
+    del.addEventListener('click', e => { e.stopPropagation(); removeZone(z.id); });
     right.appendChild(del);
     item.appendChild(dot); item.appendChild(label); item.appendChild(right);
     zonesList.appendChild(item);
@@ -1098,7 +1155,7 @@ dlBtn.addEventListener('click', () => {
 
 // Change
 changeBtn.addEventListener('click', () => {
-  srcImg = null; srcCanvas = null; imgW = 0; imgH = 0; zones = [];
+  srcImg = null; srcCanvas = null; imgW = 0; imgH = 0; zones = []; selectedZoneId = null;
   resetIntensity();
   zonesOverlay.innerHTML = '';
   ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
