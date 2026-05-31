@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pixo — Flouter les visages</title>
-<meta name="description" content="Pixo — Floutez les visages de vos images directement dans le navigateur, sans envoi sur un serveur.">
+<title>Pixo</title>
+<meta name="description" content="Pixo — Supprimez le fond de vos images automatiquement, directement dans le navigateur.">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { overflow-y: scroll; overflow-x: hidden; }
+html { overflow-y: scroll; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 :root {
@@ -36,6 +36,8 @@ html { overflow-y: scroll; overflow-x: hidden; }
   --radius-lg: 12px;
   --radius-xl: 16px;
 }
+
+html { overflow-x: hidden; }
 
 body {
   font-family: 'Syne', sans-serif;
@@ -72,7 +74,6 @@ body::before {
   font-family: 'Syne', sans-serif; border: none; border-radius: var(--radius);
   cursor: pointer; background: transparent; color: var(--text-3); transition: all .15s;
   text-decoration: none; display: flex; align-items: center; justify-content: center;
-  letter-spacing: -0.01em;
 }
 .nav-btn:hover { color: var(--text); }
 .nav-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
@@ -90,7 +91,7 @@ body::before {
   pointer-events: none;
 }
 .drop-zone:hover { border-color: var(--border-hi); background: var(--surface-2); }
-.drop-zone.over { border-color: var(--accent-border); background: var(--accent-dim); }
+.drop-zone.over  { border-color: var(--accent-border); background: var(--accent-dim); }
 .drop-icon {
   width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
   background: var(--surface-2); border: 0.5px solid var(--border-md);
@@ -99,32 +100,25 @@ body::before {
 .drop-label { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
 .drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.04em; }
 
-/* MODEL LOADING STATUS */
-.model-status {
-  display: none; align-items: center; gap: 8px; margin-top: 1rem;
-  padding: 10px 14px; background: var(--surface); border: 0.5px solid var(--border-md);
-  border-radius: var(--radius); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
+/* PREVIEW GRID — toujours en colonne */
+.preview-grid {
+  display: none;
+  flex-direction: column;
+  margin-top: 1.5rem;
+  gap: 16px;
 }
-.model-status.visible { display: flex; }
-.model-spinner {
-  width: 13px; height: 13px; flex-shrink: 0;
-  border: 2px solid rgba(212,255,78,0.2); border-top-color: var(--accent);
-  border-radius: 50%; animation: spin .7s linear infinite;
-}
-.model-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
-  box-shadow: 0 0 6px rgba(212,255,78,0.5); }
+.preview-grid.visible { display: flex; }
 
-/* EDITOR */
-.editor { display: none; margin-top: 1.5rem; }
-.editor.visible { display: block; }
+.preview-col { display: flex; flex-direction: column; gap: 7px; }
 
 .col-label-row {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; min-height: 22px;
+  display: flex; align-items: center; justify-content: space-between; min-height: 20px;
 }
 .col-label {
   font-family: 'JetBrains Mono', monospace; font-size: 10px;
   color: var(--text-3); text-transform: uppercase; letter-spacing: .08em;
 }
+
 .change-btn {
   height: 22px; padding: 0 9px; border-radius: var(--radius-sm);
   border: 0.5px solid var(--border-md); background: transparent; color: var(--text-3);
@@ -134,153 +128,99 @@ body::before {
 }
 .change-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
-/* CANVAS WRAP */
-.canvas-container {
-  position: relative; width: 100%; background: var(--surface-2);
-  border-radius: var(--radius-lg); border: 0.5px solid var(--border-md);
-  overflow: hidden; min-height: 320px;
-  display: flex; align-items: center; justify-content: center;
+.preview-img {
+  display: block; object-fit: contain;
 }
-#main-canvas {
-  display: block; max-width: 100%; max-height: 520px;
-  object-fit: contain; cursor: default;
-  user-select: none; -webkit-user-select: none; touch-action: none;
-}
-#main-canvas.drawing-mode { cursor: crosshair; }
-#sel-rect {
-  position: absolute; border: 1.5px solid var(--accent);
-  background: rgba(212,255,78,0.08); box-shadow: 0 0 10px rgba(212,255,78,0.25);
-  pointer-events: none; display: none; border-radius: 2px;
+.preview-img.original { width: 100%; height: 320px; object-fit: contain; background: var(--surface-2); border-radius: var(--radius-lg); border: 0.5px solid var(--border-md); }
+.preview-img.result { background: transparent; display: block; }
+
+.result-wrap {
+  position: relative;
+  display: flex; justify-content: center; align-items: center;
+  width: 100%; height: 320px;
+  background: var(--surface-2);
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-md);
 }
 
-/* ZONES OVERLAY (édition interactive) */
-#zones-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
-.zbox {
-  position: absolute; box-sizing: border-box;
-  border: 1.5px dashed var(--accent-border); border-radius: 50%;
-  pointer-events: auto; cursor: move; touch-action: none;
-  transition: border-color .12s;
+.checker-wrap {
+  display: inline-flex;
+  background: repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px;
+  line-height: 0;
 }
-.zbox:hover, .zbox.active { border-color: var(--accent); }
-.zhandle {
-  position: absolute; width: 8px; height: 8px;
-  background: var(--accent); border: 1px solid #0c0c0b; border-radius: 50%;
-  pointer-events: auto; touch-action: none;
-  box-shadow: 0 0 4px rgba(212,255,78,0.4);
+
+/* Sélecteur de fond de prévisualisation */
+.eraser-toggle.icon-btn { width: 28px; padding: 0; justify-content: center; }
+
+.bg-picker {
+  display: flex; align-items: center; gap: 5px;
 }
-/* zone tactile élargie invisible autour du point visuel */
-.zhandle::after {
-  content: ''; position: absolute;
-  top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 26px; height: 26px; border-radius: 50%;
+.bg-swatch {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid transparent;
+  cursor: pointer; transition: transform .15s, border-color .15s;
+  flex-shrink: 0;
 }
-.zhandle.nw { top: -5px; left: -5px; cursor: nwse-resize; }
-.zhandle.ne { top: -5px; right: -5px; cursor: nesw-resize; }
-.zhandle.sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
-.zhandle.se { bottom: -5px; right: -5px; cursor: nwse-resize; }
-.zhandle.n  { top: -5px; left: 50%; margin-left: -4px; cursor: ns-resize; }
-.zhandle.s  { bottom: -5px; left: 50%; margin-left: -4px; cursor: ns-resize; }
-.zhandle.w  { left: -5px; top: 50%; margin-top: -4px; cursor: ew-resize; }
-.zhandle.e  { right: -5px; top: 50%; margin-top: -4px; cursor: ew-resize; }
-.zdel {
-  position: absolute; top: -10px; right: -10px;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--surface-3); border: 1px solid var(--border-hi); color: var(--text-2);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; pointer-events: auto; padding: 0; line-height: 0;
-  transition: color .12s, border-color .12s, background .12s;
+.bg-swatch:hover { transform: scale(1.2); }
+.bg-swatch.active { border-color: var(--accent); }
+.bg-swatch-checker {
+  background: repeating-conic-gradient(#888 0% 25%, #ccc 0% 50%) 0 0 / 8px 8px;
 }
-.zdel:hover { color: var(--danger); border-color: rgba(255,107,107,0.5); background: rgba(255,107,107,0.1); }
+.bg-swatch-color-btn {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--border-md);
+  cursor: pointer; overflow: hidden; padding: 0;
+  flex-shrink: 0; position: relative; transition: transform .15s;
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+}
+.bg-swatch-color-btn:hover { transform: scale(1.2); }
+.bg-swatch-color-btn input[type="color"] {
+  position: absolute; inset: -4px; opacity: 0; cursor: pointer; width: 200%; height: 200%;
+}
+
+/* Wrap relatif pour l'overlay */
+
+/* Overlay de chargement sur l'image résultat */
 .processing-overlay {
-  position: absolute; inset: 0; border-radius: var(--radius-lg);
-  background: rgba(0,0,0,0.52); backdrop-filter: blur(2px);
-  display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+  position: absolute; inset: 0;
+  border-radius: var(--radius-lg);
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(2px);
+  display: none; align-items: center; justify-content: center;
+  pointer-events: none;
 }
 .processing-overlay.visible { display: flex; }
 .processing-spinner {
   width: 28px; height: 28px;
-  border: 2.5px solid rgba(212,255,78,0.25); border-top-color: var(--accent);
-  border-radius: 50%; animation: spin .7s linear infinite;
+  border: 2.5px solid rgba(212,255,78,0.25);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
 }
-.processing-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); }
 
-/* PANEL */
-.panel {
-  display: flex; flex-direction: column; gap: 14px; margin-top: 14px;
+/* SLIDERS PANEL — sous l'image résultat */
+.sliders-panel {
+  display: none;
+  flex-direction: column; gap: 12px;
   background: var(--surface); border: 0.5px solid var(--border-md);
   border-radius: var(--radius-lg); padding: 14px 16px;
 }
-.panel-block { display: flex; flex-direction: column; gap: 10px; }
-.panel-sep { height: 0.5px; background: var(--border-md); }
-.block-label {
+.sliders-panel.visible { display: flex; }
+
+.slider-row { display: flex; flex-direction: column; gap: 6px; }
+.slider-row.inactive input[type=range].rng::-webkit-slider-thumb {
+  background: var(--surface-3);
+  box-shadow: none;
+  border-color: var(--border-md);
+}
+.slider-row.inactive input[type=range].rng::-moz-range-thumb {
+  background: var(--surface-3);
+  box-shadow: none;
+}.slider-header { display: flex; align-items: center; justify-content: space-between; }
+.slider-label {
   font-family: 'JetBrains Mono', monospace; font-size: 10px;
   text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
 }
-.block-header { display: flex; align-items: center; justify-content: space-between; }
-
-/* MODE SEGMENT */
-.mode-row {
-  display: flex; gap: 4px; background: var(--surface-2);
-  border: 0.5px solid var(--border); border-radius: var(--radius); padding: 4px;
-}
-.mode-btn {
-  flex: 1; height: 30px; border-radius: var(--radius-sm);
-  border: none; background: transparent;
-  color: var(--text-3); font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
-  cursor: pointer; transition: all .15s;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.mode-btn:hover { color: var(--text); }
-.mode-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
-
-/* DETECT BUTTON */
-.detect-btn {
-  width: 100%; height: 34px; border-radius: var(--radius);
-  border: 0.5px solid var(--border-md); background: transparent;
-  color: var(--text-2); font-family: 'Syne', sans-serif; font-size: 12px;
-  font-weight: 600; cursor: pointer; transition: all .15s;
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-}
-.detect-btn:hover:not(:disabled) { border-color: var(--accent-border); color: var(--accent); background: var(--accent-dim); }
-.detect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.detect-btn .mini-spinner {
-  width: 13px; height: 13px; border: 2px solid rgba(212,255,78,0.25);
-  border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; display: none;
-}
-.detect-btn.loading .mini-spinner { display: block; }
-.detect-btn.loading .detect-ico { display: none; }
-
-/* ZONES LIST */
-.zones-list { display: flex; flex-direction: column; gap: 6px; }
-.zone-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px; border-radius: var(--radius);
-  background: var(--surface-2); border: 0.5px solid var(--border);
-  font-size: 12px; color: var(--text-2); transition: border-color .15s, background .15s;
-}
-.zone-item:hover { border-color: var(--border-md); }
-.zone-item.selected { border-color: var(--accent-border); background: var(--accent-dim); }
-.zone-item.selected .zone-dot { box-shadow: 0 0 6px rgba(212,255,78,0.6); }
-.zone-dot { width: 7px; height: 7px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
-.zone-label { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-.zone-confidence {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: var(--text-3); padding: 2px 6px; background: var(--surface-3); border-radius: 3px;
-}
-.zone-del {
-  width: 20px; height: 20px; border-radius: 4px; border: none;
-  background: transparent; color: var(--text-3);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: color .15s, background .15s; flex-shrink: 0;
-}
-.zone-del:hover { color: var(--danger); background: rgba(255,107,107,0.08); }
-.zones-empty {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
-  padding: 10px 0; text-align: center;
-}
-
-/* SLIDER */
-.slider-row { display: flex; flex-direction: column; gap: 8px; }
 .slider-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); }
 .slider-track { display: flex; align-items: center; gap: 8px; }
 .slider-hint {
@@ -299,36 +239,108 @@ input[type=range].rng::-webkit-slider-thumb {
 input[type=range].rng:hover::-webkit-slider-thumb { box-shadow: 0 0 12px rgba(212,255,78,0.55); }
 input[type=range].rng::-moz-range-thumb {
   width: 16px; height: 16px; border-radius: 50%;
-  background: var(--accent); border: none; cursor: pointer;
+  background: var(--accent); border: 2px solid #0c0c0b; cursor: pointer; border: none;
 }
 
-/* STYLE SEGMENT */
-.style-row { display: flex; gap: 4px; }
-.style-btn {
-  flex: 1; height: 52px; border-radius: var(--radius);
-  border: 0.5px solid var(--border-md); background: var(--surface-2);
-  color: var(--text-3); font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
-  cursor: pointer; transition: all .15s;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+.reset-slider-btn {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  border: 0.5px solid var(--border-md); background: transparent;
+  color: var(--text-3); font-size: 13px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s;
 }
-.style-btn:hover { color: var(--text); border-color: var(--border-hi); }
-.style-btn.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
-.style-btn .style-sub {
-  font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 400;
-  opacity: 0.75; letter-spacing: 0.02em;
+.reset-slider-btn:hover { border-color: var(--border-hi); color: var(--text); }
+
+.panel-sep { height: 0.5px; background: var(--border-md); }
+
+.eraser-toggle {
+  height: 22px; padding: 0 10px; border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md); background: transparent; color: var(--text-3);
+  font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 600;
+  cursor: pointer; transition: border-color .15s, color .15s, background .15s;
 }
+.eraser-toggle:hover { border-color: var(--border-hi); color: var(--text); }
+.eraser-toggle.active {
+  background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent);
+}
+#img-result.erasing { cursor: none; }
+
+#eraser-cursor {
+  position: fixed; pointer-events: none; z-index: 9998;
+  border: 1.5px solid var(--accent); border-radius: 50%;
+  display: none; transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px rgba(212,255,78,0.3);
+  transition: width .1s, height .1s;
+}
+#eraser-cursor.visible { display: block; }
 
 /* ACTIONS */
-.actions { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
-.dl-btn {
-  flex: 1; min-height: 48px; padding: 0 22px;
-  background: var(--accent); border: none;
-  border-radius: var(--radius-lg); font-size: 14px; font-weight: 700;
-  font-family: 'Syne', sans-serif; cursor: pointer; color: #0c0c0b;
-  transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+.actions { display: none; align-items: center; gap: 14px; margin-top: 1.5rem; flex-wrap: wrap; }
+.actions-group {
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 12px 14px;
 }
-.dl-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
-.dl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.actions-heading {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
+}
+.actions-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .actions-group { width: 100%; }
+  .actions-buttons { flex-direction: column; }
+  .actions-buttons .run-btn { width: 100%; }
+}
+
+/* Baguette magique */
+.wand-btn.picking, #wand-add-btn.picking { outline: 2px solid var(--accent); outline-offset: 2px; }
+.run-btn {
+  min-height: 48px; padding: 8px 24px; background: var(--accent);
+  border: none; border-radius: var(--radius-lg);
+  font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif;
+  cursor: pointer; color: #0c0c0b;
+  transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.run-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
+.run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.run-btn .spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(12,12,11,0.3); border-top-color: #0c0c0b;
+  border-radius: 50%; animation: spin .6s linear infinite; display: none;
+}
+.run-btn.loading .spinner { display: block; }
+.run-btn.loading .run-label { display: none; }
+.run-label-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; gap: 2px; }
+.run-label-text .btn-title { font-size: 14px; font-weight: 700; }
+.run-label-text .btn-sub {
+  font-size: 10px; font-weight: 500; font-family: 'JetBrains Mono', monospace;
+  opacity: 0.7; text-transform: none; letter-spacing: 0;
+}
+
+.dl-btn {
+  height: 48px; padding: 0 20px;
+  background: var(--accent-dim); border: 0.5px solid var(--accent-border);
+  border-radius: var(--radius-lg); font-size: 13px; font-weight: 700;
+  font-family: 'Syne', sans-serif; cursor: pointer; color: var(--accent);
+  transition: all .2s; display: none; align-items: center; gap: 8px;
+}
+.dl-btn:hover { background: rgba(212,255,78,0.18); transform: translateY(-1px); }
+.dl-btn.visible { display: flex; }
+
+/* STATUS / PROGRESS */
+.status {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-3); margin-top: 12px; min-height: 16px; text-align: center;
+}
+.status.error   { color: var(--danger); }
+.status.success { color: var(--accent); }
+
+.progress-wrap {
+  display: none; margin-top: 12px; height: 4px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+.progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width .3s ease; }
 
 /* INFO BOX */
 .info-box {
@@ -341,12 +353,13 @@ input[type=range].rng::-moz-range-thumb {
 
 /* TOAST */
 .toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(8px);
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(8px);
   background: var(--surface-3); border: 0.5px solid var(--border-md);
   color: var(--text); font-family: 'JetBrains Mono', monospace;
   font-size: 12px; padding: 10px 18px; border-radius: var(--radius);
-  pointer-events: none; z-index: 9999; white-space: nowrap;
   opacity: 0; transition: opacity .2s, transform .2s;
+  pointer-events: none; z-index: 9999; white-space: nowrap;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.error { border-color: rgba(255,107,107,0.3); color: var(--danger); }
@@ -358,7 +371,7 @@ input[type=range].rng::-moz-range-thumb {
   .logo { width: 64px; height: 64px; }
   .header h1 { font-size: 18px; }
   .actions { flex-direction: column; }
-  .dl-btn { width: 100%; justify-content: center; }
+  .run-btn, .dl-btn { width: 100%; justify-content: center; }
 }
 </style>
 </head>
@@ -375,21 +388,21 @@ input[type=range].rng::-moz-range-thumb {
 
   <nav class="nav" role="tablist">
     <a class="nav-btn" href="index.html" role="tab">Redimensionner</a>
-    <a class="nav-btn" href="detourer.html" role="tab">Détourer</a>
-    <a class="nav-btn active" href="flouter.html" role="tab" aria-selected="true">Flouter</a>
+    <a class="nav-btn active" href="detourer.html" role="tab" aria-selected="true">Détourer</a>
+    <a class="nav-btn" href="flouter.html" role="tab">Flouter</a>
   </nav>
 
   <!-- Drop zone -->
   <div class="drop-zone" id="drop-zone"
        role="button" tabindex="0"
-       aria-label="Importer une image à flouter"
+       aria-label="Importer une image à détourer"
        onclick="document.getElementById('file-in').click()"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('file-in').click()}">
     <div class="drop-icon">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
-        <circle cx="12" cy="10" r="3"/>
-        <path d="M3 20a9 9 0 1 1 18 0"/>
-        <path d="M9 20v-2a3 3 0 0 1 6 0v2"/>
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <path d="M3 15l5-5 4 4 3-3 6 6"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
       </svg>
     </div>
     <div class="drop-label">Glissez une image ici ou cliquez pour parcourir</div>
@@ -397,848 +410,1249 @@ input[type=range].rng::-moz-range-thumb {
   </div>
   <input type="file" id="file-in" accept="image/*" style="display:none">
 
-  <!-- Model loading status -->
-  <div class="model-status" id="model-status">
-    <div class="model-spinner" id="model-spinner"></div>
-    <div class="model-dot" id="model-dot" style="display:none"></div>
-    <span id="model-label">Chargement du modèle de détection…</span>
-  </div>
+  <!-- Grille d'aperçus -->
+  <div class="preview-grid" id="preview-grid">
 
-  <!-- Editor -->
-  <div class="editor" id="editor">
-
-    <div class="col-label-row">
-      <span class="col-label">Aperçu — en direct</span>
-      <button class="change-btn" id="change-btn">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M9 9l3-3 3 3M12 6v9"/></svg>
-        Changer
-      </button>
-    </div>
-
-    <div class="canvas-container" id="canvas-container">
-      <canvas id="main-canvas"></canvas>
-      <div id="zones-overlay"></div>
-      <div id="sel-rect"></div>
-      <div class="processing-overlay" id="processing-overlay">
-        <div class="processing-spinner"></div>
-        <div class="processing-label" id="processing-label">Détection en cours…</div>
-      </div>
-    </div>
-
-    <!-- Panel -->
-    <div class="panel">
-
-      <!-- Mode -->
-      <div class="panel-block">
-        <span class="block-label">Comment ajouter une zone</span>
-        <div class="mode-row">
-          <button class="mode-btn active" id="mode-detect" title="Détecter les visages automatiquement">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            Détection auto
-          </button>
-          <button class="mode-btn" id="mode-draw" title="Dessiner des zones manuellement">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-            </svg>
-            Zone manuelle
-          </button>
-        </div>
-        <button class="detect-btn" id="detect-btn">
-          <span class="mini-spinner"></span>
-          <svg class="detect-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    <!-- Colonne Original -->
+    <div class="preview-col">
+      <div class="col-label-row">
+        <span class="col-label">Original</span>
+        <button class="change-btn" id="change-btn">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
           </svg>
-          <span id="detect-label">Détecter les visages</span>
+          Changer
         </button>
-        <div class="mode-row" id="shape-row" style="display:none">
-          <button class="mode-btn active" id="shape-ellipse" data-shape="ellipse" title="Forme ellipse (idéale pour les visages)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <ellipse cx="12" cy="12" rx="9" ry="6.5"/>
-            </svg>
-            Ellipse
-          </button>
-          <button class="mode-btn" id="shape-rect" data-shape="rect" title="Forme rectangle (badges, plaques, panneaux…)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3.5" y="6" width="17" height="12" rx="1.5"/>
-            </svg>
-            Rectangle
-          </button>
-        </div>
-        <div class="zones-list" id="zones-list">
-          <div class="zones-empty" id="zones-empty">Aucune zone — lancez la détection ou dessinez une zone sur l'image.</div>
-        </div>
       </div>
+      <img id="img-original" class="preview-img original" alt="Image originale" style="display:none">
+    </div>
 
-      <div class="panel-sep"></div>
-
-      <!-- Style -->
-      <div class="panel-block">
-        <span class="block-label">Type de floutage</span>
-        <div class="style-row">
-          <button class="style-btn active" id="style-soft">
-            Flou doux
-            <span class="style-sub">organique, irréversible</span>
-          </button>
-          <button class="style-btn" id="style-mosaic">
-            Mosaïque
-            <span class="style-sub">net, irréversible</span>
+    <!-- Colonne Résultat (masquée jusqu'au 1er détourage) -->
+    <div class="preview-col" id="col-result" style="display:none">
+      <div class="col-label-row">
+        <span class="col-label">Détouré</span>
+        <div class="bg-picker" id="bg-picker">
+          <div class="bg-swatch bg-swatch-checker active" data-bg="checker" title="Damier"></div>
+          <div class="bg-swatch" style="background:#ffffff" data-bg="#ffffff" title="Blanc"></div>
+          <div class="bg-swatch" style="background:#000000;border-color:var(--border-hi)" data-bg="#000000" title="Noir"></div>
+          <div class="bg-swatch" style="background:#00b140" data-bg="#00b140" title="Vert chroma"></div>
+          <div class="bg-swatch" style="background:#ff3cac" data-bg="#ff3cac" title="Rose"></div>
+          <button class="bg-swatch-color-btn" title="Couleur libre">
+            <input type="color" id="bg-color-picker" value="#4f46e5">
           </button>
         </div>
       </div>
+      <!-- Image résultat + overlay de traitement -->
+      <div class="result-wrap" id="result-wrap">
+        <div class="checker-wrap" id="checker-wrap">
+          <canvas id="img-result" class="preview-img result"></canvas>
+        </div>
+        <div class="processing-overlay" id="processing-overlay">
+          <div class="processing-spinner"></div>
+        </div>
+      </div>
 
-      <div class="panel-sep"></div>
+      <!-- Sliders juste en dessous de l'image résultat -->
+      <div class="sliders-panel" id="sliders-panel">
 
-      <!-- Intensité -->
-      <div class="panel-block">
-        <div class="slider-row">
-          <div class="block-header">
-            <span class="block-label">Intensité</span>
-            <span class="slider-val" id="pixel-val">6</span>
+        <div class="slider-row inactive" id="tol-row">
+          <div class="slider-header">
+            <span class="slider-label">Tolérance</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="eraser-toggle icon-btn" id="wand-add-btn" title="Ajouter une zone" style="display:none">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/>
+                  <path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/>
+                  <path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>
+                </svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="wand-undo-btn" title="Annuler la dernière sélection" style="display:none" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="wand-redo-btn" title="Refaire" style="display:none" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C19 7 14 4 8 5.5a9 9 0 0 0-5 7.5"/></svg>
+              </button>
+              <button class="eraser-toggle" id="tol-toggle" aria-pressed="false">Activer</button>
+            </div>
           </div>
           <div class="slider-track">
-            <span class="slider-hint">Discret</span>
-            <input type="range" class="rng" id="pixel-slider" min="1" max="10" value="6">
-            <span class="slider-hint">Fort</span>
+            <span class="slider-hint">Faible</span>
+            <input type="range" class="rng" id="tol-slider" min="1" max="99" value="50">
+            <span class="slider-hint">Max</span>
           </div>
         </div>
+
+        <div class="panel-sep"></div>
+
+        <div class="slider-row inactive" id="feather-row">
+          <div class="slider-header">
+            <span class="slider-label">Lissage des bords</span>
+            <button class="eraser-toggle" id="feather-toggle" aria-pressed="false">Activer</button>
+          </div>
+          <div class="slider-track">
+            <span class="slider-hint">Faible</span>
+            <input type="range" class="rng" id="feather-slider" min="1" max="100" value="50">
+            <span class="slider-hint">Max</span>
+          </div>
+        </div>
+
+        <div class="panel-sep"></div>
+
+        <div class="slider-row inactive" id="eraser-row">
+          <div class="slider-header">
+            <span class="slider-label">Gommer / Restaurer</span>
+            <div style="display:flex;gap:6px">
+              <button class="eraser-toggle icon-btn" id="eraser-toggle" aria-pressed="false" title="Gommer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16l10-10 7 7-2.5 2.5"/><path d="M6.5 17.5l5-5"/></svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="restore-toggle" aria-pressed="false" title="Restaurer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 19 L13 5 L17 9 L5 19 Z"/>
+                  <path d="M5 19 Q3 22 4 23 Q5 24 8 22 Z" fill="currentColor"/>
+                </svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="undo-btn" title="Annuler" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
+              </button>
+              <button class="eraser-toggle icon-btn" id="redo-btn" title="Refaire" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C19 7 14 4 8 5.5a9 9 0 0 0-5 7.5"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="slider-track">
+            <span class="slider-hint">Petite</span>
+            <input type="range" class="rng" id="eraser-size" min="1" max="8" value="2">
+            <span class="slider-hint">Grande</span>
+          </div>
+        </div>
+
+      </div><!-- /sliders-panel -->
+
+    </div><!-- /col-result -->
+
+  </div><!-- /preview-grid -->
+
+  <!-- Boutons principaux -->
+  <div class="actions" id="actions">
+    <div class="actions-group" id="actions-group">
+      <span class="actions-heading">Suppression du fond</span>
+      <div class="actions-buttons">
+        <button class="run-btn" id="run-btn">
+          <svg class="run-label" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 20H7L3 16l10-10 7 7-2.5 2.5"/>
+            <path d="M6.5 17.5l5-5"/>
+          </svg>
+          <span class="run-label run-label-text">
+            <span class="btn-title">Automatique</span>
+            <span class="btn-sub">Détection par IA du sujet</span>
+          </span>
+          <div class="spinner"></div>
+        </button>
+        <button class="run-btn wand-btn" id="wand-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/>
+            <path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/>
+            <path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>
+          </svg>
+          <span class="run-label-text">
+            <span class="btn-title">Sélection manuelle</span>
+            <span class="btn-sub">Recommandé pour les fonds unis</span>
+          </span>
+        </button>
       </div>
-
     </div>
+    <button class="dl-btn" id="dl-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Télécharger PNG
+    </button>
+  </div>
 
-    <!-- Actions -->
-    <div class="actions">
-      <button class="dl-btn" id="dl-btn" disabled>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Télécharger l'image floutée
-      </button>
-    </div>
+  <div class="progress-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+  <div class="status" id="status"></div>
 
-    <div class="info-box">
-      <span class="label">// confidentialité</span><br>
-      Le floutage est <span class="label">irréversible</span> : les pixels d'origine sont écrasés et ne figurent pas dans le fichier exporté.<br>
-      Tout le traitement se fait dans votre navigateur — <span class="label">aucune image n'est envoyée sur un serveur</span>.
-    </div>
-
+  <div class="info-box">
+    <span class="label">Traitement</span> — Tout se passe dans votre navigateur, aucune image n'est envoyée à un serveur.<br>
+    <span class="label">Format de sortie</span> — PNG avec fond transparent, résolution native conservée.
   </div>
 
 </div>
-
+<div id="eraser-cursor"></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<!-- face-api.js -->
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script type="module">
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.2';
 
-<script>
-'use strict';
+// ── État global ────────────────────────────────────────────────
+let srcFile    = null;
+let resultBlob = null;
+let segmenter  = null;
+let rawPixels  = null;  // canal alpha brut sorti du modèle (RGBA, alpha = masque)
+let origPixels = null;  // couleurs originales pleine résolution (RGBA)
+let rawW = 0, rawH = 0;
 
-// State
-let srcImg = null, imgW = 0, imgH = 0, srcCanvas = null;
-let zones = [], nextZoneId = 0, selectedZoneId = null;
-let modelReady = false, drawMode = false, blurStyle = 'soft';
-let manualShape = 'ellipse'; // forme des zones manuelles : 'ellipse' | 'rect'
-let drawing = false, drawStart = null;
+// Pré-charger le modèle en arrière-plan
+pipeline('background-removal', 'briaai/RMBG-1.4')
+  .then(p  => { segmenter = p; })
+  .catch(() => { segmenter = 'error'; });
 
-// Intensité : échelle 1-10 affichée, mappée sur une taille de bloc 6-44 px.
-const INTENSITY_DEFAULT = 6;          // compromis par défaut (rétabli à chaque image)
-const BLOCK_MIN = 6, BLOCK_MAX = 44;  // plage interne inchangée
-function blockSize(v) {
-  return Math.round(BLOCK_MIN + (v - 1) * (BLOCK_MAX - BLOCK_MIN) / 9);
-}
-function resetIntensity() {
-  pixelSlider.value = INTENSITY_DEFAULT;
-  pixelVal.textContent = INTENSITY_DEFAULT;
-}
-
-// DOM
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-in');
-const editor = document.getElementById('editor');
-const mainCanvas = document.getElementById('main-canvas');
-const ctx = mainCanvas.getContext('2d');
+// ── Refs DOM ───────────────────────────────────────────────────
+const dropZone     = document.getElementById('drop-zone');
+const fileInput    = document.getElementById('file-in');
+const previewGrid  = document.getElementById('preview-grid');
+const colResult    = document.getElementById('col-result');
+const imgOriginal  = document.getElementById('img-original');
+const imgResult    = document.getElementById('img-result');
+const actionsEl    = document.getElementById('actions');
+const actionsGroup = document.getElementById('actions-group');
+const runBtn       = document.getElementById('run-btn');
+const dlBtn        = document.getElementById('dl-btn');
+const changeBtn    = document.getElementById('change-btn');
+const slidersPanel = document.getElementById('sliders-panel');
+const tolSlider    = document.getElementById('tol-slider');
+const tolToggle    = document.getElementById('tol-toggle');
+const featherSlider= document.getElementById('feather-slider');
+const featherToggle= document.getElementById('feather-toggle');
 const processingOverlay = document.getElementById('processing-overlay');
-const processingLabel = document.getElementById('processing-label');
-const selRect = document.getElementById('sel-rect');
-const zonesList = document.getElementById('zones-list');
-const zonesEmpty = document.getElementById('zones-empty');
-const detectBtn = document.getElementById('detect-btn');
-const detectLabel = document.getElementById('detect-label');
-const dlBtn = document.getElementById('dl-btn');
-const changeBtn = document.getElementById('change-btn');
-const pixelSlider = document.getElementById('pixel-slider');
-const pixelVal = document.getElementById('pixel-val');
-const modelStatus = document.getElementById('model-status');
-const modelSpinner = document.getElementById('model-spinner');
-const modelDot = document.getElementById('model-dot');
-const modelLabel = document.getElementById('model-label');
-const modeDetect = document.getElementById('mode-detect');
-const modeDraw = document.getElementById('mode-draw');
-const styleMosaic = document.getElementById('style-mosaic');
-const styleSoft = document.getElementById('style-soft');
-const shapeRow = document.getElementById('shape-row');
-const shapeEllipse = document.getElementById('shape-ellipse');
-const shapeRect = document.getElementById('shape-rect');
-const canvasContainer = document.getElementById('canvas-container');
-const zonesOverlay = document.getElementById('zones-overlay');
+const eraserToggle  = document.getElementById('eraser-toggle');
+const restoreToggle = document.getElementById('restore-toggle');
+const eraserSize    = document.getElementById('eraser-size');
+const resultCanvas  = document.getElementById('img-result');
+const resultCtx     = resultCanvas.getContext('2d');
+const eraserCursor  = document.getElementById('eraser-cursor');
 
-// Toast
-let toastTimer = null;
-function toast(msg, isErr) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.toggle('error', !!isErr);
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
-}
+// ── État sliders ───────────────────────────────────────────────
+let tolActive     = false;
+let featherActive = false;
 
-// Model
-const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
-let detectorKind = null; // 'ssd' | 'tiny'
-modelStatus.classList.add('visible');
-async function loadModels() {
-  // SSD MobileNet : bien meilleur rappel que TinyFaceDetector (petits visages, profils, foules).
-  try {
-    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-    detectorKind = 'ssd';
-  } catch(e) {
-    // Repli sur TinyFaceDetector si le SSD ne charge pas
-    try {
-      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-      detectorKind = 'tiny';
-    } catch(e2) {
-      modelLabel.textContent = 'Détection auto indisponible — utilisez le mode manuel';
-      detectBtn.disabled = true;
-      return;
-    }
-  }
-  modelReady = true;
-  modelSpinner.style.display = 'none';
-  modelDot.style.display = 'block';
-  modelLabel.textContent = 'Modèle de détection prêt';
-  setTimeout(() => modelStatus.classList.remove('visible'), 2000);
-}
-loadModels();
+// ── État gomme ─────────────────────────────────────────────────
+let eraserActive = false;
+let restoreActive = false;
+let eraserDrawing = false;
+let eraserLast = null;
+let eraserMask = null;   // Uint8Array : 1 = pixel effacé par la gomme
+let restoreMask = null;  // Uint8Array : 1 = pixel forcé visible par la restauration
+let eraserHistory = []; // pile des états avant chaque tracé
 
-// Import
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+// ── Drag & drop / import ───────────────────────────────────────
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); loadFile(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', e => { loadFile(e.target.files[0]); fileInput.value = ''; });
+fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
+runBtn.addEventListener('click', () => { runDetourage(); });
+
+// ── Baguette magique ───────────────────────────────────────────
+const wandBtn       = document.getElementById('wand-btn');
+const wandAddBtn    = document.getElementById('wand-add-btn');
+const wandUndoBtn   = document.getElementById('wand-undo-btn');
+const wandRedoBtn   = document.getElementById('wand-redo-btn');
+
+// Historique propre à la baguette : tableaux de wandClicks
+let wandUndoHistory = [];
+let wandRedoHistory = [];
+
+// Mode "ajouter une zone" : clic suivant sur l'image détourée ajoutera une zone
+let wandAddMode = false;
+
+function wandUpdateUndoBtns() {
+  wandUndoBtn.disabled = wandUndoHistory.length === 0;
+  wandRedoBtn.disabled = wandRedoHistory.length === 0;
+}
+
+// Afficher les contrôles baguette dans la ligne Tolérance (après "Supprimer un fond uni")
+function wandShowTolControls() {
+  wandAddBtn.style.display = '';
+  wandUndoBtn.style.display = '';
+  wandRedoBtn.style.display = '';
+  tolToggle.style.display = 'none'; // Pas de toggle Activer/Désactiver en mode baguette
+}
+function wandHideTolControls() {
+  wandAddBtn.style.display = 'none';
+  wandUndoBtn.style.display = 'none';
+  wandRedoBtn.style.display = 'none';
+  tolToggle.style.display = '';
+}
+
+let wandMode     = false;
+let wandActive   = false;
+let wandClickX   = -1;
+let wandClickY   = -1;
+let wandAccumMask = null; // Accumule tous les clics (ajouter/retirer)
+let wandClicks    = [];   // Historique : [{x, y, shift: bool}] pour recalcul à chaque changement de tolérance
+
+// Flood fill depuis (cx,cy) sur pixels w×h avec tolérance donnée (0–255).
+// 8-connexité. Retourne Uint8Array (1 = fond à supprimer).
+function wandFloodFill(pixels, w, h, cx, cy, tolerance) {
+  const n = w * h;
+  const si = (cy * w + cx) * 4;
+  const sr = pixels[si], sg = pixels[si+1], sb = pixels[si+2];
+  const visited = new Uint8Array(n);
+  const mask    = new Uint8Array(n);
+  const stack   = [cy * w + cx];
+  visited[cy * w + cx] = 1;
+  while (stack.length) {
+    const idx = stack.pop();
+    const pi = idx * 4;
+    const dr = pixels[pi]-sr, dg = pixels[pi+1]-sg, db = pixels[pi+2]-sb;
+    if (Math.sqrt(dr*dr + dg*dg + db*db) > tolerance) continue;
+    mask[idx] = 1;
+    const x = idx % w, y = (idx / w) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x+dx, ny = y+dy;
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      const ni = ny*w+nx;
+      if (!visited[ni]) { visited[ni] = 1; stack.push(ni); }
+    }
+  }
+  return mask;
+}
+
+// Rejoue tous les clics avec la tolérance courante
+function wandRebuildMask() {
+  if (!origPixels) return;
+  const tol = parseInt(tolSlider.value) * 2.55;
+  wandAccumMask = new Uint8Array(rawW * rawH);
+  for (const click of wandClicks) {
+    const clickMask = wandFloodFill(origPixels, rawW, rawH, click.x, click.y, tol);
+    for (let i = 0; i < rawW*rawH; i++) if (clickMask[i]) wandAccumMask[i] = 1;
+  }
+}
+
+async function wandPreview() {
+  if (!wandAccumMask || !origPixels) return;
+  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+  await rebuild(tol, feather);
+  colResult.style.display = 'block';
+  previewGrid.classList.add('visible');
+}
+
+function wandEnter() {
+  if (!srcFile) return;
+  wandMode = true;
+  wandActive = false;
+  wandBtn.classList.add('picking');
+  imgOriginal.style.cursor = wandCursorUrl;
+  wandClickX = -1; wandClickY = -1; wandAccumMask = null; wandClicks = [];
+  wandUndoHistory = []; wandRedoHistory = []; wandUpdateUndoBtns();
+  setStatus('Clique sur la zone à rendre transparente.');
+  // Charger origPixels si pas encore fait
+  if (!origPixels) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        rawW = img.naturalWidth; rawH = img.naturalHeight;
+        const oc = document.createElement('canvas');
+        oc.width = rawW; oc.height = rawH;
+        oc.getContext('2d').drawImage(img, 0, 0);
+        origPixels = oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+        rawPixels = new Uint8ClampedArray(rawW * rawH * 4);
+        for (let i = 0; i < rawW*rawH; i++) {
+          rawPixels[i*4]=origPixels[i*4]; rawPixels[i*4+1]=origPixels[i*4+1];
+          rawPixels[i*4+2]=origPixels[i*4+2]; rawPixels[i*4+3]=255;
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(srcFile);
+  }
+}
+
+function wandLeave() {
+  wandMode = false;
+  wandActive = false;
+  wandAddMode = false;
+  wandBtn.classList.remove('picking');
+  wandAddBtn.classList.remove('picking');
+  imgOriginal.style.cursor = '';
+  resultCanvas.style.cursor = '';
+  wandClickX = -1; wandClickY = -1; wandAccumMask = null; wandClicks = [];
+  wandUndoHistory = []; wandRedoHistory = []; wandUpdateUndoBtns();
+  wandHideTolControls();
+  // Retirer aussi les actions 'wand' de l'ordre global
+  undoActionOrder = undoActionOrder.filter(a => a !== 'wand');
+  redoActionOrder = redoActionOrder.filter(a => a !== 'wand');
+  if (status) setStatus('');
+}
+
+wandBtn.addEventListener('click', () => {
+  if (wandMode) { wandLeave(); } else { wandEnter(); }
+});
+
+// Ajoute un clic à l'historique baguette (coords dans l'espace rawW x rawH)
+function wandAddClick(x, y) {
+  // Historique baguette
+  wandUndoHistory.push(wandClicks.slice());
+  if (wandUndoHistory.length > 20) wandUndoHistory.shift();
+  wandRedoHistory = [];
+  wandUpdateUndoBtns();
+  undoActionOrder.push('wand'); redoActionOrder = [];
+
+  wandClicks.push({ x, y });
+  wandRebuildMask();
+  wandPreview();
+  setStatus('');
+}
+
+// Premier clic : sur l'image originale
+imgOriginal.addEventListener('click', e => {
+  if (!wandMode || !origPixels) return;
+  const rect = imgOriginal.getBoundingClientRect();
+  const imgAspect = imgOriginal.naturalWidth / imgOriginal.naturalHeight;
+  const boxAspect = rect.width / rect.height;
+  let drawW, drawH;
+  if (imgAspect > boxAspect) { drawW = rect.width; drawH = rect.width / imgAspect; }
+  else { drawH = rect.height; drawW = rect.height * imgAspect; }
+  const offsetX = rect.left + (rect.width  - drawW) / 2;
+  const offsetY = rect.top  + (rect.height - drawH) / 2;
+  const x = Math.max(0, Math.min(rawW-1, Math.round((e.clientX - offsetX) * rawW / drawW)));
+  const y = Math.max(0, Math.min(rawH-1, Math.round((e.clientY - offsetY) * rawH / drawH)));
+
+  // Premier clic : initialiser le mode "détourage baguette"
+  wandActive = true;
+  tolSlider.value = 30;
+  tolActive = true;
+  setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), true);
+  featherActive = false;
+  setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
+  eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; undoActionOrder = undoActionOrder.filter(a => a !== 'eraser'); redoActionOrder = redoActionOrder.filter(a => a !== 'eraser'); updateUndoBtn();
+  slidersPanel.classList.add('visible');
+  dlBtn.classList.add('visible');
+  actionsGroup.style.display = 'none';
+  wandShowTolControls();
+
+  // Quitter le mode pipette (on ne reste pas en sélection multiple sur l'originale)
+  wandMode = false;
+  wandBtn.classList.remove('picking');
+  imgOriginal.style.cursor = '';
+
+  wandAddClick(x, y);
+});
+
+// Clics suivants : sur l'image détourée, uniquement en mode "ajouter une zone"
+resultCanvas.addEventListener('click', e => {
+  if (!wandAddMode || !wandActive || !origPixels) return;
+  // Ne pas interférer avec la gomme/restauration
+  if (eraserActive || restoreActive) return;
+  const { drawW, drawH, offsetX, offsetY } = getCanvasDisplayRect();
+  const x = Math.max(0, Math.min(rawW-1, Math.round((e.clientX - offsetX) * rawW / drawW)));
+  const y = Math.max(0, Math.min(rawH-1, Math.round((e.clientY - offsetY) * rawH / drawH)));
+  wandAddClick(x, y);
+  // La baguette reste active jusqu'à ce qu'on choisisse un autre outil
+});
+
+// Toggle du mode "ajouter une zone"
+const wandCursorUrl = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\'%3E%3Cline x1=\'1\' y1=\'31\' x2=\'22\' y2=\'10\' stroke=\'black\' stroke-width=\'3\' stroke-linecap=\'round\'/%3E%3Cline x1=\'1\' y1=\'31\' x2=\'22\' y2=\'10\' stroke=\'white\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'22\' y1=\'5\' x2=\'22\' y2=\'15\' stroke=\'black\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'17\' y1=\'10\' x2=\'27\' y2=\'10\' stroke=\'black\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3Cline x1=\'19\' y1=\'7\' x2=\'25\' y2=\'13\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'25\' y1=\'7\' x2=\'19\' y2=\'13\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'22\' y1=\'5\' x2=\'22\' y2=\'15\' stroke=\'%23d4ff4e\' stroke-width=\'1.2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'17\' y1=\'10\' x2=\'27\' y2=\'10\' stroke=\'%23d4ff4e\' stroke-width=\'1.2\' stroke-linecap=\'round\'/%3E%3Cline x1=\'19\' y1=\'7\' x2=\'25\' y2=\'13\' stroke=\'%23d4ff4e\' stroke-width=\'1\' stroke-linecap=\'round\'/%3E%3Cline x1=\'25\' y1=\'7\' x2=\'19\' y2=\'13\' stroke=\'%23d4ff4e\' stroke-width=\'1\' stroke-linecap=\'round\'/%3E%3C/svg%3E") 1 31, crosshair';
+wandAddBtn.addEventListener('click', () => {
+  wandAddMode = !wandAddMode;
+  wandAddBtn.classList.toggle('picking', wandAddMode);
+  resultCanvas.style.cursor = wandAddMode ? wandCursorUrl : '';
+  if (wandAddMode) {
+    // Désactiver gomme/restauration
+    if (eraserActive || restoreActive) {
+      eraserActive = false; restoreActive = false;
+      eraserToggle.classList.remove('active');
+      restoreToggle.classList.remove('active');
+      document.getElementById('eraser-row').classList.add('inactive');
+      resultCanvas.classList.remove('erasing');
+      eraserCursor.classList.remove('visible');
+    }
+  }
+});
+
+dlBtn.addEventListener('click', downloadResult);
+changeBtn.addEventListener('click', resetAll);
+eraserToggle.addEventListener('click', () => {
+  eraserActive = !eraserActive;
+  if (eraserActive) {
+    restoreActive = false; restoreToggle.classList.remove('active');
+    // Désactiver le mode "ajouter baguette"
+    if (wandAddMode) {
+      wandAddMode = false;
+      wandAddBtn.classList.remove('picking');
+      resultCanvas.style.cursor = '';
+    }
+  }
+  eraserToggle.classList.toggle('active', eraserActive);
+  document.getElementById('eraser-row').classList.toggle('inactive', !eraserActive && !restoreActive);
+  resultCanvas.classList.toggle('erasing', eraserActive || restoreActive);
+  if (!eraserActive && !restoreActive) eraserCursor.classList.remove('visible');
+});
+
+restoreToggle.addEventListener('click', () => {
+  restoreActive = !restoreActive;
+  if (restoreActive) {
+    eraserActive = false; eraserToggle.classList.remove('active');
+    // Désactiver le mode "ajouter baguette"
+    if (wandAddMode) {
+      wandAddMode = false;
+      wandAddBtn.classList.remove('picking');
+      resultCanvas.style.cursor = '';
+    }
+  }
+  restoreToggle.classList.toggle('active', restoreActive);
+  document.getElementById('eraser-row').classList.toggle('inactive', !eraserActive && !restoreActive);
+  resultCanvas.classList.toggle('erasing', eraserActive || restoreActive);
+  if (!eraserActive && !restoreActive) eraserCursor.classList.remove('visible');
+});
+
+// ── Sliders avec toggles ───────────────────────────────────────
+let debounceTimer = null;
+const DEBOUNCE_MS = 350;
+
+function triggerRebuild() {
+  processingOverlay.classList.add('visible');
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(async () => {
+    // Si la baguette est active, recalculer le masque accumulé avec la tolérance courante
+    if (wandActive) wandRebuildMask();
+    const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+    const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+    await rebuild(tol, feather);
+    processingOverlay.classList.remove('visible');
+  }, DEBOUNCE_MS);
+}
+
+function setToggle(toggle, slider, row, active) {
+  toggle.classList.toggle('active', active);
+  toggle.textContent = active ? 'Désactiver' : 'Activer';
+  row.classList.toggle('inactive', !active);
+}
+
+tolToggle.addEventListener('click', () => {
+  tolActive = !tolActive;
+  setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), tolActive);
+  triggerRebuild();
+});
+featherToggle.addEventListener('click', () => {
+  featherActive = !featherActive;
+  setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), featherActive);
+  triggerRebuild();
+});
+
+tolSlider.addEventListener('input', () => {
+  if (!tolActive) { tolActive = true; setToggle(tolToggle, tolSlider, document.getElementById('tol-row'), true); }
+  triggerRebuild();
+});
+featherSlider.addEventListener('input', () => {
+  if (!featherActive) { featherActive = true; setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), true); }
+  triggerRebuild();
+});
+
+// ── Gomme ──────────────────────────────────────────────────────
+// Calcule la zone réellement dessinée du canvas (object-fit:contain peut laisser des marges)
+function getCanvasDisplayRect() {
+  const rect = resultCanvas.getBoundingClientRect();
+  const canvasAspect = resultCanvas.width / resultCanvas.height;
+  const boxAspect    = rect.width / rect.height;
+  let drawW, drawH;
+  if (canvasAspect > boxAspect) {
+    drawW = rect.width;
+    drawH = rect.width / canvasAspect;
+  } else {
+    drawH = rect.height;
+    drawW = rect.height * canvasAspect;
+  }
+  const offsetX = rect.left + (rect.width  - drawW) / 2;
+  const offsetY = rect.top  + (rect.height - drawH) / 2;
+  return { drawW, drawH, offsetX, offsetY };
+}
+
+function getCanvasPos(e) {
+  const { drawW, drawH, offsetX, offsetY } = getCanvasDisplayRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const scaleX = resultCanvas.width  / drawW;
+  const scaleY = resultCanvas.height / drawH;
+  return { x: (clientX - offsetX) * scaleX, y: (clientY - offsetY) * scaleY, cx: clientX, cy: clientY };
+}
+
+function updateEraserCursor(cx, cy) {
+  const { drawW } = getCanvasDisplayRect();
+  // Taille visuelle : % de la largeur affichée → pixels écran
+  const pct = parseInt(eraserSize.value, 10) / 100;
+  const size = pct * drawW * 2;
+  eraserCursor.style.width  = size + 'px';
+  eraserCursor.style.height = size + 'px';
+  eraserCursor.style.left = cx + 'px';
+  eraserCursor.style.top  = cy + 'px';
+}
+
+function getEraserRadius() {
+  // Convertit le % de la largeur affichée en pixels canvas réels
+  const { drawW } = getCanvasDisplayRect();
+  const pct = parseInt(eraserSize.value, 10) / 100;
+  return Math.max(1, Math.round(pct * resultCanvas.width));
+}
+
+// OffscreenCanvas persistant pour lire les masques via le GPU
+let maskOC = null, maskCtx = null;
+
+function ensureMaskCanvas() {
+  if (!maskOC) {
+    maskOC  = new OffscreenCanvas(rawW, rawH);
+    maskCtx = maskOC.getContext('2d');
+  }
+}
+
+// Dessine un cercle+segment sur un ctx donné (utilitaire partagé)
+function drawBrush(ctx, pos, prevLast, r, style) {
+  ctx.fillStyle = ctx.strokeStyle = style;
+  ctx.lineWidth = r * 2; ctx.lineCap = 'round';
+  if (prevLast) {
+    ctx.beginPath();
+    ctx.moveTo(prevLast.x, prevLast.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Met à jour un Uint8Array masque en lisant l'alpha d'un OffscreenCanvas de brosse
+function updateMaskFromBrush(mask, pos, prevLast, r, value) {
+  ensureMaskCanvas();
+  // bounding box
+  let bx0 = Math.round(pos.x) - r, by0 = Math.round(pos.y) - r;
+  let bx1 = Math.round(pos.x) + r, by1 = Math.round(pos.y) + r;
+  if (prevLast) {
+    bx0 = Math.min(bx0, Math.round(prevLast.x) - r);
+    by0 = Math.min(by0, Math.round(prevLast.y) - r);
+    bx1 = Math.max(bx1, Math.round(prevLast.x) + r);
+    by1 = Math.max(by1, Math.round(prevLast.y) + r);
+  }
+  bx0 = Math.max(0, bx0); by0 = Math.max(0, by0);
+  bx1 = Math.min(rawW - 1, bx1); by1 = Math.min(rawH - 1, by1);
+  const bw = bx1 - bx0 + 1, bh = by1 - by0 + 1;
+  if (bw <= 0 || bh <= 0) return;
+
+  maskCtx.clearRect(bx0, by0, bw, bh);
+  maskCtx.save();
+  drawBrush(maskCtx, pos, prevLast, r, 'rgba(0,0,0,1)');
+  maskCtx.restore();
+  const pixels = maskCtx.getImageData(bx0, by0, bw, bh).data;
+  for (let row = 0; row < bh; row++) {
+    for (let col = 0; col < bw; col++) {
+      if (pixels[(row * bw + col) * 4 + 3] > 0) {
+        mask[(by0 + row) * rawW + (bx0 + col)] = value;
+      }
+    }
+  }
+}
+
+function eraserErase(pos) {
+  const r = getEraserRadius();
+  resultCtx.save();
+  resultCtx.globalCompositeOperation = 'destination-out';
+  drawBrush(resultCtx, pos, eraserLast, r, 'rgba(0,0,0,1)');
+  resultCtx.restore();
+  if (!eraserMask) eraserMask = new Uint8Array(rawW * rawH);
+  updateMaskFromBrush(eraserMask, pos, eraserLast, r, 1);
+  if (restoreMask) updateMaskFromBrush(restoreMask, pos, eraserLast, r, 0);
+  eraserLast = pos;
+}
+
+function eraserRestore(pos) {
+  const r = getEraserRadius();
+  const prevLast = eraserLast;
+  eraserLast = pos;
+
+  if (!restoreMask) restoreMask = new Uint8Array(rawW * rawH);
+
+  // Bounding box de la zone touchée
+  let bx0 = Math.round(pos.x) - r, by0 = Math.round(pos.y) - r;
+  let bx1 = Math.round(pos.x) + r, by1 = Math.round(pos.y) + r;
+  if (prevLast) {
+    bx0 = Math.min(bx0, Math.round(prevLast.x) - r);
+    by0 = Math.min(by0, Math.round(prevLast.y) - r);
+    bx1 = Math.max(bx1, Math.round(prevLast.x) + r);
+    by1 = Math.max(by1, Math.round(prevLast.y) + r);
+  }
+  bx0 = Math.max(0, bx0); by0 = Math.max(0, by0);
+  bx1 = Math.min(rawW - 1, bx1); by1 = Math.min(rawH - 1, by1);
+  const bw = bx1 - bx0 + 1, bh = by1 - by0 + 1;
+  if (bw <= 0 || bh <= 0) return;
+
+  // Canvas brosse (taille de la bbox seulement)
+  const brushOC  = new OffscreenCanvas(bw, bh);
+  const brushCtx = brushOC.getContext('2d');
+  // Décaler les coords dans l'espace local de la bbox
+  const localPos  = { x: pos.x - bx0, y: pos.y - by0 };
+  const localPrev = prevLast ? { x: prevLast.x - bx0, y: prevLast.y - by0 } : null;
+  drawBrush(brushCtx, localPos, localPrev, r, 'rgba(0,0,0,1)');
+
+  // Canvas original clipé à la brosse
+  const clipOC  = new OffscreenCanvas(bw, bh);
+  const clipCtx = clipOC.getContext('2d');
+  // Extraire la sous-région de l'original
+  const origSlice = new Uint8ClampedArray(bw * bh * 4);
+  for (let row = 0; row < bh; row++) {
+    for (let col = 0; col < bw; col++) {
+      const si = ((by0 + row) * rawW + (bx0 + col)) * 4;
+      const di = (row * bw + col) * 4;
+      origSlice[di]     = origPixels[si];
+      origSlice[di + 1] = origPixels[si + 1];
+      origSlice[di + 2] = origPixels[si + 2];
+      origSlice[di + 3] = origPixels[si + 3] || 255;
+    }
+  }
+  clipCtx.putImageData(new ImageData(origSlice, bw, bh), 0, 0);
+  clipCtx.globalCompositeOperation = 'destination-in';
+  clipCtx.drawImage(brushOC, 0, 0);
+
+  // Coller sur le canvas principal
+  resultCtx.drawImage(clipOC, bx0, by0);
+
+  // Mettre à jour les masques
+  updateMaskFromBrush(restoreMask, pos, prevLast, r, 1);
+  if (eraserMask) updateMaskFromBrush(eraserMask, pos, prevLast, r, 0);
+}
+
+// Appelé une seule fois à la fin du trait — met à jour le blob
+function finalizeStroke() {
+  if (!rawW) return;
+  resultCanvas.toBlob(b => { resultBlob = b; }, 'image/png');
+}
+
+function onCanvasDraw(e) {
+  if (eraserActive)  eraserErase(getCanvasPos(e));
+  if (restoreActive) eraserRestore(getCanvasPos(e));
+}
+
+resultCanvas.addEventListener('mouseenter', e => {
+  if (!eraserActive && !restoreActive) return;
+  eraserCursor.classList.add('visible');
+  updateEraserCursor(e.clientX, e.clientY);
+  if (e.buttons === 1) {
+    // Le bouton est toujours enfoncé : on reprend le tracé
+    eraserDrawing = true; eraserLast = null;
+  } else {
+    // Le bouton a été relâché hors du canvas : on finalise
+    if (eraserDrawing) finalizeStroke();
+    eraserDrawing = false; eraserLast = null;
+  }
+});
+resultCanvas.addEventListener('mouseleave', () => {
+  eraserCursor.classList.remove('visible');
+  if (eraserDrawing) finalizeStroke();
+  eraserDrawing = false; eraserLast = null;
+});
+resultCanvas.addEventListener('mousemove', e => {
+  if (!eraserActive && !restoreActive) return;
+  updateEraserCursor(e.clientX, e.clientY);
+  if (eraserDrawing) onCanvasDraw(e);
+});
+resultCanvas.addEventListener('mousedown', e => {
+  if (!eraserActive && !restoreActive) return;
+  // Sauvegarder l'état avant le tracé
+  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+  if (eraserHistory.length > 20) eraserHistory.shift();
+  redoHistory = []; undoActionOrder.push('eraser'); redoActionOrder = [];
+  updateUndoBtn();
+  eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
+});
+resultCanvas.addEventListener('mouseup', () => { eraserDrawing = false; eraserLast = null; finalizeStroke(); });
+
+eraserSize.addEventListener('input', () => {
+  if (!eraserActive && !restoreActive) {
+    eraserActive = true;
+    eraserToggle.classList.add('active');
+    document.getElementById('eraser-row').classList.remove('inactive');
+    resultCanvas.classList.add('erasing');
+    // Désactiver le mode baguette si actif
+    if (wandAddMode) {
+      wandAddMode = false;
+      wandAddBtn.classList.remove('picking');
+      resultCanvas.style.cursor = '';
+    }
+  }
+  if (eraserCursor.classList.contains('visible')) {
+    const { drawW } = getCanvasDisplayRect();
+    const pct = parseInt(eraserSize.value, 10) / 100;
+    const size = pct * drawW * 2;
+    eraserCursor.style.width  = size + 'px';
+    eraserCursor.style.height = size + 'px';
+  }
+});
+
+resultCanvas.addEventListener('touchstart', e => {
+  if (!eraserActive && !restoreActive) return;
+  e.preventDefault();
+  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+  if (eraserHistory.length > 20) eraserHistory.shift();
+  redoHistory = []; undoActionOrder.push('eraser'); redoActionOrder = [];
+  updateUndoBtn();
+  eraserDrawing = true; eraserLast = null; onCanvasDraw(e);
+}, { passive: false });
+resultCanvas.addEventListener('touchmove',  e => { if ((!eraserActive && !restoreActive) || !eraserDrawing) return; e.preventDefault(); onCanvasDraw(e); }, { passive: false });
+resultCanvas.addEventListener('touchend',   () => { eraserDrawing = false; eraserLast = null; finalizeStroke(); });
+
+// ── Fond de prévisualisation ────────────────────────────────────
+const CHECKER_BG = 'repeating-conic-gradient(#2a2a28 0% 25%, #1c1c1a 0% 50%) 0 0 / 16px 16px';
+const checkerWrap = document.getElementById('checker-wrap');
+document.getElementById('bg-picker').addEventListener('click', e => {
+  const swatch = e.target.closest('.bg-swatch');
+  if (!swatch) return;
+  document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+  swatch.classList.add('active');
+  const bg = swatch.dataset.bg;
+  checkerWrap.style.background = bg === 'checker' ? CHECKER_BG : bg;
+  resultCanvas.style.background = '';
+});
+document.getElementById('bg-color-picker').addEventListener('input', e => {
+  document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+  checkerWrap.style.background = e.target.value;
+  resultCanvas.style.background = '';
+});
+
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
+
+// ── Annuler / Refaire ───────────────────────────────────────────
+let redoHistory = [];
+
+function updateUndoBtn() {
+  undoBtn.disabled = eraserHistory.length === 0;
+  redoBtn.disabled = redoHistory.length === 0;
+}
+
+async function doUndo() {
+  if (eraserHistory.length === 0) return;
+  redoHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+  if (redoHistory.length > 20) redoHistory.shift();
+  const state = eraserHistory.pop();
+  eraserMask  = state.eraser;
+  restoreMask = state.restore;
+  updateUndoBtn();
+  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+  await rebuild(tol, feather);
+}
+
+async function doRedo() {
+  if (redoHistory.length === 0) return;
+  eraserHistory.push({ eraser: eraserMask ? eraserMask.slice() : null, restore: restoreMask ? restoreMask.slice() : null });
+  if (eraserHistory.length > 20) eraserHistory.shift();
+  const state = redoHistory.pop();
+  eraserMask  = state.eraser;
+  restoreMask = state.restore;
+  updateUndoBtn();
+  const tol     = tolActive     ? parseInt(tolSlider.value, 10)     : 0;
+  const feather = featherActive ? parseInt(featherSlider.value, 10) : 0;
+  await rebuild(tol, feather);
+}
+
+// Undo/Redo dédiés à la baguette
+function wandDoUndo() {
+  if (wandUndoHistory.length === 0) return;
+  wandRedoHistory.push(wandClicks.slice());
+  if (wandRedoHistory.length > 20) wandRedoHistory.shift();
+  wandClicks = wandUndoHistory.pop();
+  wandRebuildMask();
+  wandPreview();
+  wandUpdateUndoBtns();
+}
+
+function wandDoRedo() {
+  if (wandRedoHistory.length === 0) return;
+  wandUndoHistory.push(wandClicks.slice());
+  if (wandUndoHistory.length > 20) wandUndoHistory.shift();
+  wandClicks = wandRedoHistory.pop();
+  wandRebuildMask();
+  wandPreview();
+  wandUpdateUndoBtns();
+}
+
+wandUndoBtn.addEventListener('click', () => {
+  // Retirer le dernier 'wand' du tableau d'ordre (pas forcément en haut de pile)
+  for (let i = undoActionOrder.length - 1; i >= 0; i--) {
+    if (undoActionOrder[i] === 'wand') { undoActionOrder.splice(i, 1); break; }
+  }
+  redoActionOrder.push('wand');
+  wandDoUndo();
+});
+wandRedoBtn.addEventListener('click', () => {
+  for (let i = redoActionOrder.length - 1; i >= 0; i--) {
+    if (redoActionOrder[i] === 'wand') { redoActionOrder.splice(i, 1); break; }
+  }
+  undoActionOrder.push('wand');
+  wandDoRedo();
+});
+
+undoBtn.addEventListener('click', () => {
+  for (let i = undoActionOrder.length - 1; i >= 0; i--) {
+    if (undoActionOrder[i] === 'eraser') { undoActionOrder.splice(i, 1); break; }
+  }
+  redoActionOrder.push('eraser');
+  doUndo();
+});
+redoBtn.addEventListener('click', () => {
+  for (let i = redoActionOrder.length - 1; i >= 0; i--) {
+    if (redoActionOrder[i] === 'eraser') { redoActionOrder.splice(i, 1); break; }
+  }
+  undoActionOrder.push('eraser');
+  doRedo();
+});
+
+// Ordre global des actions pour Ctrl+Z/Ctrl+Y unifié
+let undoActionOrder = []; // pile : 'eraser' ou 'wand', dans l'ordre où les actions ont été faites
+let redoActionOrder = [];
+
+document.addEventListener('keydown', async e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    const lastAction = undoActionOrder.pop();
+    if (lastAction === 'wand') { redoActionOrder.push('wand'); wandDoUndo(); }
+    else if (lastAction === 'eraser') { redoActionOrder.push('eraser'); doUndo(); }
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+    e.preventDefault();
+    const lastRedo = redoActionOrder.pop();
+    if (lastRedo === 'wand') { undoActionOrder.push('wand'); wandDoRedo(); }
+    else if (lastRedo === 'eraser') { undoActionOrder.push('eraser'); doRedo(); }
+  }
+});
+
+// Seuille le canal alpha : les semi-transparences sous le seuil passent à 0
+function applySharpen(src, tolerance) {
+  const data = new Uint8ClampedArray(src);
+  if (tolerance === 0) return data;
+  const threshold = Math.round((tolerance / 100) * 255);
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < threshold) data[i] = 0;
+  }
+  return data;
+}
+
+// Flou gaussien sur le canal alpha uniquement (lissage des bords)
+function applyFeather(src, w, h, amount) {
+  if (amount === 0) return new Uint8ClampedArray(src);
+  const radius = Math.round((amount / 100) * 8) + 1;
+  const sigma  = radius / 2;
+  const data   = new Uint8ClampedArray(src);
+
+  // Kernel gaussien
+  const k = []; let ksum = 0;
+  for (let i = -radius; i <= radius; i++) {
+    const v = Math.exp(-(i * i) / (2 * sigma * sigma));
+    k.push(v); ksum += v;
+  }
+  for (let i = 0; i < k.length; i++) k[i] /= ksum;
+
+  // Extraire l'alpha
+  const alpha = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3];
+
+  // Passe H
+  const tmp = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let ki = -radius; ki <= radius; ki++) {
+        s += alpha[y * w + Math.min(Math.max(x + ki, 0), w - 1)] * k[ki + radius];
+      }
+      tmp[y * w + x] = s;
+    }
+  }
+  // Passe V → réinjecte dans data
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let ki = -radius; ki <= radius; ki++) {
+        s += tmp[Math.min(Math.max(y + ki, 0), h - 1) * w + x] * k[ki + radius];
+      }
+      data[(y * w + x) * 4 + 3] = Math.round(s);
+    }
+  }
+  return data;
+}
+
+// Remplace les RGB du masque par ceux de l'original (pour garder les vraies couleurs)
+function mergeWithOrig(masked, orig) {
+  const out = new Uint8ClampedArray(orig);   // copie les couleurs originales
+  for (let i = 3; i < out.length; i += 4) {
+    out[i] = masked[i];                       // applique l'alpha du masque traité
+  }
+  return out;
+}
+
+async function pixelsToBlob(data, w, h) {
+  const oc = new OffscreenCanvas(w, h);
+  oc.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
+  return oc.convertToBlob({ type: 'image/png' });
+}
+
+// Recalcule et affiche le résultat avec les réglages courants
+async function rebuild(tol, feather) {
+  let px = applySharpen(rawPixels, tol);
+  px = mergeWithOrig(px, origPixels);
+
+  // Appliquer le masque baguette AVANT le feather pour qu'il puisse flouter les bords créés
+  if (wandAccumMask) {
+    for (let i = 0; i < wandAccumMask.length; i++) {
+      if (wandAccumMask[i]) px[i * 4 + 3] = 0;
+    }
+  }
+
+  // Lissage (floute l'alpha, y compris les bords créés par la baguette)
+  px = applyFeather(px, rawW, rawH, feather);
+
+  // Réappliquer le masque de gomme s'il existe
+  if (eraserMask) {
+    for (let i = 0; i < eraserMask.length; i++) {
+      if (eraserMask[i]) px[i * 4 + 3] = 0;
+    }
+  }
+  // Réappliquer le masque de restauration (force les pixels à opaques)
+  if (restoreMask) {
+    for (let i = 0; i < restoreMask.length; i++) {
+      if (restoreMask[i]) px[i * 4 + 3] = origPixels[i * 4 + 3] || 255;
+    }
+  }
+  resultCanvas.width  = rawW;
+  resultCanvas.height = rawH;
+  resultCtx.putImageData(new ImageData(px, rawW, rawH), 0, 0);
+  fitResultCanvasDisplay();
+  resultBlob = await new Promise(res => resultCanvas.toBlob(res, 'image/png'));
+}
+
+// Ajuste la taille d'affichage CSS du canvas pour qu'il occupe au max
+// le cadre 320px tout en gardant ses proportions.
+function fitResultCanvasDisplay() {
+  const wrap = document.querySelector('.result-wrap');
+  if (!wrap || !rawW || !rawH) return;
+  // Hauteur fixe = 320px (définie en CSS), largeur dépend du conteneur
+  const maxH = 320;
+  // Largeur : on prend clientWidth mais on s'assure qu'il est mesuré quand le wrap est visible
+  const maxW = wrap.clientWidth || wrap.getBoundingClientRect().width || 600;
+  const ratio = rawW / rawH;
+  let dispW, dispH;
+  if (maxW / maxH > ratio) {
+    dispH = maxH;
+    dispW = maxH * ratio;
+  } else {
+    dispW = maxW;
+    dispH = maxW / ratio;
+  }
+  resultCanvas.style.width  = Math.floor(dispW) + 'px';
+  resultCanvas.style.height = Math.floor(dispH) + 'px';
+}
+
+window.addEventListener('resize', fitResultCanvasDisplay);
+
+// ── Détourage ──────────────────────────────────────────────────
+async function runDetourage() {
+  if (!srcFile) return;
+  eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; undoActionOrder = undoActionOrder.filter(a => a !== 'eraser'); redoActionOrder = redoActionOrder.filter(a => a !== 'eraser'); updateUndoBtn();
+  runBtn.disabled = true;
+  runBtn.classList.add('loading');
+  dlBtn.classList.remove('visible');
+  showProgress(10); setStatus('Chargement du modèle…');
+
+  // Attendre le modèle (chargé en parallèle dès l'ouverture de la page)
+  let waited = 0;
+  while (!segmenter) {
+    if (waited > 90000) { setStatus('Délai dépassé.', 'error'); endRun(runBtn); return; }
+    await sleep(300); waited += 300;
+  }
+  if (segmenter === 'error') {
+    setStatus('Erreur de chargement du modèle — cela peut arriver lors de la première utilisation (~50 Mo à télécharger). Réessayez dans quelques instants.', 'error'); endRun(runBtn); return;
+  }
+
+  try {
+    showProgress(40); setStatus('Segmentation en cours…');
+    const dataUrl = await fileToDataUrl(srcFile);
+
+    showProgress(65);
+    const output = await segmenter(dataUrl);
+    showProgress(85);
+
+    if (!output || !output[0]) throw new Error('Résultat vide.');
+
+    // Canvas de sortie du modèle
+    const srcCanvas = output[0].toCanvas();
+    let mc;
+    if (srcCanvas instanceof HTMLCanvasElement) {
+      mc = srcCanvas;
+    } else {
+      mc = document.createElement('canvas');
+      mc.width = srcCanvas.width; mc.height = srcCanvas.height;
+      mc.getContext('2d').drawImage(srcCanvas, 0, 0);
+    }
+
+    rawW = mc.width; rawH = mc.height;
+
+    // Stocker le masque alpha brut
+    rawPixels = mc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice();
+
+    // Stocker les couleurs originales à la même résolution
+    origPixels = await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const oc = document.createElement('canvas');
+        oc.width = rawW; oc.height = rawH;
+        oc.getContext('2d').drawImage(img, 0, 0, rawW, rawH);
+        resolve(oc.getContext('2d').getImageData(0, 0, rawW, rawH).data.slice());
+      };
+      img.src = dataUrl;
+    });
+
+    // Remettre les sliders à zéro
+    tolActive = false; featherActive = false;
+    setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
+    setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
+
+    showProgress(95);
+    await rebuild(0, 0);
+
+    // Révéler la colonne résultat
+    colResult.style.display = 'block';
+    previewGrid.classList.add('visible');
+    slidersPanel.classList.add('visible');
+    dlBtn.classList.add('visible');
+    actionsGroup.style.display = 'none';
+
+    setStatus('✓ Fond supprimé avec succès.', 'success');
+    showProgress(100); setTimeout(hideProgress, 800);
+    endRun(runBtn);
+
+  } catch(e) {
+    console.error(e);
+    setStatus('Erreur : ' + (e.message || 'impossible de détourer.'), 'error');
+    hideProgress(); endRun(runBtn);
+  }
+}
+
+// ── Téléchargement ─────────────────────────────────────────────
+function downloadResult() {
+  const name = srcFile ? srcFile.name.replace(/\.[^.]+$/, '') + '_detoure.png' : 'image_detoure.png';
+  const a = document.createElement('a');
+  a.href = resultCanvas.toDataURL('image/png');
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => document.body.removeChild(a), 200);
+}
+
+// ── Charger un fichier ─────────────────────────────────────────
 function loadFile(file) {
-  if (!file || !file.type.startsWith('image/')) { toast('Format non supporté.', true); return; }
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('Format non supporté.', 'error'); return; }
+  srcFile = file;
+  rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; undoActionOrder = []; redoActionOrder = [];
+
   const reader = new FileReader();
   reader.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      srcImg = img; imgW = img.naturalWidth; imgH = img.naturalHeight;
-      zones = []; selectedZoneId = null;
-      resetIntensity();
-      srcCanvas = document.createElement('canvas');
-      srcCanvas.width = imgW; srcCanvas.height = imgH;
-      srcCanvas.getContext('2d').drawImage(img, 0, 0);
-      mainCanvas.width = imgW; mainCanvas.height = imgH;
-      render(); renderZonesList();
-      editor.classList.add('visible');
-      dropZone.style.display = 'none';
-      dlBtn.disabled = true;
-    };
-    img.src = ev.target.result;
+    imgOriginal.src = ev.target.result;
+    imgOriginal.style.display = 'block';
+    resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+    colResult.style.display = 'none';
+    previewGrid.classList.add('visible');
+    slidersPanel.classList.remove('visible');
+    actionsEl.style.display = 'flex';
+    dlBtn.classList.remove('visible');
+    actionsGroup.style.display = '';
+    wandLeave();
+    eraserActive = false; restoreActive = false;
+    eraserToggle.classList.remove('active');
+    restoreToggle.classList.remove('active');
+    document.getElementById('eraser-row').classList.add('inactive');
+    resultCanvas.classList.remove('erasing');
+    eraserCursor.classList.remove('visible');
+    setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
+    setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
+    dropZone.style.display = 'none';
+    setStatus(''); hideProgress();
   };
   reader.readAsDataURL(file);
 }
 
-// Render live (recalcule tout depuis la source)
-// Taille de bloc EFFECTIVE : on n'autorise jamais une mosaïque trop fine
-// par rapport à la zone, sinon le visage reste reconnaissable.
-// Règle : au moins ~9 blocs sur le plus petit côté de la zone.
-function effectiveSize(z, requested) {
-  const minSide = Math.min(z.w, z.h);
-  const safeMin = Math.max(6, Math.round(minSide / 9));
-  return Math.max(requested, safeMin);
-}
-
-// Redessine uniquement le canvas (image + zones floutées), sans l'overlay.
-function renderCanvas() {
-  if (!srcCanvas) return;
-  ctx.clearRect(0, 0, imgW, imgH);
-  ctx.drawImage(srcCanvas, 0, 0);
-  const req = blockSize(parseInt(pixelSlider.value, 10));
-  zones.forEach(z => {
-    const size = effectiveSize(z, req);
-    const r = makeBlurZone(z, size, blurStyle);
-    if (r) ctx.drawImage(r.canvas, r.x, r.y);
-  });
-  // Liseré discret sur les zones NON sélectionnées (repère cliquable).
-  // La zone sélectionnée est matérialisée par son cadre d'édition (overlay DOM).
-  zones.forEach(z => {
-    if (z.id === selectedZoneId) return;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(212,255,78,0.32)';
-    ctx.lineWidth = Math.max(1, imgW / 700);
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
-    if ((z.shape || 'ellipse') === 'rect') {
-      const r = Math.min(z.w, z.h) * 0.06;
-      roundRect(ctx, z.x, z.y, z.w, z.h, r);
-    } else {
-      ctx.ellipse(z.x + z.w / 2, z.y + z.h / 2, z.w / 2, z.h / 2, 0, 0, Math.PI * 2);
-    }
-    ctx.stroke();
-    ctx.restore();
-  });
-  dlBtn.disabled = zones.length === 0;
-}
-
-// Renvoie la zone (ellipse) située sous un point image, la plus petite si chevauchement.
-function zoneAtPoint(px, py) {
-  let best = null, bestArea = Infinity;
-  zones.forEach(z => {
-    const cx = z.x + z.w / 2, cy = z.y + z.h / 2;
-    const rx = z.w / 2, ry = z.h / 2;
-    const d = ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2;
-    if (d <= 1) {
-      const area = z.w * z.h;
-      if (area < bestArea) { best = z; bestArea = area; }
-    }
-  });
-  return best;
-}
-
-function selectZone(id) {
-  selectedZoneId = id;
-  renderCanvas();
-  syncOverlay();
-  renderZonesList();
-}
-
-// Rendu complet : canvas + reconstruction des boîtes d'édition.
-function render() {
-  renderCanvas();
-  syncOverlay();
-}
-
-// Export propre (sans contours)
-function buildExportCanvas() {
-  const out = document.createElement('canvas');
-  out.width = imgW; out.height = imgH;
-  const octx = out.getContext('2d');
-  octx.drawImage(srcCanvas, 0, 0);
-  const req = blockSize(parseInt(pixelSlider.value, 10));
-  zones.forEach(z => {
-    const size = effectiveSize(z, req);
-    const r = makeBlurZone(z, size, blurStyle);
-    if (r) octx.drawImage(r.canvas, r.x, r.y);
-  });
-  return out;
-}
-
-// Coords
-function canvasToImage(clientX, clientY) {
-  const rect = mainCanvas.getBoundingClientRect();
-  return {
-    x: (clientX - rect.left) * (imgW / rect.width),
-    y: (clientY - rect.top) * (imgH / rect.height),
-  };
-}
-
-// ── Overlay d'édition : boîtes redimensionnables sur chaque zone ──────────
-const HANDLES = ['nw','n','ne','e','se','s','sw','w'];
-const MIN_ZONE = 20; // px image minimum
-
-// Convertit la géométrie image d'une zone en pixels écran (relatifs au conteneur)
-function zoneScreenRect(z) {
-  const rect = mainCanvas.getBoundingClientRect();
-  const cont = canvasContainer.getBoundingClientRect();
-  const sx = rect.width / imgW, sy = rect.height / imgH;
-  return {
-    left: z.x * sx + rect.left - cont.left,
-    top:  z.y * sy + rect.top - cont.top,
-    width:  z.w * sx,
-    height: z.h * sy,
-  };
-}
-
-// Construit la boîte d'édition UNIQUEMENT pour la zone sélectionnée.
-function syncOverlay() {
-  zonesOverlay.innerHTML = '';
-  if (!srcCanvas || selectedZoneId === null) return;
-  const z = zones.find(z => z.id === selectedZoneId);
-  if (!z) return;
-
-  const box = document.createElement('div');
-  box.className = 'zbox active';
-  box.dataset.id = z.id;
-  if ((z.shape || 'ellipse') === 'rect') box.style.borderRadius = '4px';
-  const sr = zoneScreenRect(z);
-  box.style.left = sr.left + 'px';
-  box.style.top = sr.top + 'px';
-  box.style.width = sr.width + 'px';
-  box.style.height = sr.height + 'px';
-
-  HANDLES.forEach(h => {
-    const hd = document.createElement('div');
-    hd.className = 'zhandle ' + h;
-    hd.dataset.handle = h;
-    box.appendChild(hd);
-  });
-
-  const del = document.createElement('button');
-  del.className = 'zdel';
-  del.title = 'Supprimer cette zone';
-  del.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-  del.addEventListener('pointerdown', e => { e.stopPropagation(); });
-  del.addEventListener('click', e => { e.stopPropagation(); removeZone(z.id); });
-  box.appendChild(del);
-
-  box.addEventListener('pointerdown', e => startEdit(e, z, null));
-  box.querySelectorAll('.zhandle').forEach(hd => {
-    hd.addEventListener('pointerdown', e => { e.stopPropagation(); startEdit(e, z, hd.dataset.handle); });
-  });
-
-  zonesOverlay.appendChild(box);
-}
-
-// Édition (déplacement / redimensionnement) d'une zone
-let editState = null;
-function startEdit(e, z, handle) {
-  e.preventDefault();
-  const start = canvasToImage(e.clientX, e.clientY);
-  editState = {
-    id: z.id, handle,
-    sx: start.x, sy: start.y,
-    ox: z.x, oy: z.y, ow: z.w, oh: z.h,
-    el: zonesOverlay.querySelector('.zbox[data-id="' + z.id + '"]'),
-  };
-  if (editState.el) editState.el.classList.add('active');
-  try { e.target.setPointerCapture(e.pointerId); } catch(_) {}
-  window.addEventListener('pointermove', moveEdit);
-  window.addEventListener('pointerup', endEdit);
-}
-function moveEdit(e) {
-  if (!editState) return;
-  const p = canvasToImage(e.clientX, e.clientY);
-  const dx = p.x - editState.sx, dy = p.y - editState.sy;
-  const z = zones.find(z => z.id === editState.id);
-  if (!z) return;
-  let { ox, oy, ow, oh, handle } = editState;
-  let nx = ox, ny = oy, nw = ow, nh = oh;
-
-  if (!handle) {
-    // déplacement
-    nx = ox + dx; ny = oy + dy;
-  } else {
-    if (handle.includes('w')) { nx = ox + dx; nw = ow - dx; }
-    if (handle.includes('e')) { nw = ow + dx; }
-    if (handle.includes('n')) { ny = oy + dy; nh = oh - dy; }
-    if (handle.includes('s')) { nh = oh + dy; }
-    // empêche l'inversion
-    if (nw < MIN_ZONE) { if (handle.includes('w')) nx = ox + ow - MIN_ZONE; nw = MIN_ZONE; }
-    if (nh < MIN_ZONE) { if (handle.includes('n')) ny = oy + oh - MIN_ZONE; nh = MIN_ZONE; }
-  }
-  // clamp aux bords de l'image
-  nx = Math.max(0, Math.min(nx, imgW - MIN_ZONE));
-  ny = Math.max(0, Math.min(ny, imgH - MIN_ZONE));
-  nw = Math.min(nw, imgW - nx);
-  nh = Math.min(nh, imgH - ny);
-
-  z.x = Math.round(nx); z.y = Math.round(ny);
-  z.w = Math.round(nw); z.h = Math.round(nh);
-
-  renderCanvas();
-  // repositionne la boîte en cours sans tout reconstruire (préserve le pointer capture)
-  if (editState.el) {
-    const sr = zoneScreenRect(z);
-    editState.el.style.left = sr.left + 'px';
-    editState.el.style.top = sr.top + 'px';
-    editState.el.style.width = sr.width + 'px';
-    editState.el.style.height = sr.height + 'px';
-  }
-}
-function endEdit() {
-  if (editState && editState.el) editState.el.classList.remove('active');
-  editState = null;
-  window.removeEventListener('pointermove', moveEdit);
-  window.removeEventListener('pointerup', endEdit);
-  syncOverlay();
-}
-
-// Repositionne les boîtes si la fenêtre change de taille
-window.addEventListener('resize', () => { if (srcCanvas) syncOverlay(); });
-
-// Mode
-modeDetect.addEventListener('click', () => {
-  drawMode = false;
-  modeDetect.classList.add('active'); modeDraw.classList.remove('active');
-  mainCanvas.classList.remove('drawing-mode');
-  detectBtn.style.display = ''; shapeRow.style.display = 'none'; selRect.style.display = 'none';
-});
-modeDraw.addEventListener('click', () => {
-  drawMode = true;
-  modeDraw.classList.add('active'); modeDetect.classList.remove('active');
-  mainCanvas.classList.add('drawing-mode');
-  detectBtn.style.display = 'none'; shapeRow.style.display = 'flex';
-});
-
-// Forme des zones manuelles
-function setManualShape(shape) {
-  manualShape = shape;
-  shapeEllipse.classList.toggle('active', shape === 'ellipse');
-  shapeRect.classList.toggle('active', shape === 'rect');
-  // applique aussi à la zone manuelle actuellement sélectionnée, le cas échéant
-  const z = zones.find(z => z.id === selectedZoneId);
-  if (z && z.confidence === null) {
-    z.shape = shape;
-    renderCanvas(); syncOverlay();
-  }
-}
-shapeEllipse.addEventListener('click', () => setManualShape('ellipse'));
-shapeRect.addEventListener('click', () => setManualShape('rect'));
-
-// Style
-styleMosaic.addEventListener('click', () => {
-  blurStyle = 'mosaic';
-  styleMosaic.classList.add('active'); styleSoft.classList.remove('active');
-  renderCanvas();
-});
-styleSoft.addEventListener('click', () => {
-  blurStyle = 'soft';
-  styleSoft.classList.add('active'); styleMosaic.classList.remove('active');
-  renderCanvas();
-});
-
-// Drawing
-function startDraw(cx, cy) {
-  if (!drawMode) return;
-  drawing = true; drawStart = canvasToImage(cx, cy);
-  selRect.style.borderRadius = manualShape === 'ellipse' ? '50%' : '3px';
-  selRect.style.display = 'block'; updateSelRect(drawStart, drawStart);
-}
-function moveDraw(cx, cy) {
-  if (!drawing) return;
-  updateSelRect(drawStart, canvasToImage(cx, cy));
-}
-function endDraw(cx, cy) {
-  if (!drawing) return;
-  drawing = false; selRect.style.display = 'none';
-  const p = canvasToImage(cx, cy);
-  const x = Math.round(Math.min(drawStart.x, p.x));
-  const y = Math.round(Math.min(drawStart.y, p.y));
-  const w = Math.round(Math.abs(p.x - drawStart.x));
-  const h = Math.round(Math.abs(p.y - drawStart.y));
-  if (w > 10 && h > 10) {
-    const z = { x, y, w, h, label: '', confidence: null, shape: manualShape };
-    addZone(z);
-    selectedZoneId = z.id;   // sélectionne la zone fraîchement tracée
-    render(); renderZonesList();
-  } else if (selectedZoneId !== null) {
-    // simple clic dans le vide (pas de tracé) : désélectionne
-    selectZone(null);
-  }
-}
-mainCanvas.addEventListener('mousedown', e => startDraw(e.clientX, e.clientY));
-mainCanvas.addEventListener('mousemove', e => moveDraw(e.clientX, e.clientY));
-mainCanvas.addEventListener('mouseup', e => endDraw(e.clientX, e.clientY));
-mainCanvas.addEventListener('mouseleave', () => { if (drawing) { drawing = false; selRect.style.display = 'none'; } });
-mainCanvas.addEventListener('touchstart', e => { if (drawMode) { e.preventDefault(); startDraw(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
-mainCanvas.addEventListener('touchmove', e => { if (drawing) { e.preventDefault(); moveDraw(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
-mainCanvas.addEventListener('touchend', e => { if (drawing) { const t = e.changedTouches[0]; endDraw(t.clientX, t.clientY); } });
-
-// Sélection au clic (hors mode tracé) : révèle le cadre de la zone visée.
-mainCanvas.addEventListener('pointerdown', e => {
-  if (drawMode) return;
-  const p = canvasToImage(e.clientX, e.clientY);
-  const z = zoneAtPoint(p.x, p.y);
-  selectZone(z ? z.id : null);
-});
-
-function updateSelRect(a, b) {
-  const rect = mainCanvas.getBoundingClientRect();
-  const cont = canvasContainer.getBoundingClientRect();
-  const toScreen = (ix, iy) => ({
-    x: ix / imgW * rect.width + rect.left - cont.left,
-    y: iy / imgH * rect.height + rect.top - cont.top,
-  });
-  const pa = toScreen(a.x, a.y), pb = toScreen(b.x, b.y);
-  selRect.style.left = Math.min(pa.x, pb.x) + 'px';
-  selRect.style.top = Math.min(pa.y, pb.y) + 'px';
-  selRect.style.width = Math.abs(pb.x - pa.x) + 'px';
-  selRect.style.height = Math.abs(pb.y - pa.y) + 'px';
-}
-
-// Detection
-detectBtn.addEventListener('click', async () => {
-  if (!srcImg) return;
-  if (!modelReady) { toast('Modèle pas encore chargé, patientez…', true); return; }
-  detectBtn.classList.add('loading');
-  detectLabel.textContent = 'Détection…';
-  detectBtn.disabled = true;
-  processingLabel.textContent = 'Détection des visages…';
-  processingOverlay.classList.add('visible');
-  try {
-    const opts = detectorKind === 'ssd'
-      ? new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 })
-      : new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.3 });
-    const detections = await faceapi.detectAllFaces(srcImg, opts);
-    if (!detections.length) {
-      toast('Aucun visage détecté. Essayez le mode manuel.', false);
-    } else {
-      const scaleX = imgW / srcImg.width, scaleY = imgH / srcImg.height;
-      let added = 0;
-      detections.forEach(d => {
-        const box = d.box;
-        const bw = box.width * scaleX, bh = box.height * scaleY;
-        const bx = box.x * scaleX,     by = box.y * scaleY;
-        // Marges asymétriques : le détecteur cadre serré sur les traits centraux.
-        // On élargit pour couvrir front/cheveux (haut), menton/mâchoire (bas) et oreilles (côtés).
-        const mTop    = bh * 0.42;
-        const mBottom = bh * 0.10;
-        const mSide   = bw * 0.26;
-        let zx = Math.round(bx - mSide);
-        let zy = Math.round(by - mTop);
-        let zw = Math.round(bw + mSide * 2);
-        let zh = Math.round(bh + mTop + mBottom);
-        zx = Math.max(0, zx);
-        zy = Math.max(0, zy);
-        zw = Math.min(zw, imgW - zx);
-        zh = Math.min(zh, imgH - zy);
-        const z = { x: zx, y: zy, w: zw, h: zh, label: '', confidence: Math.round(d.score * 100), shape: 'ellipse' };
-        z.id = nextZoneId++;
-        zones.push(z);
-        added++;
-      });
-      relabel(); renderZonesList(); render();
-      toast(added + ' visage' + (added > 1 ? 's' : '') + ' détecté' + (added > 1 ? 's' : '') + '.');
-    }
-  } catch(e) {
-    toast('Erreur lors de la détection.', true);
-    console.error(e);
-  }
-  processingOverlay.classList.remove('visible');
-  detectBtn.classList.remove('loading');
-  detectLabel.textContent = 'Détecter les visages';
-  detectBtn.disabled = false;
-});
-
-// Zones
-function addZone(zone) {
-  zone.id = nextZoneId++;
-  zones.push(zone);
-  relabel(); renderZonesList(); render();
-}
-function removeZone(id) {
-  zones = zones.filter(z => z.id !== id);
-  if (selectedZoneId === id) selectedZoneId = null;
-  relabel(); renderZonesList(); render();
-}
-function relabel() {
-  let f = 0, m = 0;
-  zones.forEach(z => { z.label = z.confidence !== null ? 'Visage ' + (++f) : 'Zone ' + (++m); });
-}
-function renderZonesList() {
-  zonesList.querySelectorAll('.zone-item').forEach(el => el.remove());
-  if (!zones.length) { zonesEmpty.style.display = 'block'; return; }
-  zonesEmpty.style.display = 'none';
-  zones.forEach(z => {
-    const item = document.createElement('div');
-    item.className = 'zone-item' + (z.id === selectedZoneId ? ' selected' : '');
-    item.style.cursor = 'pointer';
-    item.addEventListener('click', () => selectZone(z.id));
-    const dot = document.createElement('span'); dot.className = 'zone-dot';
-    const label = document.createElement('span'); label.className = 'zone-label'; label.textContent = z.label;
-    const right = document.createElement('div');
-    right.style.cssText = 'display:flex;align-items:center;gap:6px';
-    if (z.confidence !== null) {
-      const badge = document.createElement('span');
-      badge.className = 'zone-confidence';
-      badge.textContent = z.confidence + '%';
-      right.appendChild(badge);
-    }
-    const del = document.createElement('button');
-    del.className = 'zone-del'; del.title = 'Supprimer cette zone';
-    del.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-    del.addEventListener('click', e => { e.stopPropagation(); removeZone(z.id); });
-    right.appendChild(del);
-    item.appendChild(dot); item.appendChild(label); item.appendChild(right);
-    zonesList.appendChild(item);
-  });
-}
-
-// Bruit anti-appariement : ajoute un grain aléatoire par bloc.
-// Empêche qu'un attaquant re-floute une photo de référence avec les mêmes
-// réglages et obtienne un résultat identique (le bruit ne sera jamais le même).
-// AMP = amplitude du bruit (0-255). ~10 reste invisible mais casse l'appariement exact.
-const NOISE_AMP = 12;
-function jitter(v) {
-  const n = v + (Math.random() - 0.5) * 2 * NOISE_AMP;
-  return n < 0 ? 0 : n > 255 ? 255 : n;
-}
-
-// Extrait la région source (rectangle englobant) dans un canvas autonome.
-function extractRegion(x, y, w, h) {
-  x = Math.max(0, Math.round(x)); y = Math.max(0, Math.round(y));
-  w = Math.min(Math.round(w), imgW - x); h = Math.min(Math.round(h), imgH - y);
-  if (w <= 0 || h <= 0) return null;
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  c.getContext('2d').drawImage(srcCanvas, x, y, w, h, 0, 0, w, h);
-  return { canvas: c, x, y, w, h };
-}
-
-// Mosaïque sur un canvas entier (en place)
-function pixelateCanvas(c, size) {
-  const cx = c.getContext('2d');
-  const w = c.width, h = c.height;
-  const imageData = cx.getImageData(0, 0, w, h);
-  const data = imageData.data;
-  for (let by = 0; by < h; by += size) {
-    for (let bx = 0; bx < w; bx += size) {
-      const bw = Math.min(size, w - bx), bh = Math.min(size, h - by);
-      let r = 0, g = 0, b = 0, a = 0, count = 0;
-      for (let py = 0; py < bh; py++)
-        for (let px = 0; px < bw; px++) {
-          const idx = ((by + py) * w + (bx + px)) * 4;
-          r += data[idx]; g += data[idx+1]; b += data[idx+2]; a += data[idx+3]; count++;
-        }
-      r = Math.round(jitter(r/count)); g = Math.round(jitter(g/count)); b = Math.round(jitter(b/count));
-      a = Math.round(a/count);
-      for (let py = 0; py < bh; py++)
-        for (let px = 0; px < bw; px++) {
-          const idx = ((by + py) * w + (bx + px)) * 4;
-          data[idx]=r; data[idx+1]=g; data[idx+2]=b; data[idx+3]=a;
-        }
-    }
-  }
-  cx.putImageData(imageData, 0, 0);
-}
-
-// Flou doux sur un canvas entier (downscale + upscale lissé, en place)
-function softBlurCanvas(c, size) {
-  const w = c.width, h = c.height;
-  const factor = Math.max(2, size);
-  const sw = Math.max(1, Math.round(w / factor)), sh = Math.max(1, Math.round(h / factor));
-  const tmp = document.createElement('canvas');
-  tmp.width = sw; tmp.height = sh;
-  const tctx = tmp.getContext('2d');
-  tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = 'high';
-  tctx.drawImage(c, 0, 0, w, h, 0, 0, sw, sh);
-  const sd = tctx.getImageData(0, 0, sw, sh);
-  for (let i = 0; i < sd.data.length; i += 4) {
-    sd.data[i] = jitter(sd.data[i]); sd.data[i+1] = jitter(sd.data[i+1]); sd.data[i+2] = jitter(sd.data[i+2]);
-  }
-  tctx.putImageData(sd, 0, 0);
-  const cx = c.getContext('2d');
-  cx.clearRect(0, 0, w, h);
-  cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
-  cx.drawImage(tmp, 0, 0, sw, sh, 0, 0, w, h);
-}
-
-// Masque elliptique à bords adoucis : le flou s'estompe vers l'extérieur
-// au lieu de s'arrêter net, et épouse la forme ovale du visage.
-// feather = proportion du rayon consacrée au dégradé (0.3 = 30 % extérieurs).
-function applyEllipseMask(c, feather) {
-  const w = c.width, h = c.height;
-  const m = document.createElement('canvas');
-  m.width = w; m.height = h;
-  const mctx = m.getContext('2d');
-  mctx.save();
-  mctx.translate(w / 2, h / 2);
-  mctx.scale(w / 2, h / 2);            // espace cercle unité -> ellipse
-  const g = mctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-  const solid = Math.max(0, 1 - feather);
-  g.addColorStop(0, 'rgba(0,0,0,1)');
-  g.addColorStop(solid, 'rgba(0,0,0,1)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  mctx.fillStyle = g;
-  mctx.fillRect(-1, -1, 2, 2);
-  mctx.restore();
-  const cx = c.getContext('2d');
-  cx.globalCompositeOperation = 'destination-in';
-  cx.drawImage(m, 0, 0);
-  cx.globalCompositeOperation = 'source-over';
-}
-
-// Masque rectangulaire à bords adoucis (pour badges, plaques, panneaux…).
-// Cœur plein, dégradé doux sur le pourtour via un flou de masque.
-function applyRectMask(c, feather) {
-  const w = c.width, h = c.height;
-  const m = document.createElement('canvas');
-  m.width = w; m.height = h;
-  const mctx = m.getContext('2d');
-  const blurPx = Math.max(3, Math.round(Math.min(w, h) * feather * 0.5));
-  const inset = blurPx;
-  const rad = Math.min(w, h) * 0.06;
-  if ('filter' in mctx) mctx.filter = 'blur(' + blurPx + 'px)';
-  mctx.fillStyle = 'rgba(0,0,0,1)';
-  roundRect(mctx, inset, inset, w - inset * 2, h - inset * 2, rad);
-  mctx.fill();
-  const cx = c.getContext('2d');
-  cx.globalCompositeOperation = 'destination-in';
-  cx.drawImage(m, 0, 0);
-  cx.globalCompositeOperation = 'source-over';
-}
-function roundRect(c, x, y, w, h, r) {
-  r = Math.min(r, w / 2, h / 2);
-  c.beginPath();
-  c.moveTo(x + r, y);
-  c.arcTo(x + w, y, x + w, y + h, r);
-  c.arcTo(x + w, y + h, x, y + h, r);
-  c.arcTo(x, y + h, x, y, r);
-  c.arcTo(x, y, x + w, y, r);
-  c.closePath();
-}
-
-function applyShapeMask(c, shape) {
-  if (shape === 'rect') applyRectMask(c, 0.30);
-  else applyEllipseMask(c, 0.30);
-}
-
-// Construit la zone floutée prête à composer : { canvas, x, y }
-function makeBlurZone(z, size, style) {
-  const reg = extractRegion(z.x, z.y, z.w, z.h);
-  if (!reg) return null;
-  if (style === 'mosaic') pixelateCanvas(reg.canvas, size);
-  else softBlurCanvas(reg.canvas, size);
-  applyShapeMask(reg.canvas, z.shape || 'ellipse');
-  return reg;
-}
-
-// Slider live
-pixelSlider.addEventListener('input', () => {
-  pixelVal.textContent = pixelSlider.value;
-  renderCanvas();
-});
-
-// Download
-dlBtn.addEventListener('click', () => {
-  if (!zones.length) { toast('Ajoutez au moins une zone à flouter.', true); return; }
-  const out = buildExportCanvas();
-  out.toBlob(blob => {
-    if (!blob) { toast('Erreur lors de l\'export.', true); return; }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'pixo-floute.png'; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast('Image floutée téléchargée.');
-  }, 'image/png');
-});
-
-// Change
-changeBtn.addEventListener('click', () => {
-  srcImg = null; srcCanvas = null; imgW = 0; imgH = 0; zones = []; selectedZoneId = null;
-  resetIntensity();
-  zonesOverlay.innerHTML = '';
-  ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-  renderZonesList();
-  editor.classList.remove('visible');
+// ── Reset complet ──────────────────────────────────────────────
+function resetAll() {
+  srcFile = null; rawPixels = null; origPixels = null; resultBlob = null; eraserMask = null; restoreMask = null; eraserHistory = []; redoHistory = []; undoActionOrder = []; redoActionOrder = [];
+  updateUndoBtn();
   dropZone.style.display = '';
-  dlBtn.disabled = true;
-});
+  previewGrid.className = 'preview-grid';
+  colResult.style.display = 'none';
+  slidersPanel.classList.remove('visible');
+  actionsEl.style.display = 'none';
+  dlBtn.classList.remove('visible');
+  imgOriginal.src = ''; imgOriginal.style.display = 'none';
+  resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+  fileInput.value = '';
+  tolActive = false; featherActive = false;
+  setToggle(tolToggle,     tolSlider,     document.getElementById('tol-row'),     false);
+  setToggle(featherToggle, featherSlider, document.getElementById('feather-row'), false);
+  eraserActive = false; restoreActive = false;
+  eraserToggle.classList.remove('active');
+  restoreToggle.classList.remove('active');
+  document.getElementById('eraser-row').classList.add('inactive');
+  resultCanvas.classList.remove('erasing');
+  eraserCursor.classList.remove('visible');
+  wandLeave();
+  actionsGroup.style.display = '';
+  setStatus(''); hideProgress();
+  endRun(runBtn);
+}
+
+// ── Utils ──────────────────────────────────────────────────────
+function endRun(btn) {
+  const b = btn || runBtn;
+  b.disabled = false; b.classList.remove('loading');
+}
+function fileToDataUrl(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Lecture impossible'));
+    r.readAsDataURL(file);
+  });
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+function showProgress(pct) {
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+function hideProgress() {
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('progress-bar').style.width = '0%';
+}
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.className = 'toast'; }, 2500);
+}
+</script>
+<script>
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.addEventListener('load', () => {
+    window.scrollTo(0, 0);
+    document.getElementById('tol-slider').value     = 50;
+    document.getElementById('feather-slider').value = 50;
+    document.getElementById('eraser-size').value    = 2;
+    // Remettre le damier par défaut
+    const checkerSwatch = document.querySelector('.bg-swatch[data-bg="checker"]');
+    if (checkerSwatch) {
+      document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+      checkerSwatch.classList.add('active');
+    }
+    const checkerWrapEl = document.getElementById('checker-wrap');
+    if (checkerWrapEl) checkerWrapEl.style.background = CHECKER_BG;
+  });
 </script>
 </body>
 </html>
