@@ -342,7 +342,7 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
   <div class="info-box">
     <span class="label">// canvify</span><br>
     Un seul réglage, automatique : le fichier le plus léger possible <span class="label">sans perte visible</span> à l'œil.<br>
-    Images → <span class="label">WebP</span>, accepté par Canva et généralement 25 à 35 % plus léger qu'un JPEG de même qualité. Dimensions d'origine conservées.<br>
+    Images → <span class="label">WebP</span>, accepté par Canva et généralement 25 à 35 % plus léger qu'un JPEG de même qualité. Dimensions d'origine conservées, sauf au-delà du format A3 en 300 DPI (3508 × 4961 px) : l'image est alors réduite à cette taille.<br>
     Vidéos → <span class="label">MP4 (H.264)</span>, le format vidéo le plus compatible. Cadence et son d'origine conservés ; au-delà du 1080p (4K, 1440p…), la vidéo est réduite en 1080p, comme le fait Canva de toute façon.<br>
     Si la conversion n'allège pas vraiment un fichier (moins de 5 %), l'original est conservé pour éviter une perte inutile.<br>
     Les métadonnées (position GPS, appareil…) sont retirées. Tout se passe dans votre navigateur — <span class="label">aucun fichier n'est envoyé sur un serveur</span>.
@@ -370,6 +370,9 @@ const VID_EXT = ['mp4','mov','webm','mkv','m4v','avi','mpeg','mpg','3gp','ogv'];
 const CANVA_MAX = { image: 50 * 1024 * 1024, video: 1024 * 1024 * 1024 };
 const MIN_GAIN = 0.05;
 const MAX_SHORT_SIDE = 1080; // vidéos : au-delà du 1080p, réduction en 1080p
+// Images : jamais plus grand qu'un A3 imprimé à 300 DPI (297 × 420 mm = 3508 × 4961 px),
+// quelle que soit l'orientation.
+const A3_LONG = 4961, A3_SHORT = 3508;
 
 // ── État ─────────────────────────────────────────────────────────────────
 let items = [];
@@ -689,16 +692,24 @@ async function convertImage(it, P) {
     }
     throw new Error('format d\'image illisible par le navigateur');
   }
-  it.dims = bmp.width + '×' + bmp.height;
+  const w = bmp.width, h = bmp.height;
+  const scale = Math.min(1, A3_LONG / Math.max(w, h), A3_SHORT / Math.min(w, h));
+  const resized = scale < 1;
+  const tw = resized ? Math.round(w * scale) : w;
+  const th = resized ? Math.round(h * scale) : h;
+  it.dims = w + '×' + h + (resized ? ' → ' + tw + '×' + th + ' (A3)' : '');
   const canvas = document.createElement('canvas');
-  canvas.width = bmp.width; canvas.height = bmp.height;
-  canvas.getContext('2d').drawImage(bmp, 0, 0);
+  canvas.width = tw; canvas.height = th;
+  const cx = canvas.getContext('2d');
+  cx.imageSmoothingEnabled = true;
+  cx.imageSmoothingQuality = 'high';
+  cx.drawImage(bmp, 0, 0, tw, th);
   bmp.close();
   const blob = await new Promise(res => canvas.toBlob(res, 'image/webp', P.img));
   canvas.width = canvas.height = 0; // libère la mémoire
   if (!blob) throw new Error('échec de l\'encodage (image trop grande ?)');
   if (blob.type !== 'image/webp') throw new Error('ce navigateur ne sait pas créer de WebP — utilisez Chrome, Edge ou Firefox');
-  return { blob, ext: 'webp' };
+  return { blob, ext: 'webp', resized };
 }
 
 // ── Vidéos → MP4 H.264 (via Mediabunny / WebCodecs) ──────────────────────
