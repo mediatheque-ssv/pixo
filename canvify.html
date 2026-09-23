@@ -199,7 +199,6 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
 .icon-btn.dl:hover:not(:disabled) { background: rgba(212,255,78,0.2); color: var(--accent); border-color: var(--accent-border); }
 .icon-btn.rm:hover:not(:disabled) { color: var(--danger); border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.08); }
 .icon-btn:disabled { opacity: .3; cursor: not-allowed; }
-.icon-btn.resize { width: auto; padding: 0 9px; gap: 5px; font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600; }
 .icon-btn.dl:disabled { background: transparent; border-color: var(--border); color: var(--text-3); }
 
 .summary {
@@ -263,6 +262,11 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* TAILLE DANS CANVA */
+.intro {
+  font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.45;
+  color: var(--text); margin: -0.5rem 0 1.25rem;
+}
+.intro span { color: var(--text-3); font-weight: 500; }
 .size-panel {
   display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 22px; align-items: center;
   background: var(--surface); border: 0.5px solid var(--border-md);
@@ -308,8 +312,6 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
   .file-thumb { width: 36px; height: 36px; }
   .file-status { grid-column: 2 / 3; grid-row: 2; justify-content: flex-start; }
   .file-actions { grid-column: 3; grid-row: 1 / 3; flex-direction: column; }
-  .icon-btn.resize { width: 28px; padding: 0; }
-  .icon-btn.resize .btn-txt { display: none; }
   .actions { flex-direction: column; }
   .run-btn, .dl-btn { width: 100%; }
 }
@@ -332,6 +334,8 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
     <a class="nav-btn" href="flouter.html" role="tab">Flouter</a>
     <a class="nav-btn active" href="canvify.html" role="tab" aria-selected="true">Canvify</a>
   </nav>
+
+  <p class="intro">Une image ou une vidéo à uploader sur Canva ? <span>Vérifie ici si Canvify peut réduire son poids, afin d'économiser l'espace de stockage.</span></p>
 
   <!-- Taille de l'image dans Canva -->
   <div class="size-panel">
@@ -565,7 +569,6 @@ function needsWork(it) {
 const ICON_IMG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>';
 const ICON_VID = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3z"/></svg>';
 const ICON_DL = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
-const ICON_RESIZE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
 const ICON_RM = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 
 function rowHTML(it) {
@@ -608,7 +611,6 @@ function rowHTML(it) {
     '</div>' +
     '<div class="file-status">' + status + '</div>' +
     '<div class="file-actions">' +
-      (canResize(it) ? '<button class="icon-btn resize" data-act="resize" title="Ouvrir cette image dans Redimensionner" aria-label="Redimensionner ' + esc(it.name) + '"' + (running ? ' disabled' : '') + '>' + ICON_RESIZE + '<span class="btn-txt">Redimensionner</span></button>' : '') +
       '<button class="icon-btn dl" data-act="dl" title="Télécharger" aria-label="Télécharger ' + esc(it.name) + '"' + (it.result ? '' : ' disabled') + '>' + ICON_DL + '</button>' +
       '<button class="icon-btn rm" data-act="rm" title="Retirer" aria-label="Retirer ' + esc(it.name) + '"' + (it.status === 'working' || running ? ' disabled' : '') + '>' + ICON_RM + '</button>' +
     '</div>' +
@@ -676,7 +678,6 @@ listEl.addEventListener('click', e => {
   if (!it) return;
   if (btn.dataset.act === 'dl' && it.result) download(it.result.blob, it.result.name);
   if (btn.dataset.act === 'rm') removeItem(id);
-  if (btn.dataset.act === 'resize') sendToResize(it);
 });
 
 // ── File de conversion ───────────────────────────────────────────────────
@@ -934,29 +935,6 @@ async function convertVideo(it, P, onProgress) {
   } finally {
     input.dispose();
   }
-}
-
-// ── Envoi vers la page Redimensionner ────────────────────────────────────
-// On transmet l'image d'ORIGINE (meilleure qualité, la page Redimensionner fait son propre export)
-// via IndexedDB, que index.html relit à son ouverture (index.html?from=canvify).
-function canResize(it) {
-  if (it.kind !== 'image' || !it.result) return false;
-  const ext = extOf(it.name);
-  return !!it.dims || ext === 'gif' || ext === 'svg'; // exclut les HEIC illisibles par le navigateur
-}
-
-function sendToResize(it) {
-  if (!window.indexedDB) { toast('Transfert impossible dans ce navigateur', true); return; }
-  const req = indexedDB.open('pixo-handoff', 1);
-  req.onupgradeneeded = () => req.result.createObjectStore('files');
-  req.onerror = () => toast('Transfert impossible (navigation privée ?)', true);
-  req.onsuccess = () => {
-    const db = req.result;
-    const tx = db.transaction('files', 'readwrite');
-    tx.objectStore('files').put({ blob: it.file, name: it.name, type: it.file.type, ts: Date.now() }, 'pending');
-    tx.oncomplete = () => { db.close(); location.href = 'index.html?from=canvify'; };
-    tx.onerror = () => { db.close(); toast('Transfert impossible', true); };
-  };
 }
 
 // ── Sélecteur de taille dans Canva ───────────────────────────────────────
