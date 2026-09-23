@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixo — Canvify</title>
+<meta name="description" content="Pixo — Canvify : préparez vos images et vidéos pour Canva, plus légères et sans perte visible, directement dans le navigateur.">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-y: scroll; overflow-x: hidden; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+:root {
+  --bg: #000000;
+  --surface: #141413;
+  --surface-2: #1c1c1a;
+  --surface-3: #242422;
+  --border: rgba(255,255,255,0.07);
+  --border-md: rgba(255,255,255,0.13);
+  --border-hi: rgba(255,255,255,0.22);
+  --text: #eceae2;
+  --text-2: #b8b6ae;
+  --text-3: #a6a49c;
+  --accent: #d4ff4e;
+  --accent-dim: rgba(212,255,78,0.12);
+  --accent-border: rgba(212,255,78,0.35);
+  --danger: #ff6b6b;
+  --warn: #ffc857;
+  --radius-sm: 5px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+body {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px; color: var(--text); background: var(--bg);
+  min-height: 100vh; padding: 2.5rem 1rem 4rem; line-height: 1.5;
+  overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: 0.4;
+}
+
+.container { max-width: 740px; margin: 0 auto; position: relative; z-index: 1; }
+
+/* HEADER */
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 2.5rem; }
+.logo { width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; }
+.header-title { display: flex; align-items: baseline; gap: 14px; }
+.header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+.header-tag {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
+  border: 0.5px solid var(--border-md); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.03em;
+}
+
+/* NAV */
+.nav {
+  display: flex; gap: 4px; margin-bottom: 2rem;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 4px;
+}
+.nav-btn {
+  flex: 1; height: 34px; font-size: 13px; font-weight: 600;
+  font-family: 'Syne', sans-serif; border: none; border-radius: var(--radius);
+  cursor: pointer; background: transparent; color: var(--text-3); transition: all .15s;
+  text-decoration: none; display: flex; align-items: center; justify-content: center;
+  letter-spacing: -0.01em;
+}
+.nav-btn:hover { color: var(--text); }
+.nav-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
+@media (max-width: 520px) { .nav { display: grid; grid-template-columns: 1fr 1fr; } }
+
+/* DROP ZONE */
+.drop-zone {
+  border: 1px dashed var(--border-md); border-radius: var(--radius-xl);
+  padding: 2.5rem 2rem; text-align: center; cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: var(--surface); position: relative; overflow: hidden;
+}
+.drop-zone::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(212,255,78,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+.drop-zone:hover { border-color: var(--border-hi); background: var(--surface-2); }
+.drop-zone.over, body.dragging .drop-zone { border-color: var(--accent-border); background: var(--accent-dim); }
+.drop-icon {
+  width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
+  background: var(--surface-2); border: 0.5px solid var(--border-md);
+  display: flex; align-items: center; justify-content: center; color: var(--text-3);
+}
+.drop-label { font-size: 13px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
+.drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.04em; }
+
+/* WORKSPACE */
+.workspace { display: none; }
+.workspace.visible { display: block; }
+
+.block-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
+}
+
+/* LISTE DE FICHIERS */
+.list-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 0 8px; min-height: 22px;
+}
+.list-head-actions { display: flex; gap: 6px; }
+.small-btn {
+  height: 24px; padding: 0 10px; border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md); background: transparent; color: var(--text-3);
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+  transition: border-color .15s, color .15s;
+}
+.small-btn:hover:not(:disabled) { border-color: var(--border-hi); color: var(--text); }
+.small-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.file-list {
+  display: flex; flex-direction: column; gap: 6px;
+  border-radius: var(--radius-lg); transition: box-shadow .15s;
+}
+body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
+
+.file-row {
+  display: grid; grid-template-columns: 40px minmax(0,1fr) auto auto;
+  align-items: center; gap: 12px;
+  padding: 9px 10px 9px 9px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); transition: border-color .15s;
+}
+.file-row:hover { border-color: var(--border-md); }
+.file-row.working { border-color: var(--accent-border); }
+.file-thumb {
+  width: 40px; height: 40px; border-radius: 6px; overflow: hidden;
+  background: var(--surface-2); border: 0.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center; color: var(--text-3);
+  position: relative;
+}
+.file-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.file-main { min-width: 0; }
+.file-name {
+  font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-meta {
+  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-3);
+  margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-meta .err { color: var(--danger); }
+.file-meta .warn { color: var(--warn); }
+.file-progress {
+  height: 3px; margin-top: 6px; background: var(--surface-3);
+  border-radius: 2px; overflow: hidden; display: none;
+}
+.file-row.working .file-progress { display: block; }
+.file-progress-bar { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.file-progress.indeterminate .file-progress-bar {
+  width: 30% !important; animation: indet 1s ease-in-out infinite;
+}
+@keyframes indet { 0% { transform: translateX(-100%); } 100% { transform: translateX(340%); } }
+
+.file-status {
+  display: flex; align-items: center; gap: 6px; justify-content: flex-end;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-2);
+  white-space: nowrap;
+}
+.file-status .old { color: var(--text-3); }
+.file-status .arrow { color: var(--text-3); }
+.file-status .new { color: var(--text); }
+.badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+}
+.badge.gain { background: var(--accent-dim); border: 0.5px solid var(--accent-border); color: var(--accent); }
+.badge.kept { background: var(--surface-3); border: 0.5px solid var(--border-md); color: var(--text-2); }
+.badge.err { background: rgba(255,107,107,0.08); border: 0.5px solid rgba(255,107,107,0.3); color: var(--danger); }
+.file-status .pct { color: var(--accent); }
+
+.file-actions { display: flex; gap: 4px; }
+.icon-btn {
+  width: 28px; height: 28px; border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md); background: transparent; color: var(--text-3);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s; padding: 0;
+}
+.icon-btn:hover:not(:disabled) { border-color: var(--border-hi); color: var(--text); }
+.icon-btn.dl { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.icon-btn.dl:hover:not(:disabled) { background: rgba(212,255,78,0.2); color: var(--accent); border-color: var(--accent-border); }
+.icon-btn.rm:hover:not(:disabled) { color: var(--danger); border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.08); }
+.icon-btn:disabled { opacity: .3; cursor: not-allowed; }
+.icon-btn.resize { width: auto; padding: 0 9px; gap: 5px; font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600; }
+.icon-btn.dl:disabled { background: transparent; border-color: var(--border); color: var(--text-3); }
+
+.summary {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
+  margin-top: 10px; text-align: right; min-height: 16px;
+}
+.summary .gain-txt { color: var(--accent); }
+
+/* ACTIONS */
+.actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.run-btn {
+  flex: 1; min-height: 48px; padding: 8px 24px; background: var(--accent);
+  border: none; border-radius: var(--radius-lg);
+  font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif;
+  cursor: pointer; color: #0c0c0b; letter-spacing: -0.01em;
+  transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.run-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
+.run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.run-btn.stop { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-hi); }
+.run-btn.stop:hover { background: var(--surface-2); box-shadow: none; }
+.dl-btn {
+  min-height: 48px; padding: 0 20px;
+  background: var(--accent-dim); border: 0.5px solid var(--accent-border);
+  border-radius: var(--radius-lg); font-size: 13px; font-weight: 700;
+  font-family: 'Syne', sans-serif; cursor: pointer; color: var(--accent);
+  transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  white-space: nowrap;
+}
+.dl-btn:hover:not(:disabled) { background: rgba(212,255,78,0.18); transform: translateY(-1px); }
+.dl-btn:disabled { opacity: .4; cursor: not-allowed; }
+.dl-btn[hidden], .run-btn[hidden] { display: none; }
+.run-btn[hidden] + .dl-btn { flex: 1; }
+
+/* INFO BOX */
+.info-box {
+  margin-top: 1.5rem; padding: 14px 16px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-3); line-height: 1.8;
+}
+.info-box .label { color: var(--accent); font-weight: 500; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(8px);
+  background: var(--surface-3); border: 0.5px solid var(--border-md);
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; padding: 10px 18px; border-radius: var(--radius);
+  pointer-events: none; z-index: 9999; white-space: nowrap;
+  opacity: 0; transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: rgba(255,107,107,0.3); color: var(--danger); }
+
+.spin {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 1.5px solid rgba(212,255,78,0.25); border-top-color: var(--accent);
+  animation: spin .6s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 600px) {
+  body { padding: 1.5rem 0.75rem 3rem; }
+  .logo { width: 64px; height: 64px; }
+  .header h1 { font-size: 18px; }
+  .file-row { grid-template-columns: 36px minmax(0,1fr) auto; gap: 10px; }
+  .file-thumb { width: 36px; height: 36px; }
+  .file-status { grid-column: 2 / 3; grid-row: 2; justify-content: flex-start; }
+  .file-actions { grid-column: 3; grid-row: 1 / 3; flex-direction: column; }
+  .icon-btn.resize { width: 28px; padding: 0; }
+  .icon-btn.resize .btn-txt { display: none; }
+  .actions { flex-direction: column; }
+  .run-btn, .dl-btn { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
+    <div class="header-title">
+      <h1>Croqueur d'images</h1>
+      <span class="header-tag">v2.7</span>
+    </div>
+  </div>
+
+  <nav class="nav" role="tablist">
+    <a class="nav-btn" href="index.html" role="tab">Redimensionner</a>
+    <a class="nav-btn" href="detourer.html" role="tab">Détourer</a>
+    <a class="nav-btn" href="flouter.html" role="tab">Flouter</a>
+    <a class="nav-btn active" href="canvify.html" role="tab" aria-selected="true">Canvify</a>
+  </nav>
+
+  <!-- Drop zone -->
+  <div class="drop-zone" id="drop-zone"
+       role="button" tabindex="0"
+       aria-label="Importer des images ou des vidéos à préparer pour Canva"
+       onclick="document.getElementById('file-in').click()"
+       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('file-in').click()}">
+    <div class="drop-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/>
+      </svg>
+    </div>
+    <div class="drop-label">Glissez des images ou des vidéos à préparer pour Canva, ou cliquez pour parcourir</div>
+    <div class="drop-hint">JPG · PNG · WEBP · HEIC · MP4 · MOV · WEBM — plusieurs fichiers possibles</div>
+  </div>
+  <input type="file" id="file-in" multiple accept="image/*,video/*,.heic,.heif,.mov,.mkv,.m4v" style="display:none">
+
+  <!-- Workspace -->
+  <div class="workspace" id="workspace">
+
+    <div class="list-head">
+      <span class="block-label" id="list-title">Fichiers</span>
+      <div class="list-head-actions">
+        <button class="small-btn" id="add-btn" type="button">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Ajouter
+        </button>
+        <button class="small-btn" id="clear-btn" type="button">Tout retirer</button>
+      </div>
+    </div>
+
+    <div class="file-list" id="file-list"></div>
+    <div class="summary" id="summary"></div>
+
+    <div class="actions">
+      <button class="run-btn" id="run-btn" type="button" hidden>Arrêter</button>
+      <button class="dl-btn" id="dl-btn" type="button" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span id="dl-label">Tout télécharger (.zip)</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <span class="label">// canvify</span><br>
+    Un seul réglage, automatique : le fichier le plus léger possible <span class="label">sans perte visible</span> à l'œil.<br>
+    Images → <span class="label">WebP</span>, accepté par Canva et généralement 25 à 35 % plus léger qu'un JPEG de même qualité. Dimensions d'origine conservées.<br>
+    Vidéos → <span class="label">MP4 (H.264)</span>, le format vidéo le plus compatible. Cadence et son d'origine conservés ; au-delà du 1080p (4K, 1440p…), la vidéo est réduite en 1080p, comme le fait Canva de toute façon.<br>
+    Si la conversion n'allège pas vraiment un fichier (moins de 5 %), l'original est conservé pour éviter une perte inutile.<br>
+    Les métadonnées (position GPS, appareil…) sont retirées. Tout se passe dans votre navigateur — <span class="label">aucun fichier n'est envoyé sur un serveur</span>.
+  </div>
+
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+// ── Réglage unique : le plus léger possible sans perte visible ──────────
+// img : qualité WebP (0-1). vid : niveau de qualité Mediabunny (0-1).
+// En H.264, 0.8 ≈ quantificateur 21 (qualité constante) : perte invisible à l'œil.
+const QUALITY = { img: 0.90, vid: 0.80 };
+const MEDIABUNNY_URL = 'https://cdn.jsdelivr.net/npm/mediabunny@1.59.0/dist/bundles/mediabunny.min.mjs';
+const JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+
+// Formats qu'on peut garder tels quels pour Canva si la conversion n'apporte rien
+const IMG_KEEPABLE = ['jpg', 'jpeg', 'png', 'webp'];
+const VID_KEEPABLE = ['mp4', 'mov', 'webm', 'mkv', 'm4v', 'mpeg', 'mpg'];
+const IMG_EXT = ['jpg','jpeg','png','webp','heic','heif','gif','svg','bmp','tif','tiff','avif'];
+const VID_EXT = ['mp4','mov','webm','mkv','m4v','avi','mpeg','mpg','3gp','ogv'];
+const CANVA_MAX = { image: 50 * 1024 * 1024, video: 1024 * 1024 * 1024 };
+const MIN_GAIN = 0.05;
+const MAX_SHORT_SIDE = 1080; // vidéos : au-delà du 1080p, réduction en 1080p
+
+// ── État ─────────────────────────────────────────────────────────────────
+let items = [];
+let nextId = 1;
+let running = false;
+let stopRequested = false;
+let currentCancel = null;
+
+// ── DOM ──────────────────────────────────────────────────────────────────
+const dropZone   = document.getElementById('drop-zone');
+const fileInput  = document.getElementById('file-in');
+const workspace  = document.getElementById('workspace');
+const listEl     = document.getElementById('file-list');
+const listTitle  = document.getElementById('list-title');
+const summaryEl  = document.getElementById('summary');
+const runBtn     = document.getElementById('run-btn');
+const dlBtn      = document.getElementById('dl-btn');
+const dlLabel    = document.getElementById('dl-label');
+const addBtn     = document.getElementById('add-btn');
+const clearBtn   = document.getElementById('clear-btn');
+
+// ── Utilitaires ──────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function extOf(name) { const m = /\.([^.]+)$/.exec(name); return m ? m[1].toLowerCase() : ''; }
+function baseOf(name) { return name.replace(/\.[^.]+$/, ''); }
+function fmtSize(b) {
+  if (b < 1024) return b + ' o';
+  const units = ['Ko', 'Mo', 'Go'];
+  let i = -1;
+  do { b /= 1024; i++; } while (b >= 1024 && i < units.length - 1);
+  return b.toLocaleString('fr-FR', { maximumFractionDigits: b < 10 ? 1 : 0 }) + ' ' + units[i];
+}
+function fmtDuration(s) {
+  s = Math.round(s);
+  const m = Math.floor(s / 60), r = s % 60;
+  return m + ':' + String(r).padStart(2, '0');
+}
+let toastTimer = null;
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.toggle('error', !!isErr);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+function kindOf(file) {
+  const t = file.type || '', ext = extOf(file.name);
+  if (t.startsWith('video/') || VID_EXT.includes(ext)) return 'video';
+  if (t.startsWith('image/') || IMG_EXT.includes(ext)) return 'image';
+  return null;
+}
+
+// ── Import ───────────────────────────────────────────────────────────────
+fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+addBtn.addEventListener('click', () => fileInput.click());
+
+// Glisser-déposer n'importe où sur la page
+let dragDepth = 0;
+window.addEventListener('dragenter', e => {
+  if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+  dragDepth++; document.body.classList.add('dragging');
+});
+window.addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) document.body.classList.remove('dragging');
+});
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  dragDepth = 0; document.body.classList.remove('dragging');
+  if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+});
+
+function addFiles(fileList) {
+  let skipped = 0, added = 0;
+  Array.from(fileList).forEach(file => {
+    const kind = kindOf(file);
+    if (!kind) { skipped++; return; }
+    const it = {
+      id: nextId++, file, kind, name: file.name, size: file.size,
+      status: 'pending', progress: 0, result: null,
+      note: '', warn: '', error: '', dims: '', duration: 0,
+      thumbUrl: kind === 'image' ? URL.createObjectURL(file) : null,
+    };
+    items.push(it);
+    added++;
+  });
+  if (skipped) toast(skipped + ' fichier' + (skipped > 1 ? 's ignorés' : ' ignoré') + ' (ni image ni vidéo)', true);
+  if (added) { render(); if (!running) runQueue(); }
+}
+
+function removeItem(id) {
+  const it = items.find(i => i.id === id);
+  if (!it || it.status === 'working') return;
+  if (it.thumbUrl) URL.revokeObjectURL(it.thumbUrl);
+  items = items.filter(i => i !== it);
+  render();
+}
+clearBtn.addEventListener('click', () => {
+  if (running) return;
+  items.forEach(i => { if (i.thumbUrl) URL.revokeObjectURL(i.thumbUrl); });
+  items = [];
+  render();
+});
+
+function needsWork(it) {
+  return it.status === 'pending';
+}
+
+// ── Rendu ────────────────────────────────────────────────────────────────
+const ICON_IMG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>';
+const ICON_VID = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3z"/></svg>';
+const ICON_DL = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+const ICON_RESIZE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+const ICON_RM = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+function rowHTML(it) {
+  const thumb = (it.kind === 'image' ? ICON_IMG : ICON_VID) +
+    (it.thumbUrl ? '<img src="' + it.thumbUrl + '" alt="" onerror="this.remove()">' : '');
+
+  const metaParts = [it.kind === 'image' ? 'Image' : 'Vidéo'];
+  if (it.dims) metaParts.push(it.dims);
+  if (it.duration) metaParts.push(fmtDuration(it.duration));
+  let meta = esc(metaParts.join(' · '));
+  if (it.status === 'error') meta += ' · <span class="err">' + esc(it.error) + '</span>';
+  else if (it.warn) meta += ' · <span class="warn">' + esc(it.warn) + '</span>';
+  else if (it.note) meta += ' · ' + esc(it.note);
+
+  let status;
+  if (it.status === 'working') {
+    status = it.kind === 'video' && it.progress > 0
+      ? '<span class="pct">' + Math.floor(it.progress * 100) + ' %</span>'
+      : '<span class="spin"></span>';
+  } else if (it.status === 'done') {
+    const gain = Math.round((1 - it.result.blob.size / it.size) * 100);
+    status = '<span class="old">' + fmtSize(it.size) + '</span><span class="arrow">→</span>' +
+             '<span class="new">' + fmtSize(it.result.blob.size) + '</span>' +
+             '<span class="badge gain">−' + gain + ' %</span>';
+  } else if (it.status === 'kept') {
+    status = '<span>' + fmtSize(it.size) + '</span><span class="badge kept">original</span>';
+  } else if (it.status === 'error') {
+    status = '<span class="badge err">erreur</span>';
+  } else {
+    status = '<span>' + fmtSize(it.size) + '</span>';
+  }
+
+  const indet = it.status === 'working' && !(it.kind === 'video' && it.progress > 0);
+  return '<div class="file-row' + (it.status === 'working' ? ' working' : '') + '" data-id="' + it.id + '">' +
+    '<div class="file-thumb">' + thumb + '</div>' +
+    '<div class="file-main">' +
+      '<div class="file-name" title="' + esc(it.name) + '">' + esc(it.name) + '</div>' +
+      '<div class="file-meta">' + meta + '</div>' +
+      '<div class="file-progress' + (indet ? ' indeterminate' : '') + '"><div class="file-progress-bar" style="width:' + Math.floor(it.progress * 100) + '%"></div></div>' +
+    '</div>' +
+    '<div class="file-status">' + status + '</div>' +
+    '<div class="file-actions">' +
+      (canResize(it) ? '<button class="icon-btn resize" data-act="resize" title="Ouvrir cette image dans Redimensionner" aria-label="Redimensionner ' + esc(it.name) + '"' + (running ? ' disabled' : '') + '>' + ICON_RESIZE + '<span class="btn-txt">Redimensionner</span></button>' : '') +
+      '<button class="icon-btn dl" data-act="dl" title="Télécharger" aria-label="Télécharger ' + esc(it.name) + '"' + (it.result ? '' : ' disabled') + '>' + ICON_DL + '</button>' +
+      '<button class="icon-btn rm" data-act="rm" title="Retirer" aria-label="Retirer ' + esc(it.name) + '"' + (it.status === 'working' || running ? ' disabled' : '') + '>' + ICON_RM + '</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function render() {
+  const has = items.length > 0;
+  workspace.classList.toggle('visible', has);
+  dropZone.style.display = has ? 'none' : '';
+  listEl.innerHTML = items.map(rowHTML).join('');
+  listTitle.textContent = 'Fichiers (' + items.length + ')';
+  renderSummary();
+  updateButtons();
+}
+
+function renderRow(it) {
+  const old = listEl.querySelector('.file-row[data-id="' + it.id + '"]');
+  if (!old) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = rowHTML(it);
+  old.replaceWith(tmp.firstChild);
+}
+
+function renderProgress(it) {
+  const row = listEl.querySelector('.file-row[data-id="' + it.id + '"]');
+  if (!row) return;
+  const prog = row.querySelector('.file-progress');
+  const pct = Math.floor(it.progress * 100);
+  if (prog.classList.contains('indeterminate')) { renderRow(it); return; }
+  row.querySelector('.file-progress-bar').style.width = pct + '%';
+  const p = row.querySelector('.file-status .pct');
+  if (p) p.textContent = pct + ' %';
+}
+
+function renderSummary() {
+  const done = items.filter(i => i.result);
+  if (done.length < 2) { summaryEl.innerHTML = ''; return; }
+  const before = done.reduce((s, i) => s + i.size, 0);
+  const after = done.reduce((s, i) => s + i.result.blob.size, 0);
+  const gain = Math.round((1 - after / before) * 100);
+  summaryEl.innerHTML = 'Total : ' + fmtSize(before) + ' → ' + fmtSize(after) +
+    (gain > 0 ? ' · <span class="gain-txt">−' + gain + ' %</span>' : '');
+}
+
+function updateButtons() {
+  const n = items.filter(needsWork).length;
+  // La conversion démarre toute seule ; le bouton sert à arrêter, puis à reprendre.
+  runBtn.hidden = !running && n === 0;
+  runBtn.disabled = false;
+  runBtn.classList.toggle('stop', running);
+  runBtn.textContent = running ? 'Arrêter' : 'Reprendre (' + n + ' fichier' + (n > 1 ? 's' : '') + ')';
+  const ready = items.filter(i => i.result).length;
+  dlBtn.hidden = ready === 0;
+  dlBtn.disabled = running;
+  dlLabel.textContent = ready > 1 ? 'Tout télécharger (.zip)' : 'Télécharger';
+  clearBtn.disabled = running;
+}
+
+listEl.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn || btn.disabled) return;
+  const id = Number(btn.closest('.file-row').dataset.id);
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  if (btn.dataset.act === 'dl' && it.result) download(it.result.blob, it.result.name);
+  if (btn.dataset.act === 'rm') removeItem(id);
+  if (btn.dataset.act === 'resize') sendToResize(it);
+});
+
+// ── File de conversion ───────────────────────────────────────────────────
+runBtn.addEventListener('click', () => {
+  if (running) {
+    stopRequested = true;
+    if (currentCancel) currentCancel();
+    runBtn.disabled = true;
+    runBtn.textContent = 'Arrêt…';
+    return;
+  }
+  runQueue();
+});
+
+async function runQueue() {
+  running = true; stopRequested = false;
+  render();
+  let it;
+  while (!stopRequested && (it = items.find(needsWork))) {
+    it.status = 'working'; it.progress = 0;
+    it.note = ''; it.warn = ''; it.error = ''; it.result = null;
+    renderRow(it); updateButtons();
+    try {
+      const r = it.kind === 'image'
+        ? await convertImage(it, QUALITY)
+        : await convertVideo(it, QUALITY, p => { it.progress = p; renderProgress(it); });
+      finalize(it, r);
+    } catch (e) {
+      if (stopRequested) {
+        it.status = 'pending'; it.progress = 0;
+      } else {
+        console.error(e);
+        it.status = 'error';
+        it.error = (e && e.message) ? e.message : 'Conversion impossible';
+      }
+    }
+    currentCancel = null;
+    renderRow(it); renderSummary();
+  }
+  running = false; stopRequested = false;
+  render();
+  const errs = items.filter(i => i.status === 'error').length;
+  if (errs) toast(errs + ' fichier' + (errs > 1 ? 's n\'ont' : ' n\'a') + ' pas pu être converti' + (errs > 1 ? 's' : ''), true);
+}
+
+function finalize(it, r) {
+  it.note = r.note || '';
+  it.warn = r.warn || '';
+  const ext = extOf(it.name);
+  const keepable = it.kind === 'image' ? IMG_KEEPABLE.includes(ext) : VID_KEEPABLE.includes(ext);
+  if (r.keep) {
+    it.status = 'kept';
+    it.result = { blob: it.file, name: it.name };
+  } else if (keepable && !r.resized && r.blob.size >= it.size * (1 - MIN_GAIN)) {
+    it.status = 'kept';
+    it.result = { blob: it.file, name: it.name };
+    it.note = 'déjà optimisé, original conservé';
+  } else {
+    it.status = 'done';
+    it.result = { blob: r.blob, name: baseOf(it.name) + '.' + r.ext };
+  }
+  if (!it.warn && it.result.blob.size > CANVA_MAX[it.kind]) {
+    it.warn = 'dépasse la limite Canva (' + (it.kind === 'image' ? '50 Mo' : '1 Go') + ')';
+  }
+}
+
+// ── Images → WebP ────────────────────────────────────────────────────────
+async function convertImage(it, P) {
+  const ext = extOf(it.name), type = it.file.type;
+  if (type === 'image/gif' || ext === 'gif') {
+    return { keep: true, note: 'GIF conservé tel quel (animation préservée)' };
+  }
+  if (type === 'image/svg+xml' || ext === 'svg') {
+    return { keep: true, note: 'SVG conservé tel quel (image vectorielle)' };
+  }
+  let bmp;
+  try {
+    bmp = await createImageBitmap(it.file, { imageOrientation: 'from-image' });
+  } catch (e) {
+    if (['heic', 'heif'].includes(ext) || /hei[cf]/i.test(type)) {
+      return { keep: true, note: 'HEIC illisible ici, mais accepté tel quel par Canva' };
+    }
+    throw new Error('format d\'image illisible par le navigateur');
+  }
+  it.dims = bmp.width + '×' + bmp.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = bmp.width; canvas.height = bmp.height;
+  canvas.getContext('2d').drawImage(bmp, 0, 0);
+  bmp.close();
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/webp', P.img));
+  canvas.width = canvas.height = 0; // libère la mémoire
+  if (!blob) throw new Error('échec de l\'encodage (image trop grande ?)');
+  if (blob.type !== 'image/webp') throw new Error('ce navigateur ne sait pas créer de WebP — utilisez Chrome, Edge ou Firefox');
+  return { blob, ext: 'webp' };
+}
+
+// ── Vidéos → MP4 H.264 (via Mediabunny / WebCodecs) ──────────────────────
+let mediabunnyPromise = null;
+function loadMediabunny() {
+  if (!mediabunnyPromise) {
+    mediabunnyPromise = import(MEDIABUNNY_URL).catch(() => {
+      mediabunnyPromise = null;
+      throw new Error('impossible de charger le module vidéo (connexion ?)');
+    });
+  }
+  return mediabunnyPromise;
+}
+
+async function convertVideo(it, P, onProgress) {
+  if (typeof VideoEncoder === 'undefined' || typeof VideoDecoder === 'undefined') {
+    throw new Error('conversion vidéo non prise en charge par ce navigateur — utilisez Chrome ou Edge à jour');
+  }
+  const M = await loadMediabunny();
+  const input = new M.Input({ source: new M.BlobSource(it.file), formats: M.ALL_FORMATS });
+  try {
+    let vt;
+    try { vt = await input.getPrimaryVideoTrack(); }
+    catch (e) { throw new Error('format vidéo non reconnu'); }
+    if (!vt) throw new Error('aucune piste vidéo dans ce fichier');
+
+    const w = await vt.getDisplayWidth(), h = await vt.getDisplayHeight();
+    it.dims = w + '×' + h;
+    try { const d = await input.getDurationFromMetadata(); if (d) it.duration = d; } catch (e) {}
+    renderRow(it);
+
+    if (!(await vt.canDecode())) {
+      // Ex. vidéo HEVC d'iPhone sur un PC sans décodeur : Canva l'accepte telle quelle
+      if (VID_KEEPABLE.includes(extOf(it.name))) {
+        return { keep: true, warn: 'codec illisible par ce navigateur, original conservé' };
+      }
+      throw new Error('codec vidéo illisible par ce navigateur');
+    }
+
+    // Au-delà du 1080p : réduction à 1080p (petit côté = 1080, proportions conservées,
+    // dimensions paires pour le H.264). Canva réduit de toute façon la 4K en 1080p.
+    let tw = w, th = h;
+    const resized = Math.min(w, h) > MAX_SHORT_SIDE;
+    if (resized) {
+      const s = MAX_SHORT_SIDE / Math.min(w, h);
+      tw = Math.round(w * s / 2) * 2;
+      th = Math.round(h * s / 2) * 2;
+      it.dims = w + '×' + h + ' → ' + tw + '×' + th;
+      renderRow(it);
+    }
+
+    const quality = new M.Quality(P.vid);
+    let codec, format, ext, mime;
+    if (await M.canEncodeVideo('avc', { width: tw, height: th, quality })) {
+      codec = 'avc'; format = new M.Mp4OutputFormat({ fastStart: 'in-memory' }); ext = 'mp4'; mime = 'video/mp4';
+    } else if (await M.canEncodeVideo('vp9', { width: tw, height: th, quality })) {
+      codec = 'vp9'; format = new M.WebMOutputFormat(); ext = 'webm'; mime = 'video/webm';
+    } else {
+      throw new Error('ce navigateur ne sait pas encoder une vidéo en ' + tw + '×' + th);
+    }
+
+    const videoOptions = { codec, quality };          // même cadence que l'original
+    if (resized) Object.assign(videoOptions, { width: tw, height: th, fit: 'fill' });
+
+    const output = new M.Output({ format, target: new M.BufferTarget() });
+    const conversion = await M.Conversion.init({
+      input, output,
+      tracks: 'primary',          // piste vidéo + piste audio principales
+      video: videoOptions,
+      // audio : non précisé → recopié sans perte quand c'est possible (AAC), sinon réencodé en haute qualité
+      tags: {},                   // retire les métadonnées
+      showWarnings: false,
+    });
+    const lostVideo = conversion.discardedTracks.find(d => d.track.isVideoTrack());
+    if (!conversion.isValid || lostVideo) {
+      throw new Error('conversion impossible' + (lostVideo ? ' (' + lostVideo.reason + ')' : ''));
+    }
+    const lostAudio = conversion.discardedTracks.some(d => d.track.isAudioTrack());
+
+    conversion.onProgress = p => onProgress(p);
+    currentCancel = () => conversion.cancel();
+    await conversion.execute();
+
+    return {
+      blob: new Blob([output.target.buffer], { type: mime }),
+      ext,
+      resized,
+      note: codec === 'vp9' ? 'WebM (H.264 indisponible sur ce navigateur)' : '',
+      warn: lostAudio ? 'son non conservé (format audio non convertible)' : '',
+    };
+  } finally {
+    input.dispose();
+  }
+}
+
+// ── Envoi vers la page Redimensionner ────────────────────────────────────
+// On transmet l'image d'ORIGINE (meilleure qualité, la page Redimensionner fait son propre export)
+// via IndexedDB, que index.html relit à son ouverture (index.html?from=canvify).
+function canResize(it) {
+  if (it.kind !== 'image' || !it.result) return false;
+  const ext = extOf(it.name);
+  return !!it.dims || ext === 'gif' || ext === 'svg'; // exclut les HEIC illisibles par le navigateur
+}
+
+function sendToResize(it) {
+  if (!window.indexedDB) { toast('Transfert impossible dans ce navigateur', true); return; }
+  const req = indexedDB.open('pixo-handoff', 1);
+  req.onupgradeneeded = () => req.result.createObjectStore('files');
+  req.onerror = () => toast('Transfert impossible (navigation privée ?)', true);
+  req.onsuccess = () => {
+    const db = req.result;
+    const tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').put({ blob: it.file, name: it.name, type: it.file.type, ts: Date.now() }, 'pending');
+    tx.oncomplete = () => { db.close(); location.href = 'index.html?from=canvify'; };
+    tx.onerror = () => { db.close(); toast('Transfert impossible', true); };
+  };
+}
+
+// ── Téléchargement groupé ────────────────────────────────────────────────
+function loadJSZip() {
+  if (window.JSZip) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = JSZIP_URL;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Impossible de charger JSZip.'));
+    document.head.appendChild(s);
+  });
+}
+
+dlBtn.addEventListener('click', async () => {
+  const ready = items.filter(i => i.result);
+  if (!ready.length) return;
+  if (ready.length === 1) { download(ready[0].result.blob, ready[0].result.name); return; }
+  dlBtn.disabled = true;
+  dlLabel.textContent = 'Préparation du .zip…';
+  try {
+    await loadJSZip();
+    const zip = new JSZip();
+    const used = new Set();
+    ready.forEach(i => {
+      let name = i.result.name, k = 1;
+      while (used.has(name.toLowerCase())) {
+        name = baseOf(i.result.name) + ' (' + (++k) + ').' + extOf(i.result.name);
+      }
+      used.add(name.toLowerCase());
+      zip.file(name, i.result.blob);
+    });
+    // Fichiers déjà compressés : on les stocke sans recompression (plus rapide)
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+    download(blob, 'pixo-canvify.zip');
+  } catch (e) {
+    toast(e.message || 'Erreur lors de la création du .zip', true);
+  }
+  updateButtons();
+});
+
+window.addEventListener('beforeunload', e => {
+  if (running) { e.preventDefault(); e.returnValue = ''; }
+});
+
+render();
+</script>
+</body>
+</html>
