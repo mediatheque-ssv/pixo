@@ -342,7 +342,7 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
   <div class="info-box">
     <span class="label">// canvify</span><br>
     Un seul réglage, automatique : le fichier le plus léger possible <span class="label">sans perte visible</span> à l'œil.<br>
-    Images → <span class="label">WebP</span>, accepté par Canva et généralement 25 à 35 % plus léger qu'un JPEG de même qualité. Dimensions d'origine conservées, sauf au-delà du format A3 en 300 DPI (3508 × 4961 px) : l'image est alors réduite à cette taille.<br>
+    Images → <span class="label">WebP</span>, accepté par Canva. La page cherche la compression la plus forte qui reste invisible : elle mesure l'écart avec l'image de départ et s'arrête avant qu'il ne se voie. Un JPEG déjà très compressé est souvent conservé tel quel. Dimensions d'origine conservées, sauf au-delà du format A3 en 300 DPI (3508 × 4961 px) : l'image est alors réduite à cette taille.<br>
     Vidéos → <span class="label">MP4 (H.264)</span>, le format vidéo le plus compatible. Cadence et son d'origine conservés ; au-delà du 1080p (4K, 1440p…), la vidéo est réduite en 1080p, comme le fait Canva de toute façon.<br>
     Si la conversion n'allège pas vraiment un fichier (moins de 5 %), l'original est conservé pour éviter une perte inutile.<br>
     Les métadonnées (position GPS, appareil…) sont retirées. Tout se passe dans votre navigateur — <span class="label">aucun fichier n'est envoyé sur un serveur</span>.
@@ -356,9 +356,9 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
 'use strict';
 
 // ── Réglage unique : le plus léger possible sans perte visible ──────────
-// img : qualité WebP (0-1). vid : niveau de qualité Mediabunny (0-1).
+// vid : niveau de qualité Mediabunny (0-1).
 // En H.264, 0.8 ≈ quantificateur 21 (qualité constante) : perte invisible à l'œil.
-const QUALITY = { img: 0.90, vid: 0.80 };
+const QUALITY = { vid: 0.80 }; // images : qualité trouvée automatiquement (voir findLightestWebp)
 const MEDIABUNNY_URL = 'https://cdn.jsdelivr.net/npm/mediabunny@1.59.0/dist/bundles/mediabunny.min.mjs';
 const JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
 
@@ -664,7 +664,7 @@ function finalize(it, r) {
   } else if (keepable && !r.resized && r.blob.size >= it.size * (1 - MIN_GAIN)) {
     it.status = 'kept';
     it.result = { blob: it.file, name: it.name };
-    it.note = 'déjà optimisé, original conservé';
+    it.note = it.kind === 'image' ? 'déjà au plus léger sans perte visible, original conservé' : 'déjà optimisé, original conservé';
   } else {
     it.status = 'done';
     it.result = { blob: r.blob, name: baseOf(it.name) + '.' + r.ext };
@@ -705,11 +705,68 @@ async function convertImage(it, P) {
   cx.imageSmoothingQuality = 'high';
   cx.drawImage(bmp, 0, 0, tw, th);
   bmp.close();
-  const blob = await new Promise(res => canvas.toBlob(res, 'image/webp', P.img));
+  const blob = await findLightestWebp(canvas, tw, th);
   canvas.width = canvas.height = 0; // libère la mémoire
-  if (!blob) throw new Error('échec de l\'encodage (image trop grande ?)');
-  if (blob.type !== 'image/webp') throw new Error('ce navigateur ne sait pas créer de WebP — utilisez Chrome, Edge ou Firefox');
   return { blob, ext: 'webp', resized };
+}
+
+// ── Recherche du WebP le plus léger sans perte visible ───────────────────
+// On encode à plusieurs qualités et on mesure l'écart avec l'image de départ
+// (SSIM sur la luminance, par blocs de 8×8). On garde la qualité la plus basse
+// dont l'écart reste invisible : SSIM moyen ≥ 0,985 ET le 1 % des zones les plus
+// touchées (textes, contours) ≥ 0,93. Testé à l'œil : indiscernable même zoomé ×3.
+const WEBP_STEPS = [0.70, 0.72, 0.74, 0.76, 0.78, 0.80, 0.82, 0.84, 0.86, 0.88, 0.90, 0.92];
+const SSIM_MEAN_MIN = 0.985, SSIM_WORST_MIN = 0.93;
+
+function lumaOf(data, n) {
+  const y = new Uint8ClampedArray(n);
+  for (let i = 0, j = 0; j < n; i += 4, j++) y[j] = (77 * data[i] + 150 * data[i + 1] + 29 * data[i + 2]) >> 8;
+  return y;
+}
+function blockSsim(A, B, w, h) {
+  const C1 = 6.5025, C2 = 58.5225, S = 8;
+  const bw = Math.floor(w / S), bh = Math.floor(h / S);
+  const vals = new Float32Array(Math.max(1, bw * bh));
+  let sum = 0, n = 0;
+  for (let by = 0; by < bh; by++) for (let bx = 0; bx < bw; bx++) {
+    let sa = 0, sb = 0, saa = 0, sbb = 0, sab = 0;
+    for (let j = 0; j < S; j++) {
+      let k = (by * S + j) * w + bx * S;
+      for (let i = 0; i < S; i++, k++) { const a = A[k], b = B[k]; sa += a; sb += b; saa += a * a; sbb += b * b; sab += a * b; }
+    }
+    const ma = sa / 64, mb = sb / 64;
+    const va = (saa - 64 * ma * ma) / 63, vb = (sbb - 64 * mb * mb) / 63, cv = (sab - 64 * ma * mb) / 63;
+    const v = ((2 * ma * mb + C1) * (2 * cv + C2)) / ((ma * ma + mb * mb + C1) * (va + vb + C2));
+    vals[n++] = v; sum += v;
+  }
+  if (!n) return { mean: 1, worst: 1 };
+  vals.sort();
+  return { mean: sum / n, worst: vals[Math.floor(n * 0.01)] };
+}
+
+async function findLightestWebp(canvas, w, h) {
+  const encode = q => new Promise(res => canvas.toBlob(res, 'image/webp', q));
+  const ref = lumaOf(canvas.getContext('2d').getImageData(0, 0, w, h).data, w * h);
+  const check = document.createElement('canvas');
+  check.width = w; check.height = h;
+  const ccx = check.getContext('2d', { willReadFrequently: true });
+  const invisible = async blob => {
+    const bmp = await createImageBitmap(blob);
+    ccx.clearRect(0, 0, w, h); ccx.drawImage(bmp, 0, 0); bmp.close();
+    const s = blockSsim(ref, lumaOf(ccx.getImageData(0, 0, w, h).data, w * h), w, h);
+    return s.mean >= SSIM_MEAN_MIN && s.worst >= SSIM_WORST_MIN;
+  };
+  // Recherche dichotomique de la qualité la plus basse qui reste invisible
+  let lo = 0, hi = WEBP_STEPS.length - 1, best = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const blob = await encode(WEBP_STEPS[mid]);
+    if (!blob) throw new Error('échec de l\'encodage (image trop grande ?)');
+    if (blob.type !== 'image/webp') throw new Error('ce navigateur ne sait pas créer de WebP — utilisez Chrome, Edge ou Firefox');
+    if (await invisible(blob)) { best = blob; hi = mid - 1; } else { lo = mid + 1; }
+  }
+  check.width = check.height = 0;
+  return best || await encode(0.95); // image très exigeante : qualité maximale
 }
 
 // ── Vidéos → MP4 H.264 (via Mediabunny / WebCodecs) ──────────────────────
