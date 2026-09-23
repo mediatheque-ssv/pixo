@@ -2441,30 +2441,6 @@ function generate() {
 
 renderFormats();
 updateQuality();
-
-// ─── RÉCEPTION D'UNE IMAGE ENVOYÉE DEPUIS CANVIFY ───
-(function receiveFromCanvify() {
-  if (!/[?&]from=canvify\b/.test(location.search) || !window.indexedDB) return;
-  history.replaceState(null, '', location.pathname);
-  var req = indexedDB.open('pixo-handoff', 1);
-  req.onupgradeneeded = function() { req.result.createObjectStore('files'); };
-  req.onsuccess = function() {
-    var db = req.result;
-    var tx = db.transaction('files', 'readwrite');
-    var store = tx.objectStore('files');
-    var get = store.get('pending');
-    get.onsuccess = function() {
-      var v = get.result;
-      store.delete('pending');
-      tx.oncomplete = function() { db.close(); };
-      if (v && v.blob && Date.now() - v.ts < 10 * 60 * 1000) {
-        loadFile(new File([v.blob], v.name, { type: v.type || v.blob.type }));
-      } else {
-        showToast('Image introuvable, importez-la à nouveau.', 'error');
-      }
-    };
-  };
-})();
 </script>
 <script>
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
