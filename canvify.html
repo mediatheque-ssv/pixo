@@ -262,7 +262,45 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* TAILLE DANS CANVA */
+.size-panel {
+  display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 22px; align-items: center;
+  background: var(--surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 1.5rem;
+}
+.size-sheet { width: 100%; height: auto; display: block; overflow: visible; }
+.size-sheet .frame {
+  fill: transparent; stroke: var(--border-hi); stroke-width: 1.5;
+  cursor: pointer; transition: fill .15s, stroke .15s;
+}
+.size-sheet .frame:hover { stroke: var(--text-2); }
+.size-sheet .frame.sel { fill: var(--accent-dim); stroke: var(--accent); stroke-width: 2.5; }
+.size-sheet text {
+  font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 500;
+  fill: var(--text-3); pointer-events: none; transition: fill .15s;
+}
+.size-sheet text.sel { fill: var(--accent); }
+.size-q { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+.size-sub { font-size: 12px; color: var(--text-3); margin-top: 3px; line-height: 1.45; }
+.size-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+.size-opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 8px 10px; border-radius: var(--radius);
+  border: 0.5px solid var(--border-md); background: var(--surface-2);
+  color: var(--text-2); font-family: 'Syne', sans-serif; text-align: left;
+  cursor: pointer; transition: all .15s;
+}
+.size-opt:hover { border-color: var(--border-hi); color: var(--text); }
+.size-opt.sel { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.size-name { font-size: 13px; font-weight: 700; }
+.size-name small { font-weight: 500; font-size: 11px; opacity: .85; }
+.size-px { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); }
+.size-opt.sel .size-px { color: var(--accent); opacity: .8; }
+.size-video { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); margin-top: 10px; }
+
 @media (max-width: 600px) {
+  .size-panel { grid-template-columns: 84px minmax(0, 1fr); gap: 14px; padding: 14px; }
+  .size-list { grid-template-columns: 1fr; }
   body { padding: 1.5rem 0.75rem 3rem; }
   .logo { width: 64px; height: 64px; }
   .header h1 { font-size: 18px; }
@@ -294,6 +332,31 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
     <a class="nav-btn" href="flouter.html" role="tab">Flouter</a>
     <a class="nav-btn active" href="canvify.html" role="tab" aria-selected="true">Canvify</a>
   </nav>
+
+  <!-- Taille de l'image dans Canva -->
+  <div class="size-panel">
+    <svg class="size-sheet" id="size-sheet" viewBox="-3 -3 303 426" aria-hidden="true">
+      <rect class="frame" data-size="A3" x="0" y="0"   width="297" height="420" rx="5"/>
+      <rect class="frame" data-size="A4" x="0" y="123" width="210" height="297" rx="5"/>
+      <rect class="frame" data-size="A5" x="0" y="210" width="148" height="210" rx="5"/>
+      <rect class="frame" data-size="A6" x="0" y="272" width="105" height="148" rx="5"/>
+      <text data-size="A3" x="282" y="38"  text-anchor="end">A3</text>
+      <text data-size="A4" x="195" y="161" text-anchor="end">A4</text>
+      <text data-size="A5" x="133" y="248" text-anchor="end">A5</text>
+      <text data-size="A6" x="90"  y="310" text-anchor="end">A6</text>
+    </svg>
+    <div>
+      <div class="size-q">Quelle taille fera l'image dans votre création Canva ?</div>
+      <div class="size-sub">Cliquez le plus petit cadre qui la contient : Canvify la réduit juste à ce qu'il faut pour une impression nette (300 DPI).</div>
+      <div class="size-list" id="size-list" role="radiogroup" aria-label="Taille de l'image dans Canva">
+        <button class="size-opt" data-size="A3" role="radio"><span class="size-name">A3 <small>· affiche</small></span><span class="size-px">3508 × 4961 px max</span></button>
+        <button class="size-opt" data-size="A4" role="radio"><span class="size-name">A4 <small>· flyer, pleine page</small></span><span class="size-px">2480 × 3508 px max</span></button>
+        <button class="size-opt" data-size="A5" role="radio"><span class="size-name">A5 <small>· demi-page</small></span><span class="size-px">1748 × 2480 px max</span></button>
+        <button class="size-opt" data-size="A6" role="radio"><span class="size-name">A6 <small>· carte, réseaux sociaux</small></span><span class="size-px">1240 × 1748 px max</span></button>
+      </div>
+      <div class="size-video">Vidéos : toujours 1080p maximum.</div>
+    </div>
+  </div>
 
   <!-- Drop zone -->
   <div class="drop-zone" id="drop-zone"
@@ -342,7 +405,7 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
   <div class="info-box">
     <span class="label">// canvify</span><br>
     Un seul réglage, automatique : le fichier le plus léger possible <span class="label">sans perte visible</span> à l'œil.<br>
-    Images → <span class="label">WebP</span>, accepté par Canva. La page cherche la compression la plus forte qui reste invisible : elle mesure l'écart avec l'image de départ et s'arrête avant qu'il ne se voie. Un JPEG déjà très compressé est souvent conservé tel quel. Dimensions d'origine conservées, sauf au-delà du format A3 en 300 DPI (3508 × 4961 px) : l'image est alors réduite à cette taille.<br>
+    Images → <span class="label">WebP</span>, accepté par Canva. La page cherche la compression la plus forte qui reste invisible : elle mesure l'écart avec l'image de départ et s'arrête avant qu'il ne se voie. Un JPEG déjà très compressé est souvent conservé tel quel. Dimensions d'origine conservées, sauf si l'image dépasse la taille choisie en haut de page (300 DPI) : elle est alors réduite à cette taille.<br>
     Vidéos → <span class="label">MP4 (H.264)</span>, le format vidéo le plus compatible. Cadence et son d'origine conservés ; au-delà du 1080p (4K, 1440p…), la vidéo est réduite en 1080p, comme le fait Canva de toute façon.<br>
     Si la conversion n'allège pas vraiment un fichier (moins de 5 %), l'original est conservé pour éviter une perte inutile.<br>
     Les métadonnées (position GPS, appareil…) sont retirées. Tout se passe dans votre navigateur — <span class="label">aucun fichier n'est envoyé sur un serveur</span>.
@@ -370,9 +433,15 @@ const VID_EXT = ['mp4','mov','webm','mkv','m4v','avi','mpeg','mpg','3gp','ogv'];
 const CANVA_MAX = { image: 50 * 1024 * 1024, video: 1024 * 1024 * 1024 };
 const MIN_GAIN = 0.05;
 const MAX_SHORT_SIDE = 1080; // vidéos : au-delà du 1080p, réduction en 1080p
-// Images : jamais plus grand qu'un A3 imprimé à 300 DPI (297 × 420 mm = 3508 × 4961 px),
-// quelle que soit l'orientation.
-const A3_LONG = 4961, A3_SHORT = 3508;
+// Images : jamais plus grand que la taille imprimée choisie, à 300 DPI (quelle que soit l'orientation).
+// A3 = 297 × 420 mm, chaque format suivant est la moitié du précédent.
+const PRINT_SIZES = {
+  A3: { long: 4961, short: 3508 },
+  A4: { long: 3508, short: 2480 },
+  A5: { long: 2480, short: 1748 },
+  A6: { long: 1748, short: 1240 },
+};
+let printSize = 'A3';
 
 // ── État ─────────────────────────────────────────────────────────────────
 let items = [];
@@ -635,6 +704,9 @@ async function runQueue() {
         ? await convertImage(it, QUALITY)
         : await convertVideo(it, QUALITY, p => { it.progress = p; renderProgress(it); });
       finalize(it, r);
+      if (it.kind === 'image' && it.sizeUsed && it.sizeUsed !== printSize) {
+        it.status = 'pending'; it.result = null; // taille changée entre-temps : à refaire
+      }
     } catch (e) {
       if (stopRequested) {
         it.status = 'pending'; it.progress = 0;
@@ -693,11 +765,13 @@ async function convertImage(it, P) {
     throw new Error('format d\'image illisible par le navigateur');
   }
   const w = bmp.width, h = bmp.height;
-  const scale = Math.min(1, A3_LONG / Math.max(w, h), A3_SHORT / Math.min(w, h));
+  const cap = PRINT_SIZES[printSize];
+  it.sizeUsed = printSize;
+  const scale = Math.min(1, cap.long / Math.max(w, h), cap.short / Math.min(w, h));
   const resized = scale < 1;
   const tw = resized ? Math.round(w * scale) : w;
   const th = resized ? Math.round(h * scale) : h;
-  it.dims = w + '×' + h + (resized ? ' → ' + tw + '×' + th + ' (A3)' : '');
+  it.dims = w + '×' + h + (resized ? ' → ' + tw + '×' + th + ' (' + printSize + ')' : '');
   const canvas = document.createElement('canvas');
   canvas.width = tw; canvas.height = th;
   const cx = canvas.getContext('2d');
@@ -884,6 +958,35 @@ function sendToResize(it) {
     tx.onerror = () => { db.close(); toast('Transfert impossible', true); };
   };
 }
+
+// ── Sélecteur de taille dans Canva ───────────────────────────────────────
+const sizeSheet = document.getElementById('size-sheet');
+const sizeList = document.getElementById('size-list');
+function setPrintSize(sz) {
+  printSize = sz;
+  sizeSheet.querySelectorAll('[data-size]').forEach(el => el.classList.toggle('sel', el.dataset.size === sz));
+  sizeList.querySelectorAll('.size-opt').forEach(b => {
+    b.classList.toggle('sel', b.dataset.size === sz);
+    b.setAttribute('aria-checked', b.dataset.size === sz ? 'true' : 'false');
+  });
+  // Les images déjà traitées avec une autre taille sont refaites automatiquement
+  let redo = 0;
+  items.forEach(i => {
+    if (i.kind === 'image' && i.sizeUsed && i.sizeUsed !== sz && (i.status === 'done' || i.status === 'kept')) {
+      i.status = 'pending'; i.result = null; i.note = ''; i.warn = ''; redo++;
+    }
+  });
+  if (redo) { render(); if (!running) runQueue(); }
+}
+sizeSheet.addEventListener('click', e => {
+  const r = e.target.closest('.frame');
+  if (r) setPrintSize(r.dataset.size);
+});
+sizeList.addEventListener('click', e => {
+  const b = e.target.closest('.size-opt');
+  if (b) setPrintSize(b.dataset.size);
+});
+setPrintSize(printSize);
 
 // ── Téléchargement groupé ────────────────────────────────────────────────
 function loadJSZip() {
