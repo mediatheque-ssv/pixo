@@ -1416,6 +1416,7 @@ input[type=range]::-moz-range-thumb {
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<script src="gif.js"></script>
 <script>
 var srcImg = null, srcFile = null, srcDataUrl = null;
 var generatedResults = [];
@@ -1470,6 +1471,7 @@ function updateFilenamePreview() {
   var outFmt = document.getElementById('out-format').value;
   if (outFmt === 'image/png' || outFmt === 'image/png-compressed') ext = 'png';
   else if (outFmt === 'image/jpeg') ext = 'jpg';
+  else if (outFmt === 'image/gif') ext = 'gif';
   var example = formats.length > 0 ? buildFilename(formats[formats.length - 1], ext) : '';
   preview.innerHTML = example
     ? 'Ex : <span>' + example + '</span>'
@@ -1624,6 +1626,7 @@ function loadFile(file) {
   document.getElementById('pdf-next-btn').style.display = 'none';
 
   srcFile = file;
+  setGifMode(!isPdf && (file.type === 'image/gif' || /\.gif$/i.test(file.name)));
 
   if (isPdf) {
     loadPdfFile(file);
@@ -1882,7 +1885,7 @@ function getResizedBase64(img, maxW, mimeType) {
 function updateQuality() {
   var f = document.getElementById('out-format').value;
   var isPng = (f === 'image/png' || f === 'image/png-compressed');
-  document.getElementById('quality-wrap').style.display = isPng ? 'none' : 'flex';
+  document.getElementById('quality-wrap').style.display = (isPng || f === 'image/gif') ? 'none' : 'flex';
 }
 
 function toggleTxtDropdown(e) {
@@ -2156,9 +2159,7 @@ function hexToRgba(hex, a) {
   return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
 }
 
-function renderFormat(f) {
-  var outFmt = document.getElementById('out-format').value;
-  var quality = parseInt(document.getElementById('quality').value) / 100;
+function paintFormat(f, source, cv) {
   var txtC = document.getElementById('txt-content').value;
   var txtPos = document.getElementById('txt-pos').value;
   var txtAlign = document.getElementById('txt-align').value;
@@ -2168,9 +2169,12 @@ function renderFormat(f) {
   var txtOpa = parseInt(document.getElementById('txt-opacity').value) / 100;
   var W = f.w, H = f.h;
   if (!W || !H || W <= 0 || H <= 0) throw new Error('Dimensions invalides pour "' + f.name + '".');
-  var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  if (!cv) cv = document.createElement('canvas');
+  if (cv.width !== W) cv.width = W;
+  if (cv.height !== H) cv.height = H;
   var ctx = cv.getContext('2d');
   if (!ctx) throw new Error('Impossible d\'initialiser le canvas pour "' + f.name + '".');
+  ctx.clearRect(0, 0, W, H);
   var bandH = 0;
   if (txtEnabled && f.text && txtC && txtPos === 'below') {
     var base = Math.min(W, H);
@@ -2179,18 +2183,18 @@ function renderFormat(f) {
   }
   var imgH = H - bandH;
   var sx, sy, sw, sh;
-  if (f.crop) { sx = f.crop.x * srcImg.width; sy = f.crop.y * srcImg.height; sw = f.crop.w * srcImg.width; sh = f.crop.h * srcImg.height; }
-  else { sx = 0; sy = 0; sw = srcImg.width; sh = srcImg.height; }
+  if (f.crop) { sx = f.crop.x * source.width; sy = f.crop.y * source.height; sw = f.crop.w * source.width; sh = f.crop.h * source.height; }
+  else { sx = 0; sy = 0; sw = source.width; sh = source.height; }
   if (f.overflow === 'crop') {
     var dr = W / imgH, sr = sw / sh, fsx, fsy, fsw, fsh;
     if (sr > dr) { fsh = sh; fsw = sh * dr; fsx = sx + (sw - fsw) / 2; fsy = sy; }
     else { fsw = sw; fsh = sw / dr; fsy = sy + (sh - fsh) / 2; fsx = sx; }
-    ctx.drawImage(srcImg, fsx, fsy, fsw, fsh, 0, 0, W, imgH);
+    ctx.drawImage(source, fsx, fsy, fsw, fsh, 0, 0, W, imgH);
   } else {
     if (f.bands === 'transparent') ctx.clearRect(0, 0, W, imgH);
     else { ctx.fillStyle = f.bands === 'white' ? '#fff' : '#000'; ctx.fillRect(0, 0, W, imgH); }
     var scale = Math.min(W / sw, imgH / sh, 1), dw = sw * scale, dh = sh * scale;
-    ctx.drawImage(srcImg, sx, sy, sw, sh, (W - dw) / 2, (imgH - dh) / 2, dw, dh);
+    ctx.drawImage(source, sx, sy, sw, sh, (W - dw) / 2, (imgH - dh) / 2, dw, dh);
   }
   if (txtEnabled && f.text && txtC) {
     var base3 = Math.min(W, H);
@@ -2212,6 +2216,14 @@ function renderFormat(f) {
       ctx.fillText(lines[li], tx, by + pad + li * lh);
     }
   }
+  return { cv: cv, ctx: ctx, W: W, H: H };
+}
+
+function renderFormat(f) {
+  var outFmt = document.getElementById('out-format').value;
+  var quality = parseInt(document.getElementById('quality').value) / 100;
+  var painted = paintFormat(f, srcImg);
+  var cv = painted.cv, ctx = painted.ctx, W = painted.W, H = painted.H;
   var ext = (outFmt === 'image/png' || outFmt === 'image/png-compressed') ? 'png'
           : outFmt === 'image/jpeg' ? 'jpg'
           : 'webp';
@@ -2366,6 +2378,137 @@ function applyRename() {
   }, 1500);
 }
 
+// ─── GIF (animé ou non) ───
+// Quand on importe un GIF, le format de sortie passe sur GIF, et l'animation est gardée.
+// Option visible seulement pour les GIF.
+var GIFENC_URL = 'https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js';
+var _gifenc = null;
+var _fmtBeforeGif = null;
+
+function setGifMode(on) {
+  var sel = document.getElementById('out-format');
+  var opt = sel.querySelector('option[value="image/gif"]');
+  if (on) {
+    if (!opt) {
+      opt = document.createElement('option');
+      opt.value = 'image/gif';
+      opt.textContent = 'GIF';
+      opt.title = 'Garde le format GIF et son animation. Fichiers souvent plus lourds que les autres formats.';
+      sel.appendChild(opt);
+    }
+    if (sel.value !== 'image/gif') _fmtBeforeGif = sel.value;
+    sel.value = 'image/gif';
+  } else if (opt) {
+    if (sel.value === 'image/gif') sel.value = _fmtBeforeGif || 'image/webp';
+    opt.remove();
+  }
+  updateQuality();
+  updateFilenamePreview();
+}
+
+async function generateGif(btn) {
+  var labelNode = Array.prototype.find.call(btn.childNodes, function(n) { return n.nodeType === 3 && n.nodeValue.trim(); });
+  var labelText = labelNode ? labelNode.nodeValue : '';
+  function progress(t) { if (labelNode) labelNode.nodeValue = '\n    ' + t + '\n  '; }
+  function done() { if (labelNode) labelNode.nodeValue = labelText; btn.classList.remove('loading'); btn.disabled = false; }
+
+  var gif;
+  try {
+    if (!_gifenc) _gifenc = await import(GIFENC_URL);
+  } catch (e) { done(); showToast('Impossible de charger l\'encodeur GIF.', 'error'); return; }
+  try { gif = PixoGif.parse(new Uint8Array(await srcFile.arrayBuffer())); }
+  catch (e) { done(); showToast('GIF illisible.', 'error'); return; }
+  if (!gif.frames.length) { done(); showToast('GIF vide.', 'error'); return; }
+
+  var src = document.createElement('canvas');
+  src.width = gif.width; src.height = gif.height;
+  var sctx = src.getContext('2d', { willReadFrequently: true });
+  var total = formats.length * gif.frames.length * 2, step = 0, last = performance.now();
+  async function tick() {
+    step++;
+    if (performance.now() - last > 50) {
+      progress('Création du GIF… ' + Math.round(step / total * 100) + ' %');
+      await new Promise(function(r) { setTimeout(r, 0); });
+      last = performance.now();
+    }
+  }
+  for (var i = 0; i < formats.length; i++) {
+    try { generatedResults.push(await encodeGifFormat(formats[i], gif, src, sctx, tick)); }
+    catch (e) {
+      console.error('Erreur GIF :', e);
+      showToast('Erreur sur "' + esc(formats[i].name) + '" : ' + (e.message || 'inconnue.'), 'error');
+    }
+  }
+  done();
+  if (!generatedResults.length) { showToast('Aucun format n\'a pu être généré.', 'error'); return; }
+  document.getElementById('results-header').style.display = 'block';
+  document.getElementById('dl-actions').style.display = 'flex';
+  renderResults(generatedResults);
+  setTimeout(function() {
+    document.getElementById('results-header').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+async function encodeGifFormat(f, gif, src, sctx, tick) {
+  var E = _gifenc, W = f.w, H = f.h, n = gif.frames.length;
+  if (!W || !H || W <= 0 || H <= 0) throw new Error('Dimensions invalides pour "' + f.name + '".');
+  var cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  cv.getContext('2d', { willReadFrequently: true });
+  function frameData(fr) {
+    sctx.putImageData(new ImageData(fr.data, gif.width, gif.height), 0, 0);
+    return paintFormat(f, src, cv).ctx.getImageData(0, 0, W, H).data;
+  }
+
+  // 1er passage : y a-t-il de la transparence ? + échantillon de couleurs pour une palette commune
+  var every = Math.max(1, Math.floor(n / 12)), sampled = Math.ceil(n / every);
+  var stride = Math.max(1, Math.ceil(sampled * W * H / 400000));
+  var sample = new Uint8Array(Math.ceil(W * H / stride) * 4 * sampled), so = 0, transparent = false, i = 0, fr, d, p;
+  for (fr of PixoGif.frames(gif)) {
+    d = frameData(fr);
+    if (!transparent) for (p = 3; p < d.length; p += 4) if (d[p] < 128) { transparent = true; break; }
+    if (i % every === 0) for (p = 0; p < d.length && so + 4 <= sample.length; p += 4 * stride) {
+      sample[so++] = d[p]; sample[so++] = d[p + 1]; sample[so++] = d[p + 2]; sample[so++] = 255;
+    }
+    i++; await tick();
+  }
+
+  // 2e passage : encodage
+  var out = E.GIFEncoder(), repeat = gif.loops;   // -1 : une seule lecture, 0 : en boucle
+  if (!transparent) {
+    // Palette commune ; d'une image à l'autre, seuls les pixels qui changent sont enregistrés
+    var palette = E.quantize(sample.slice(0, so), 255), T = palette.length, prev = null;
+    for (fr of PixoGif.frames(gif)) {
+      var idx = E.applyPalette(frameData(fr), palette);
+      if (!prev) out.writeFrame(idx, W, H, { palette: palette.concat([[0, 0, 0]]), delay: fr.delay, repeat: repeat });
+      else {
+        var diff = new Uint8Array(idx.length);
+        for (p = 0; p < idx.length; p++) diff[p] = idx[p] === prev[p] ? T : idx[p];
+        out.writeFrame(diff, W, H, { delay: fr.delay, transparent: true, transparentIndex: T, dispose: 1 });
+      }
+      prev = idx;
+      await tick();
+    }
+  } else {
+    // Transparence : une palette par image, avec une couleur transparente
+    var first = true;
+    for (fr of PixoGif.frames(gif)) {
+      d = frameData(fr);
+      var pal = E.quantize(d, 256, { format: 'rgba4444', oneBitAlpha: true });
+      var ix = E.applyPalette(d, pal, 'rgba4444'), ti = -1;
+      for (p = 0; p < pal.length; p++) if (pal[p][3] === 0) { ti = p; break; }
+      var opts = { palette: pal, delay: fr.delay, dispose: 2, transparent: ti >= 0, transparentIndex: Math.max(ti, 0) };
+      if (first) { opts.repeat = repeat; first = false; }
+      out.writeFrame(ix, W, H, opts);
+      await tick();
+    }
+  }
+  out.finish();
+  var blob = new Blob([out.bytes()], { type: 'image/gif' });
+  return { url: URL.createObjectURL(blob), name: buildFilename(f, 'gif'), w: W, h: H, formatId: f.id, blob: blob, isObjectUrl: true };
+}
+// ─── FIN GIF ───
+
 function generate() {
   if (!srcImg) { showToast('Importez d\'abord une image.', 'error'); return; }
   var fnInput = document.getElementById('custom-filename');
@@ -2385,6 +2528,7 @@ function generate() {
   generatedResults = [];
 
   var outFmt = document.getElementById('out-format').value;
+  if (outFmt === 'image/gif') { generateGif(btn); return; }
   // Charger pako (dépendance de UPNG pour le deflate) puis UPNG, à la demande
   if (outFmt === 'image/png-compressed' && !window.UPNG) {
     loadScript('https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js', function() {

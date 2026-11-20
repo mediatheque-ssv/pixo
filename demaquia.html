@@ -568,7 +568,7 @@ function groupHTML(g, done) {
   }
   if (g.note) {
     h += '<div class="group-note">' + esc(g.note) +
-      (g.c2pa ? ' Pour la vérifier : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>' : '') + '</div>';
+      (g.c2pa ? ' Pour en être sûr : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>' : '') + '</div>';
   }
   if (g.raw) h += '<details class="raw"><summary>Voir le texte complet</summary><pre>' + esc(g.raw) + '</pre></details>';
   return h + '</div>';
@@ -623,10 +623,7 @@ function render() {
   } else {
     setBtn(aiBtn, aiLbl, 'Retirer l\'IA seulement', { hidden: !r.ai.found });
     setBtn(cleanBtn, cleanLbl, r.removable > 0 ? 'Tout retirer' : 'Rien à retirer', { disabled: r.removable === 0 });
-    if (r.ai.found) {
-      hintEl.className = 'action-hint ia';
-      hintEl.textContent = 'Si vous publiez cette image, pensez à indiquer qu\'elle a été faite avec l\'IA.';
-    } else hintEl.textContent = r.removable > 0 ? fmtSize(r.removable) + ' d\'informations à retirer · l\'image elle-même ne change pas' : '';
+    hintEl.textContent = r.removable > 0 ? fmtSize(r.removable) + ' d\'informations à retirer · l\'image elle-même ne change pas' : '';
   }
 }
 
