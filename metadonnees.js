@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Pixo — lecture et suppression des métadonnées d'images (JPEG, PNG, WebP)
-   Utilisé par scanner.html et canvify.html. Aucune dépendance, rien n'est
+   Utilisé par demaquia.html et canvify.html. Aucune dépendance, rien n'est
    envoyé sur un serveur.
 
    PixoMeta.analyze(octets)  → Promise<rapport>   ce que contient l'image
