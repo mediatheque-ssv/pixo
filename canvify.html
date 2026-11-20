@@ -77,7 +77,10 @@ body::before {
 }
 .nav-btn:hover { color: var(--text); }
 .nav-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
-@media (max-width: 520px) { .nav { display: grid; grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) {
+  .nav { display: grid; grid-template-columns: 1fr 1fr; }
+  .nav-btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 
 /* DROP ZONE */
 .drop-zone {
@@ -324,7 +327,7 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
     <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.7</span>
+      <span class="header-tag">v2.8</span>
     </div>
   </div>
 
@@ -333,6 +336,7 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
     <a class="nav-btn" href="detourer.html" role="tab">Détourer</a>
     <a class="nav-btn" href="flouter.html" role="tab">Flouter</a>
     <a class="nav-btn active" href="canvify.html" role="tab" aria-selected="true">Canvify</a>
+    <a class="nav-btn" href="scanner.html" role="tab">Scanner</a>
   </nav>
 
   <p class="intro">Un outil pour réduire le poids des images et vidéos à destination de Canva.</p>
@@ -412,13 +416,14 @@ body.dragging .file-list { box-shadow: 0 0 0 1px var(--accent-border); }
     Images → <span class="label">WebP</span>, accepté par Canva. La page cherche la compression la plus forte qui reste invisible : elle mesure l'écart avec l'image de départ et s'arrête avant qu'il ne se voie. Un JPEG déjà très compressé est souvent conservé tel quel. Dimensions d'origine conservées, sauf si l'image dépasse la taille choisie en haut de page (300 DPI) : elle est alors réduite à cette taille.<br>
     Vidéos → <span class="label">MP4 (H.264)</span>, le format vidéo le plus compatible. Cadence et son d'origine conservés ; au-delà du 1080p (4K, 1440p…), la vidéo est réduite en 1080p, comme le fait Canva de toute façon.<br>
     Si la conversion n'allège pas vraiment un fichier (moins de 5 %), l'original est conservé pour éviter une perte inutile.<br>
-    Les métadonnées (position GPS, appareil…) sont retirées. Tout se passe dans votre navigateur — <span class="label">aucun fichier n'est envoyé sur un serveur</span>.
+    Les métadonnées (position GPS, appareil, traces d'IA…) sont retirées, même quand l'original est conservé (sauf GIF, SVG et HEIC). Tout se passe dans votre navigateur — <span class="label">aucun fichier n'est envoyé sur un serveur</span>.
   </div>
 
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<script src="metadonnees.js"></script>
 <script>
 'use strict';
 
@@ -594,7 +599,7 @@ function rowHTML(it) {
              '<span class="new">' + fmtSize(it.result.blob.size) + '</span>' +
              '<span class="badge gain">−' + gain + ' %</span>';
   } else if (it.status === 'kept') {
-    status = '<span>' + fmtSize(it.size) + '</span><span class="badge kept">original</span>';
+    status = '<span>' + fmtSize(it.result.blob.size) + '</span><span class="badge kept">original</span>';
   } else if (it.status === 'error') {
     status = '<span class="badge err">erreur</span>';
   } else {
@@ -611,7 +616,7 @@ function rowHTML(it) {
     '</div>' +
     '<div class="file-status">' + status + '</div>' +
     '<div class="file-actions">' +
-      '<button class="icon-btn dl" data-act="dl" title="Télécharger" aria-label="Télécharger ' + esc(it.name) + '"' + (it.result ? '' : ' disabled') + '>' + ICON_DL + '</button>' +
+      '<button class="icon-btn dl" data-act="dl" title="Télécharger" aria-label="Télécharger ' + esc(it.name) + '"' + (it.result && it.status !== 'working' ? '' : ' disabled') + '>' + ICON_DL + '</button>' +
       '<button class="icon-btn rm" data-act="rm" title="Retirer" aria-label="Retirer ' + esc(it.name) + '"' + (it.status === 'working' || running ? ' disabled' : '') + '>' + ICON_RM + '</button>' +
     '</div>' +
   '</div>';
@@ -705,6 +710,12 @@ async function runQueue() {
         ? await convertImage(it, QUALITY)
         : await convertVideo(it, QUALITY, p => { it.progress = p; renderProgress(it); });
       finalize(it, r);
+      if (it.status === 'kept') {
+        // Toujours « en cours » pendant le nettoyage : on ne télécharge pas l'original avant
+        it.status = 'working'; it.progress = 0; renderRow(it);
+        await (it.kind === 'image' ? cleanKeptImage(it) : cleanKeptVideo(it, p => { it.progress = p; renderProgress(it); }));
+        it.status = 'kept';
+      }
       if (it.kind === 'image' && it.sizeUsed && it.sizeUsed !== printSize) {
         it.status = 'pending'; it.result = null; // taille changée entre-temps : à refaire
       }
@@ -744,6 +755,66 @@ function finalize(it, r) {
   }
   if (!it.warn && it.result.blob.size > CANVA_MAX[it.kind]) {
     it.warn = 'dépasse la limite Canva (' + (it.kind === 'image' ? '50 Mo' : '1 Go') + ')';
+  }
+}
+
+// ── Originaux gardés : on retire quand même leurs métadonnées ────────────
+// Images : blocs de métadonnées supprimés sans toucher aux pixels (metadonnees.js).
+async function cleanKeptImage(it) {
+  if (!window.PixoMeta || !IMG_KEEPABLE.includes(extOf(it.name))) return;
+  try {
+    const bytes = new Uint8Array(await it.file.arrayBuffer());
+    if (!PixoMeta.detectFormat(bytes)) return;
+    const res = PixoMeta.strip(bytes);
+    if (res.removed > 0) {
+      it.result = { blob: new Blob([res.bytes], { type: PixoMeta.mime(res.format) }), name: it.name };
+      it.note = cleanedNote(it.note);
+    }
+  } catch (e) {
+    console.warn(e);
+    it.warn = 'métadonnées non retirées';
+  }
+}
+
+function cleanedNote(note) {
+  return /original conservé/.test(note || '') ? note.replace('original conservé', 'original sans métadonnées') : (note ? note + ', ' : '') + 'original sans métadonnées';
+}
+
+// Vidéos : réempaquetage à l'identique (aucune piste réencodée), sans les métadonnées.
+// Si ce n'est pas possible, l'original reste tel quel, comme avant.
+const REMUX_FORMATS = { mp4: 'Mp4OutputFormat', m4v: 'Mp4OutputFormat', mov: 'MovOutputFormat', webm: 'WebMOutputFormat', mkv: 'MkvOutputFormat' };
+async function cleanKeptVideo(it, onProgress) {
+  const ext = extOf(it.name);
+  if (!REMUX_FORMATS[ext]) { it.warn = it.warn || 'métadonnées non retirées'; return; }
+  let input;
+  try {
+    const M = await loadMediabunny();
+    const isoFormat = REMUX_FORMATS[ext] === 'Mp4OutputFormat' || REMUX_FORMATS[ext] === 'MovOutputFormat';
+    const format = new M[REMUX_FORMATS[ext]](isoFormat ? { fastStart: 'in-memory' } : {});
+    input = new M.Input({ source: new M.BlobSource(it.file), formats: M.ALL_FORMATS });
+    const output = new M.Output({ format, target: new M.BufferTarget() });
+    const conversion = await M.Conversion.init({
+      input, output,
+      tracks: 'primary',
+      copy: { mode: 'forced' },   // copie stricte : jamais de réencodage
+      tags: {},                   // retire les métadonnées
+      showWarnings: false,
+    });
+    const lost = conversion.discardedTracks.some(d =>
+      !['discarded_by_user', 'max_track_count_reached', 'max_track_count_of_type_reached'].includes(d.reason));
+    if (!conversion.isValid || lost || !conversion.utilizedTracks.some(t => t.isVideoTrack())) throw new Error('copie impossible');
+    conversion.onProgress = p => onProgress(p);
+    currentCancel = () => conversion.cancel();
+    await conversion.execute();
+    const mime = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska' }[ext];
+    it.result = { blob: new Blob([output.target.buffer], { type: mime }), name: it.name };
+    it.note = cleanedNote(it.note);
+  } catch (e) {
+    if (stopRequested) throw e;
+    console.warn(e);
+    it.warn = it.warn || 'métadonnées non retirées';
+  } finally {
+    if (input) input.dispose();
   }
 }
 

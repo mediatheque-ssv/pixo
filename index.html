@@ -1122,7 +1122,10 @@ input[type=range]::-moz-range-thumb {
 }
 .nav-btn:hover { color: var(--text); }
 .nav-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
-@media (max-width: 520px) { .nav { display: grid; grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) {
+  .nav { display: grid; grid-template-columns: 1fr 1fr; }
+  .nav-btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 </style>
 </head>
 <body>
@@ -1134,7 +1137,7 @@ input[type=range]::-moz-range-thumb {
     </a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.7</span>
+      <span class="header-tag">v2.8</span>
     </div>
   </div>
 
@@ -1143,6 +1146,7 @@ input[type=range]::-moz-range-thumb {
     <a class="nav-btn" href="detourer.html" role="tab">Détourer</a>
     <a class="nav-btn" href="flouter.html" role="tab">Flouter</a>
     <a class="nav-btn" href="canvify.html" role="tab">Canvify</a>
+    <a class="nav-btn" href="scanner.html" role="tab">Scanner</a>
   </nav>
 
   <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()"

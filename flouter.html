@@ -76,7 +76,10 @@ body::before {
 }
 .nav-btn:hover { color: var(--text); }
 .nav-btn.active { background: var(--surface-3); color: var(--text); border: 0.5px solid var(--border-md); }
-@media (max-width: 520px) { .nav { display: grid; grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) {
+  .nav { display: grid; grid-template-columns: 1fr 1fr; }
+  .nav-btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 
 /* DROP ZONE */
 .drop-zone {
@@ -361,7 +364,7 @@ input[type=range].rng::-moz-range-thumb {
     <a href="index.html"><img src="logo.png" alt="Pixo" class="logo"></a>
     <div class="header-title">
       <h1>Croqueur d'images</h1>
-      <span class="header-tag">v2.7</span>
+      <span class="header-tag">v2.8</span>
     </div>
   </div>
 
@@ -370,6 +373,7 @@ input[type=range].rng::-moz-range-thumb {
     <a class="nav-btn" href="detourer.html" role="tab">Détourer</a>
     <a class="nav-btn active" href="flouter.html" role="tab" aria-selected="true">Flouter</a>
     <a class="nav-btn" href="canvify.html" role="tab">Canvify</a>
+    <a class="nav-btn" href="scanner.html" role="tab">Scanner</a>
   </nav>
 
   <!-- Drop zone -->
