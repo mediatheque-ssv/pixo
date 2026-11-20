@@ -166,7 +166,7 @@ body::before {
 }
 .verdict-title { font-size: 15px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.35; padding-top: 4px; }
 .verdict-text { font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.55; }
-.verdict-text + .verdict-text, .chips + .verdict-text { margin-top: 8px; }
+.verdict-text + .verdict-text { margin-top: 8px; }
 .verdict-text.caveat { color: var(--text-3); font-size: 12px; }
 .verdict.ia { background: var(--warn-dim); border-color: var(--warn-border); }
 .verdict.ia .verdict-title { color: var(--warn); }
@@ -174,78 +174,7 @@ body::before {
 .verdict.clean { background: var(--accent-dim); border-color: var(--accent-border); }
 .verdict.clean .verdict-title { color: var(--accent); }
 .verdict.clean .verdict-icon { background: rgba(212,255,78,0.16); color: var(--accent); }
-.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
-.chip {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .02em;
-  padding: 2px 7px; border-radius: 4px; white-space: nowrap;
-  background: var(--surface-3); border: 0.5px solid var(--border-md); color: var(--text-2);
-}
-.chip.ia { background: rgba(255,200,87,0.10); border-color: var(--warn-border); color: var(--warn); }
-.chip.perso { background: var(--info-dim); border-color: var(--info-border); color: var(--info); }
-.chip.removed { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
 
-/* GROUPES */
-.groups-label { margin-top: 1.5rem; }
-.groups { display: flex; flex-direction: column; gap: 8px; }
-.group {
-  background: var(--surface); border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-lg); overflow: hidden;
-}
-.group-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; min-height: 42px; }
-.group-title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
-.group-tech { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); letter-spacing: .03em; }
-.group-size { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-3); white-space: nowrap; }
-.group.done { opacity: .72; }
-.group.done .group-title { text-decoration: line-through; text-decoration-color: var(--text-3); }
-.kv { border-top: 0.5px solid var(--border); padding: 2px 14px 6px; }
-.row {
-  display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 12px;
-  padding: 7px 0; border-top: 0.5px solid var(--border);
-}
-.row:first-child { border-top: none; }
-.k {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
-  display: flex; align-items: baseline; gap: 7px; padding-top: 1px; overflow-wrap: anywhere;
-}
-.k::before { content: ''; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: transparent; transform: translateY(-1px); }
-.row.ia .k::before { background: var(--warn); }
-.row.perso .k::before { background: var(--info); }
-.v { font-size: 12.5px; color: var(--text); overflow-wrap: anywhere; white-space: pre-line; line-height: 1.5; }
-.row.muted .v { color: var(--text-3); }
-.row.ia .v { color: var(--warn); }
-.v a { color: var(--info); text-decoration: underline; text-decoration-color: var(--info-border); text-underline-offset: 2px; }
-.v.clamp { max-height: 4.6em; overflow: hidden; position: relative; }
-.v.clamp::after {
-  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1.6em;
-  background: linear-gradient(transparent, var(--surface));
-}
-.more {
-  margin-top: 4px; background: none; border: none; padding: 0; cursor: pointer;
-  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-3);
-  text-decoration: underline; text-underline-offset: 2px;
-}
-.more:hover { color: var(--text); }
-.group-note {
-  border-top: 0.5px solid var(--border); padding: 9px 14px;
-  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-3); line-height: 1.6;
-}
-.group-note a { color: var(--text-2); }
-details.raw { border-top: 0.5px solid var(--border); }
-details.raw summary {
-  cursor: pointer; padding: 9px 14px; list-style: none;
-  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-3);
-}
-details.raw summary::-webkit-details-marker { display: none; }
-details.raw summary::before { content: '▸ '; }
-details.raw[open] summary::before { content: '▾ '; }
-details.raw summary:hover { color: var(--text); }
-details.raw pre {
-  margin: 0 14px 12px; padding: 10px 12px; max-height: 260px; overflow: auto;
-  background: var(--surface-2); border: 0.5px solid var(--border); border-radius: var(--radius);
-  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-2);
-  white-space: pre-wrap; overflow-wrap: anywhere;
-}
-.kept-line { margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); }
 
 /* ACTIONS */
 .actions { display: flex; align-items: center; gap: 12px; margin-top: 1.25rem; flex-wrap: wrap; }
@@ -259,16 +188,10 @@ details.raw pre {
 .dl-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
 .dl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .dl-btn[hidden] { display: none; }
-.dl-btn.secondary {
-  background: var(--surface-2); color: var(--text);
-  border: 0.5px solid var(--border-hi);
-}
-.dl-btn.secondary:hover:not(:disabled) { background: var(--surface-3); border-color: var(--warn-border); box-shadow: none; }
 .action-hint {
   margin-top: 8px; text-align: center;
   font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
 }
-.action-hint.ia { color: var(--warn); }
 
 /* INFO BOX */
 .info-box {
@@ -298,7 +221,6 @@ details.raw pre {
   .header h1 { font-size: 18px; }
   .file-card { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
   .thumb { width: 64px; height: 64px; }
-  .row { grid-template-columns: 1fr; gap: 2px; }
   .actions { flex-direction: column; }
   .dl-btn { width: 100%; }
   .toast { white-space: normal; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
@@ -324,7 +246,7 @@ details.raw pre {
     <a class="nav-btn active" href="demaquia.html" role="tab" aria-selected="true">DémaquIA</a>
   </nav>
 
-  <p class="intro">Un outil pour démaquiller une image : voir les informations cachées dans le fichier (traces d'IA, lieu de la photo, appareil…) et les retirer.</p>
+  <p class="intro">Un outil pour démaquiller une image : repérer les traces d'IA cachées dans le fichier et les retirer.</p>
 
   <!-- Drop zone -->
   <div class="drop-zone" id="drop-zone"
@@ -363,23 +285,13 @@ details.raw pre {
 
     <div class="verdict" id="verdict" role="status"></div>
 
-    <div class="col-label-row groups-label" id="groups-label">
-      <span class="col-label" id="groups-title">Informations trouvées</span>
-    </div>
-    <div class="groups" id="groups"></div>
-    <div class="kept-line" id="kept-line"></div>
-
     <div class="actions">
-      <button class="dl-btn secondary" id="ai-btn" hidden>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
-        <span id="ai-label">Retirer l'IA seulement</span>
-      </button>
       <button class="dl-btn" id="clean-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        <span id="clean-label">Tout retirer</span>
+        <span id="clean-label">Retirer</span>
       </button>
     </div>
     <div class="action-hint" id="clean-hint"></div>
@@ -387,8 +299,8 @@ details.raw pre {
 
   <div class="info-box">
     <span class="label">// démaquia</span><br>
-    L'outil repère la <span class="label">signature d'origine</span> que posent ChatGPT, Gemini ou Adobe Firefly, la mention « image générée par IA » qu'ajoute par exemple Meta AI, le <span class="label">prompt</span> (la consigne donnée à l'IA) laissé par Stable Diffusion ou ComfyUI, et les informations plus classiques : appareil photo, date, lieu, auteur.<br>
-    <span class="label">Retirer l'IA seulement</span> efface uniquement les traces d'IA et garde le reste. <span class="label">Tout retirer</span> efface toutes les informations cachées. Dans les deux cas, l'image elle-même ne change pas.<br>
+    L'outil repère la <span class="label">signature d'origine</span> que posent ChatGPT, Gemini ou Adobe Firefly, la mention « image générée par IA » qu'ajoute par exemple Meta AI, le <span class="label">prompt</span> (la consigne donnée à l'IA) laissé par Stable Diffusion ou ComfyUI.<br>
+    <span class="label">Retirer</span> efface ces traces d'IA et garde le reste (appareil photo, date, lieu…). L'image elle-même ne change pas.<br>
     À savoir : une image sans ces informations n'est pas forcément vraie, une capture d'écran suffit à les effacer. Google cache aussi une marque invisible dans les pixels de ses images (SynthID) : l'outil ne peut ni la voir ni l'enlever.<br>
     Pour vérifier qu'une signature d'origine est vraie : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>.<br>
     Tout se passe dans votre navigateur : <span class="label">aucune image n'est envoyée sur internet</span>.
@@ -403,8 +315,7 @@ details.raw pre {
 'use strict';
 
 // ── État ─────────────────────────────────────────────────────────────────
-// cur = { name, url, w, h, orig: { bytes, report }, bytes, report, mode, blob, outName }
-// mode : null (rien retiré), 'ia' (traces d'IA retirées) ou 'all' (tout retiré)
+// cur = { name, url, w, h, orig: { bytes, report }, bytes, report, done, all, blob, outName }
 let cur = null;
 
 // ── DOM ──────────────────────────────────────────────────────────────────
@@ -416,12 +327,6 @@ const thumbEl   = document.getElementById('thumb');
 const nameEl    = document.getElementById('file-name');
 const metaEl    = document.getElementById('file-meta');
 const verdictEl = document.getElementById('verdict');
-const groupsLbl = document.getElementById('groups-label');
-const groupsTtl = document.getElementById('groups-title');
-const groupsEl  = document.getElementById('groups');
-const keptEl    = document.getElementById('kept-line');
-const aiBtn     = document.getElementById('ai-btn');
-const aiLbl     = document.getElementById('ai-label');
 const cleanBtn  = document.getElementById('clean-btn');
 const cleanLbl  = document.getElementById('clean-label');
 const hintEl    = document.getElementById('clean-hint');
@@ -456,7 +361,6 @@ function toast(msg, isErr) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3600);
 }
-function withArticle(k) { return (/^[aeiouyéèêh]/i.test(k) ? 'l\'' : 'le ') + k; }
 function listFr(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1]; }
 
 const ICON = {
@@ -464,10 +368,7 @@ const ICON = {
   meta: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/></svg>',
   clean: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12.5 10 17 19 7"/></svg>',
 };
-const TAG = { ia: ['IA', 'ia'], perso: ['Personnel', 'perso'], tech: ['Technique', ''] };
 const CAVEAT = 'Attention : ça ne prouve pas que l\'image est vraie. Une capture d\'écran ou un partage sur les réseaux sociaux suffit à effacer ces informations.';
-const KEPT_WHY = { 'profil couleur': 'pour des couleurs justes', 'orientation': 'pour que l\'image reste dans le bon sens' };
-const keptPhrase = kept => listFr(kept.map(k => withArticle(k) + (KEPT_WHY[k] ? ' (' + KEPT_WHY[k] + ')' : '')));
 
 // ── Import ───────────────────────────────────────────────────────────────
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
@@ -491,7 +392,7 @@ async function loadFile(file) {
   try { report = await PixoMeta.analyze(bytes); }
   catch (e) { console.error(e); toast('Analyse impossible.', true); return; }
   if (cur && cur.url) URL.revokeObjectURL(cur.url);
-  cur = { name: file.name, url: URL.createObjectURL(file), orig: { bytes, report }, bytes, report, mode: null };
+  cur = { name: file.name, url: URL.createObjectURL(file), orig: { bytes, report }, bytes, report, done: false };
   thumbEl.src = cur.url;
   thumbEl.onload = () => { if (cur) { cur.w = thumbEl.naturalWidth; cur.h = thumbEl.naturalHeight; renderMeta(); } };
   render();
@@ -501,157 +402,69 @@ async function loadFile(file) {
 
 // ── Rendu ────────────────────────────────────────────────────────────────
 function renderMeta() {
-  nameEl.textContent = cur.mode ? cur.outName : cur.name;
+  nameEl.textContent = cur.done ? cur.outName : cur.name;
   nameEl.title = nameEl.textContent;
   metaEl.textContent = [cur.report.formatLabel, cur.w ? cur.w + '×' + cur.h : '', fmtSize(cur.bytes.length)].filter(Boolean).join(' · ');
 }
 
-function verdictHTML() {
-  const r = cur.report, o = cur.orig.report;
-  let cls, title, lines = [], chips = [], caveat = '';
-  if (cur.mode === 'all') {
-    cls = 'clean'; title = 'Informations retirées';
-    lines.push('L\'image est identique, mais elle ne contient plus aucune information cachée (' + fmtSize(cur.orig.bytes.length - cur.bytes.length) + ' en moins).');
-    if (r.kept.length) lines.push('On garde seulement ' + keptPhrase(r.kept) + '.');
-  } else if (cur.mode === 'ia' && r.ai.found) {
-    cls = 'ia'; title = 'Des traces d\'IA restent';
-    lines.push('Elles sont rangées à un endroit du fichier que l\'outil ne sait pas nettoyer à part. « Tout retirer » les efface.');
-  } else if (cur.mode === 'ia') {
+function render() {
+  const r = cur.report;
+  renderMeta();
+  resultLbl.textContent = cur.done ? 'Image nettoyée' : 'Image analysée';
+  let cls, title, lines = [], caveat = '';
+  if (cur.done) {
     cls = 'clean'; title = 'Traces d\'IA retirées';
-    lines.push((r.groups.length ? 'Le reste est gardé' + (r.personal.length ? ' (' + listFr(r.personal) + ')' : '') + '.' : 'Il n\'y avait rien d\'autre dans le fichier.') +
-      ' L\'image elle-même ne change pas.');
-    // « Retiré » si tout le bloc est parti, « Nettoyé » s'il reste ses autres informations
-    chips = o.groups.filter(g => g.tag === 'ia').map(g => ['removed', (r.groups.some(k => k.title === g.title) ? 'Nettoyé : ' : 'Retiré : ') + g.title]);
-  } else if (r.verdict === 'ia') {
-    const ai = r.ai;
+    lines.push(cur.all
+      ? 'Certaines traces étaient mélangées au reste : toutes les informations cachées ont été retirées. L\'image elle-même ne change pas.'
+      : 'L\'image elle-même ne change pas' + (r.groups.length ? ', et le reste est gardé (appareil, date, lieu…).' : '.'));
+  } else if (r.ai.found) {
     cls = 'ia';
-    title = ai.generated ? 'Image générée par IA' : ai.edited ? 'Image retouchée avec l\'IA' : 'Traces d\'IA trouvées';
-    lines.push((ai.tools.length ? 'Outil : ' + listFr(ai.tools) + '. ' : '') + 'C\'est indiqué dans les informations cachées du fichier.');
-    chips = r.groups.filter(g => g.tag === 'ia').map(g => ['ia', g.title]);
-    if (r.personal.length) chips.push(['perso', 'infos personnelles']);
-  } else if (r.verdict === 'meta') {
-    cls = 'meta'; title = 'Aucune trace d\'IA trouvée';
-    if (r.personal.length) {
-      lines.push('Mais le fichier contient des informations personnelles :');
-      chips = r.personal.map(p => ['perso', p]);
-    } else lines.push('Le fichier contient seulement quelques informations techniques.');
-    caveat = CAVEAT;
+    title = r.ai.generated ? 'Image générée par IA' : r.ai.edited ? 'Image retouchée avec l\'IA' : 'Traces d\'IA trouvées';
+    lines.push((r.ai.tools.length ? 'Outil : ' + listFr(r.ai.tools) + '. ' : '') + 'C\'est indiqué dans les informations cachées du fichier.');
   } else {
-    cls = 'clean'; title = 'Aucune information cachée';
+    cls = 'meta'; title = 'Aucune trace d\'IA trouvée';
     caveat = CAVEAT;
   }
   verdictEl.className = 'verdict ' + cls;
   verdictEl.innerHTML = '<div class="verdict-icon">' + ICON[cls] + '</div><div>' +
     '<div class="verdict-title">' + esc(title) + '</div>' +
     lines.map(l => '<div class="verdict-text">' + esc(l) + '</div>').join('') +
-    (chips.length ? '<div class="chips">' + chips.map(c => '<span class="chip ' + c[0] + '">' + esc(c[1]) + '</span>').join('') + '</div>' : '') +
     (caveat ? '<div class="verdict-text caveat">' + esc(caveat) + '</div>' : '') +
     '</div>';
-}
 
-function groupHTML(g, done) {
-  const tag = done ? ['Retiré', 'removed'] : TAG[g.tag] || TAG.tech;
-  let h = '<div class="group' + (done ? ' done' : '') + '">' +
-    '<div class="group-head"><span class="group-title">' + esc(g.title) + '</span>' +
-    (g.tech ? '<span class="group-tech" title="Nom technique">' + esc(g.tech) + '</span>' : '') +
-    '<span class="chip ' + tag[1] + '">' + tag[0] + '</span>' +
-    '<span class="group-size">' + fmtSize(g.size) + '</span></div>';
-  if (done) return h + '</div>';
-  if (g.items.length) {
-    h += '<div class="kv">' + g.items.map(it => {
-      const v = it.href
-        ? '<a href="' + esc(it.href) + '" target="_blank" rel="noopener" title="Voir sur la carte">' + esc(it.v) + '</a>'
-        : esc(it.v);
-      return '<div class="row' + (it.ia ? ' ia' : '') + (it.perso ? ' perso' : '') + (it.muted ? ' muted' : '') + '">' +
-        '<div class="k">' + esc(it.k) + '</div><div><div class="v' + (it.long ? ' long' : '') + '">' + v + '</div></div></div>';
-    }).join('') + '</div>';
-  }
-  if (g.note) {
-    h += '<div class="group-note">' + esc(g.note) +
-      (g.c2pa ? ' Pour le vérifier : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>' : '') + '</div>';
-  }
-  if (g.raw) h += '<details class="raw"><summary>Voir le texte complet</summary><pre>' + esc(g.raw) + '</pre></details>';
-  return h + '</div>';
-}
-
-// Les textes longs (prompts…) sont repliés sur 3 lignes
-function clampLong() {
-  groupsEl.querySelectorAll('.v.long').forEach(v => {
-    v.classList.add('clamp');
-    if (v.scrollHeight <= v.clientHeight + 2) { v.classList.remove('clamp'); return; }
-    const b = document.createElement('button');
-    b.className = 'more'; b.type = 'button'; b.textContent = 'Afficher tout';
-    b.addEventListener('click', () => {
-      const open = v.classList.toggle('clamp');
-      b.textContent = open ? 'Afficher tout' : 'Réduire';
-    });
-    v.after(b);
-  });
-}
-
-function setBtn(btn, lbl, text, opts) {
-  opts = opts || {};
-  btn.hidden = !!opts.hidden;
-  btn.disabled = !!opts.disabled;
-  lbl.textContent = text;
-}
-
-function render() {
-  const r = cur.report, o = cur.orig.report;
-  renderMeta();
-  verdictHTML();
-  resultLbl.textContent = cur.mode ? 'Image nettoyée' : 'Image analysée';
-
-  // Blocs : trouvés, gardés (après « IA seulement ») ou retirés (après « Tout retirer »)
-  const groups = cur.mode === 'all' ? o.groups : r.groups;
-  groupsLbl.style.display = groups.length ? '' : 'none';
-  groupsTtl.textContent = cur.mode === 'all' ? 'Ce qui a été retiré' : cur.mode === 'ia' ? 'Ce qui a été gardé' : 'Informations trouvées';
-  groupsEl.innerHTML = groups.map(g => groupHTML(g, cur.mode === 'all')).join('');
-  clampLong();
-  keptEl.textContent = !cur.mode && r.kept.length && r.removable > 0 ? 'Toujours gardé : ' + keptPhrase(r.kept) + '.' : '';
-
-  // Boutons
-  hintEl.className = 'action-hint';
-  if (cur.mode === 'all') {
-    setBtn(aiBtn, aiLbl, '', { hidden: true });
-    setBtn(cleanBtn, cleanLbl, 'Télécharger à nouveau');
-    hintEl.textContent = cur.outName;
-  } else if (cur.mode === 'ia') {
-    setBtn(aiBtn, aiLbl, 'Télécharger à nouveau');
-    setBtn(cleanBtn, cleanLbl, 'Tout retirer', { hidden: r.removable === 0 });
-    hintEl.textContent = cur.outName;
+  if (cur.done) {
+    cleanBtn.disabled = false; cleanLbl.textContent = 'Télécharger à nouveau'; hintEl.textContent = cur.outName;
+  } else if (r.ai.found) {
+    cleanBtn.disabled = false; cleanLbl.textContent = 'Retirer'; hintEl.textContent = 'L\'image elle-même ne change pas';
   } else {
-    setBtn(aiBtn, aiLbl, 'Retirer l\'IA seulement', { hidden: !r.ai.found });
-    setBtn(cleanBtn, cleanLbl, r.removable > 0 ? 'Tout retirer' : 'Rien à retirer', { disabled: r.removable === 0 });
-    hintEl.textContent = r.removable > 0 ? fmtSize(r.removable) + ' d\'informations à retirer · l\'image elle-même ne change pas' : '';
+    cleanBtn.disabled = true; cleanLbl.textContent = 'Rien à retirer'; hintEl.textContent = '';
   }
 }
 
-// ── Nettoyage ────────────────────────────────────────────────────────────
-async function applyClean(mode) {
-  let res;
-  try { res = mode === 'all' ? PixoMeta.strip(cur.bytes) : await PixoMeta.stripAI(cur.bytes); }
-  catch (e) { console.error(e); toast('Nettoyage impossible.', true); return; }
-  if (mode === 'ia' && !res.changed) {
-    toast('Ces traces d\'IA ne s\'enlèvent pas seules : utilisez « Tout retirer ».');
-    return;
-  }
+// ── Retrait des traces d'IA ──────────────────────────────────────────────
+// On retire seulement l'IA. Si une trace résiste (rangée avec le reste),
+// on retire alors toutes les informations cachées, pour qu'il n'en reste aucune.
+cleanBtn.addEventListener('click', async () => {
+  if (!cur) return;
+  if (cur.done) { download(cur.blob, cur.outName); return; }
+  let res, report, all = false;
+  try {
+    res = await PixoMeta.stripAI(cur.bytes);
+    report = await PixoMeta.analyze(res.bytes);
+    if (!res.changed || report.ai.found) {
+      res = PixoMeta.strip(cur.bytes);
+      report = await PixoMeta.analyze(res.bytes);
+      all = true;
+    }
+  } catch (e) { console.error(e); toast('Nettoyage impossible.', true); return; }
   const ext = extOf(cur.name);
   const okExt = { jpeg: ['jpg', 'jpeg', 'jfif'], png: ['png'], webp: ['webp'] }[res.format];
-  const outName = baseOf(cur.name) + (mode === 'all' ? '_sans-metadonnees.' : '_sans-ia.') + (okExt.includes(ext) ? ext : okExt[0]);
+  const outName = baseOf(cur.name) + '_sans-ia.' + (okExt.includes(ext) ? ext : okExt[0]);
   const blob = new Blob([res.bytes], { type: PixoMeta.mime(res.format) });
   download(blob, outName);
-  Object.assign(cur, { bytes: res.bytes, report: await PixoMeta.analyze(res.bytes), mode, blob, outName });
+  Object.assign(cur, { bytes: res.bytes, report, done: true, all, blob, outName });
   render();
-  toast(mode === 'all' ? 'Informations retirées, image téléchargée' : 'Traces d\'IA retirées, image téléchargée');
-}
-aiBtn.addEventListener('click', () => {
-  if (!cur) return;
-  if (cur.mode === 'ia') download(cur.blob, cur.outName); else applyClean('ia');
-});
-cleanBtn.addEventListener('click', () => {
-  if (!cur) return;
-  if (cur.mode === 'all') download(cur.blob, cur.outName); else applyClean('all');
+  toast('Traces d\'IA retirées, image téléchargée');
 });
 </script>
 </body>
