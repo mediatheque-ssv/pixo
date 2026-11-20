@@ -193,6 +193,7 @@ body::before {
 }
 .group-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; min-height: 42px; }
 .group-title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.group-tech { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); letter-spacing: .03em; }
 .group-size { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-3); white-space: nowrap; }
 .group.done { opacity: .72; }
 .group.done .group-title { text-decoration: line-through; text-decoration-color: var(--text-3); }
@@ -257,6 +258,12 @@ details.raw pre {
 }
 .dl-btn:hover:not(:disabled) { background: #dcff6a; box-shadow: 0 0 24px rgba(212,255,78,0.25); transform: translateY(-1px); }
 .dl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.dl-btn[hidden] { display: none; }
+.dl-btn.secondary {
+  background: var(--surface-2); color: var(--text);
+  border: 0.5px solid var(--border-hi);
+}
+.dl-btn.secondary:hover:not(:disabled) { background: var(--surface-3); border-color: var(--warn-border); box-shadow: none; }
 .action-hint {
   margin-top: 8px; text-align: center;
   font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3);
@@ -317,7 +324,7 @@ details.raw pre {
     <a class="nav-btn active" href="demaquia.html" role="tab" aria-selected="true">DémaquIA</a>
   </nav>
 
-  <p class="intro">Un outil pour démaquiller une image : voir ce que cachent ses métadonnées (traces d'IA, position GPS, appareil…) et tout retirer.</p>
+  <p class="intro">Un outil pour démaquiller une image : voir les informations cachées dans le fichier (traces d'IA, lieu de la photo, appareil…) et les retirer.</p>
 
   <!-- Drop zone -->
   <div class="drop-zone" id="drop-zone"
@@ -357,12 +364,16 @@ details.raw pre {
     <div class="verdict" id="verdict" role="status"></div>
 
     <div class="col-label-row groups-label" id="groups-label">
-      <span class="col-label" id="groups-title">Métadonnées trouvées</span>
+      <span class="col-label" id="groups-title">Informations trouvées</span>
     </div>
     <div class="groups" id="groups"></div>
     <div class="kept-line" id="kept-line"></div>
 
     <div class="actions">
+      <button class="dl-btn secondary" id="ai-btn" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
+        <span id="ai-label">Retirer l'IA seulement</span>
+      </button>
       <button class="dl-btn" id="clean-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -376,11 +387,11 @@ details.raw pre {
 
   <div class="info-box">
     <span class="label">// démaquia</span><br>
-    Pixo cherche les <span class="label">Content Credentials (C2PA)</span> que posent ChatGPT, Gemini ou Adobe Firefly, le champ <span class="label">IPTC</span> qui déclare une image « générée par IA » (Meta AI…), les paramètres laissés par Stable Diffusion, ComfyUI, NovelAI… et les métadonnées classiques : appareil, date, position GPS, auteur, logiciel.<br>
-    « Tout retirer » ne garde que ce qui sert à afficher l'image : les pixels, le profil couleur et l'orientation. Les pixels ne sont pas recompressés, l'image reste identique.<br>
-    Limites : une image sans métadonnées n'est pas forcément authentique, une capture d'écran ou un passage sur les réseaux sociaux suffit à les effacer. Certains outils (SynthID chez Google) cachent aussi un filigrane invisible dans les pixels, que Pixo ne peut ni voir ni enlever.<br>
-    Pixo lit les Content Credentials sans vérifier leur signature : pour ça, il y a <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>.<br>
-    Tout se passe dans votre navigateur — <span class="label">aucune image n'est envoyée sur un serveur</span>.
+    L'outil repère la <span class="label">signature d'origine</span> que posent ChatGPT, Gemini ou Adobe Firefly, la mention « image générée par IA » qu'ajoute par exemple Meta AI, le <span class="label">prompt</span> et les réglages laissés par Stable Diffusion ou ComfyUI, et les informations plus classiques : appareil photo, date, lieu, auteur.<br>
+    <span class="label">Retirer l'IA seulement</span> efface uniquement les traces d'IA et garde le reste. <span class="label">Tout retirer</span> efface toutes les informations cachées. Dans les deux cas, l'image elle-même ne change pas.<br>
+    À savoir : une image sans ces informations n'est pas forcément vraie, une capture d'écran suffit à les effacer. Google cache aussi une marque invisible dans les pixels de ses images (SynthID) : l'outil ne peut ni la voir ni l'enlever.<br>
+    Pour vérifier qu'une signature d'origine est authentique : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>.<br>
+    Tout se passe dans votre navigateur : <span class="label">aucune image n'est envoyée sur internet</span>.
   </div>
 
 </div>
@@ -392,7 +403,8 @@ details.raw pre {
 'use strict';
 
 // ── État ─────────────────────────────────────────────────────────────────
-// { name, bytes, report, url, w, h, cleaned, removed, blob, outName, before }
+// cur = { name, url, w, h, orig: { bytes, report }, bytes, report, mode, blob, outName }
+// mode : null (rien retiré), 'ia' (traces d'IA retirées) ou 'all' (tout retiré)
 let cur = null;
 
 // ── DOM ──────────────────────────────────────────────────────────────────
@@ -408,9 +420,11 @@ const groupsLbl = document.getElementById('groups-label');
 const groupsTtl = document.getElementById('groups-title');
 const groupsEl  = document.getElementById('groups');
 const keptEl    = document.getElementById('kept-line');
+const aiBtn     = document.getElementById('ai-btn');
+const aiLbl     = document.getElementById('ai-label');
 const cleanBtn  = document.getElementById('clean-btn');
 const cleanLbl  = document.getElementById('clean-label');
-const cleanHint = document.getElementById('clean-hint');
+const hintEl    = document.getElementById('clean-hint');
 const changeBtn = document.getElementById('change-btn');
 
 // ── Utilitaires ──────────────────────────────────────────────────────────
@@ -440,7 +454,7 @@ function toast(msg, isErr) {
   el.classList.toggle('error', !!isErr);
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3600);
 }
 function withArticle(k) { return (/^[aeiouyéèêh]/i.test(k) ? 'l\'' : 'le ') + k; }
 function listFr(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1]; }
@@ -451,7 +465,9 @@ const ICON = {
   clean: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12.5 10 17 19 7"/></svg>',
 };
 const TAG = { ia: ['IA', 'ia'], perso: ['Personnel', 'perso'], tech: ['Technique', ''] };
-const CAVEAT = 'Ça ne prouve pas que l\'image soit authentique : une capture d\'écran ou un passage sur les réseaux sociaux suffit à effacer les métadonnées.';
+const CAVEAT = 'Attention : ça ne prouve pas que l\'image est vraie. Une capture d\'écran ou un partage sur les réseaux sociaux suffit à effacer ces informations.';
+const KEPT_WHY = { 'profil couleur': 'pour des couleurs justes', 'orientation': 'pour que l\'image reste dans le bon sens' };
+const keptPhrase = kept => listFr(kept.map(k => withArticle(k) + (KEPT_WHY[k] ? ' (' + KEPT_WHY[k] + ')' : '')));
 
 // ── Import ───────────────────────────────────────────────────────────────
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
@@ -475,7 +491,7 @@ async function loadFile(file) {
   try { report = await PixoMeta.analyze(bytes); }
   catch (e) { console.error(e); toast('Analyse impossible.', true); return; }
   if (cur && cur.url) URL.revokeObjectURL(cur.url);
-  cur = { name: file.name, bytes, report, url: URL.createObjectURL(file), cleaned: false };
+  cur = { name: file.name, url: URL.createObjectURL(file), orig: { bytes, report }, bytes, report, mode: null };
   thumbEl.src = cur.url;
   thumbEl.onload = () => { if (cur) { cur.w = thumbEl.naturalWidth; cur.h = thumbEl.naturalHeight; renderMeta(); } };
   render();
@@ -485,40 +501,47 @@ async function loadFile(file) {
 
 // ── Rendu ────────────────────────────────────────────────────────────────
 function renderMeta() {
-  const r = cur.report;
-  nameEl.textContent = cur.cleaned ? cur.outName : cur.name;
+  nameEl.textContent = cur.mode ? cur.outName : cur.name;
   nameEl.title = nameEl.textContent;
-  metaEl.textContent = [r.formatLabel, cur.w ? cur.w + '×' + cur.h : '', fmtSize(cur.bytes.length)].filter(Boolean).join(' · ');
+  metaEl.textContent = [cur.report.formatLabel, cur.w ? cur.w + '×' + cur.h : '', fmtSize(cur.bytes.length)].filter(Boolean).join(' · ');
 }
 
 function verdictHTML() {
-  const r = cur.report, before = cur.before;
+  const r = cur.report, o = cur.orig.report;
   let cls, title, lines = [], chips = [], caveat = '';
-  if (cur.cleaned) {
-    cls = 'clean'; title = 'Métadonnées retirées';
-    lines.push(fmtSize(cur.removed) + ' en moins. Les pixels sont identiques à l\'original' +
-      (r.kept.length ? ' ; ' + (r.kept.length > 1 ? 'seuls ' : 'seul ') + listFr(r.kept.map(withArticle)) + (r.kept.length > 1 ? ' sont gardés.' : ' est gardé.') : '.'));
+  if (cur.mode === 'all') {
+    cls = 'clean'; title = 'Informations retirées';
+    lines.push('L\'image est identique, mais elle ne contient plus aucune information cachée (' + fmtSize(cur.orig.bytes.length - cur.bytes.length) + ' en moins).');
+    if (r.kept.length) lines.push('On garde seulement ' + keptPhrase(r.kept) + '.');
+  } else if (cur.mode === 'ia' && r.ai.found) {
+    cls = 'ia'; title = 'Des traces d\'IA restent';
+    lines.push('Elles sont rangées à un endroit du fichier que l\'outil ne sait pas nettoyer à part. « Tout retirer » les efface.');
+  } else if (cur.mode === 'ia') {
+    cls = 'clean'; title = 'Traces d\'IA retirées';
+    lines.push((r.groups.length ? 'Le reste est gardé' + (r.personal.length ? ' (' + listFr(r.personal) + ')' : '') + '.' : 'Il n\'y avait rien d\'autre dans le fichier.') +
+      ' L\'image elle-même ne change pas.');
+    // « Retiré » si tout le bloc est parti, « Nettoyé » s'il reste ses autres informations
+    chips = o.groups.filter(g => g.tag === 'ia').map(g => ['removed', (r.groups.some(k => k.title === g.title) ? 'Nettoyé : ' : 'Retiré : ') + g.title]);
   } else if (r.verdict === 'ia') {
     const ai = r.ai;
     cls = 'ia';
     title = ai.generated ? 'Image générée par IA' : ai.edited ? 'Image retouchée avec l\'IA' : 'Traces d\'IA trouvées';
-    lines.push((ai.tools.length ? 'Outil : ' + listFr(ai.tools) + '. ' : '') +
-      'Ce sont les métadonnées de l\'image qui le déclarent.');
+    lines.push((ai.tools.length ? 'Outil : ' + listFr(ai.tools) + '. ' : '') + 'C\'est indiqué dans les informations cachées du fichier.');
     chips = r.groups.filter(g => g.tag === 'ia').map(g => ['ia', g.title]);
     if (r.personal.length) chips.push(['perso', 'infos personnelles']);
   } else if (r.verdict === 'meta') {
-    cls = 'meta'; title = 'Aucune trace d\'IA dans les métadonnées';
+    cls = 'meta'; title = 'Aucune trace d\'IA trouvée';
     if (r.personal.length) {
-      lines.push('Mais elle contient des informations personnelles :');
+      lines.push('Mais le fichier contient des informations personnelles :');
       chips = r.personal.map(p => ['perso', p]);
-    } else lines.push('L\'image contient tout de même ' + fmtSize(r.removable) + ' de métadonnées techniques.');
+    } else lines.push('Le fichier contient seulement quelques informations techniques.');
     caveat = CAVEAT;
   } else {
-    cls = 'clean'; title = 'Aucune métadonnée';
+    cls = 'clean'; title = 'Aucune information cachée';
     caveat = CAVEAT;
   }
   verdictEl.className = 'verdict ' + cls;
-  verdictEl.innerHTML = '<div class="verdict-icon">' + ICON[cls === 'clean' ? 'clean' : cls] + '</div><div>' +
+  verdictEl.innerHTML = '<div class="verdict-icon">' + ICON[cls] + '</div><div>' +
     '<div class="verdict-title">' + esc(title) + '</div>' +
     lines.map(l => '<div class="verdict-text">' + esc(l) + '</div>').join('') +
     (chips.length ? '<div class="chips">' + chips.map(c => '<span class="chip ' + c[0] + '">' + esc(c[1]) + '</span>').join('') + '</div>' : '') +
@@ -530,6 +553,7 @@ function groupHTML(g, done) {
   const tag = done ? ['Retiré', 'removed'] : TAG[g.tag] || TAG.tech;
   let h = '<div class="group' + (done ? ' done' : '') + '">' +
     '<div class="group-head"><span class="group-title">' + esc(g.title) + '</span>' +
+    (g.tech ? '<span class="group-tech" title="Nom technique">' + esc(g.tech) + '</span>' : '') +
     '<span class="chip ' + tag[1] + '">' + tag[0] + '</span>' +
     '<span class="group-size">' + fmtSize(g.size) + '</span></div>';
   if (done) return h + '</div>';
@@ -546,7 +570,7 @@ function groupHTML(g, done) {
     h += '<div class="group-note">' + esc(g.note) +
       (g.c2pa ? ' Pour la vérifier : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>' : '') + '</div>';
   }
-  if (g.raw) h += '<details class="raw"><summary>Contenu brut</summary><pre>' + esc(g.raw) + '</pre></details>';
+  if (g.raw) h += '<details class="raw"><summary>Voir le texte complet</summary><pre>' + esc(g.raw) + '</pre></details>';
   return h + '</div>';
 }
 
@@ -565,61 +589,72 @@ function clampLong() {
   });
 }
 
+function setBtn(btn, lbl, text, opts) {
+  opts = opts || {};
+  btn.hidden = !!opts.hidden;
+  btn.disabled = !!opts.disabled;
+  lbl.textContent = text;
+}
+
 function render() {
-  const r = cur.report;
+  const r = cur.report, o = cur.orig.report;
   renderMeta();
   verdictHTML();
-  resultLbl.textContent = cur.cleaned ? 'Image nettoyée' : 'Image analysée';
-  const groups = cur.cleaned ? cur.before.groups : r.groups;
+  resultLbl.textContent = cur.mode ? 'Image nettoyée' : 'Image analysée';
+
+  // Blocs : trouvés, gardés (après « IA seulement ») ou retirés (après « Tout retirer »)
+  const groups = cur.mode === 'all' ? o.groups : r.groups;
   groupsLbl.style.display = groups.length ? '' : 'none';
-  groupsTtl.textContent = cur.cleaned ? 'Ce qui a été retiré' : 'Métadonnées trouvées';
-  groupsEl.innerHTML = groups.map(g => groupHTML(g, cur.cleaned)).join('');
+  groupsTtl.textContent = cur.mode === 'all' ? 'Ce qui a été retiré' : cur.mode === 'ia' ? 'Ce qui a été gardé' : 'Informations trouvées';
+  groupsEl.innerHTML = groups.map(g => groupHTML(g, cur.mode === 'all')).join('');
   clampLong();
-  const kept = (cur.cleaned ? cur.before : r).kept;
-  keptEl.textContent = !cur.cleaned && kept.length && r.removable > 0
-    ? 'Gardé au nettoyage : ' + listFr(kept.map(withArticle)) + ', utile' + (kept.length > 1 ? 's' : '') + ' à l\'affichage.'
-    : '';
-  if (cur.cleaned) {
-    cleanBtn.disabled = false;
-    cleanLbl.textContent = 'Télécharger à nouveau';
-    cleanHint.className = 'action-hint';
-    cleanHint.textContent = cur.outName;
-  } else if (r.removable > 0) {
-    cleanBtn.disabled = false;
-    cleanLbl.textContent = 'Tout retirer';
-    if (r.verdict === 'ia') {
-      cleanHint.className = 'action-hint ia';
-      cleanHint.textContent = 'Si vous publiez cette image, pensez à indiquer qu\'elle a été faite avec l\'IA.';
-    } else {
-      cleanHint.className = 'action-hint';
-      cleanHint.textContent = fmtSize(r.removable) + ' de métadonnées · les pixels ne sont pas modifiés';
-    }
+  keptEl.textContent = !cur.mode && r.kept.length && r.removable > 0 ? 'Toujours gardé : ' + keptPhrase(r.kept) + '.' : '';
+
+  // Boutons
+  hintEl.className = 'action-hint';
+  if (cur.mode === 'all') {
+    setBtn(aiBtn, aiLbl, '', { hidden: true });
+    setBtn(cleanBtn, cleanLbl, 'Télécharger à nouveau');
+    hintEl.textContent = cur.outName;
+  } else if (cur.mode === 'ia') {
+    setBtn(aiBtn, aiLbl, 'Télécharger à nouveau');
+    setBtn(cleanBtn, cleanLbl, 'Tout retirer', { hidden: r.removable === 0 });
+    hintEl.textContent = cur.outName;
   } else {
-    cleanBtn.disabled = true;
-    cleanLbl.textContent = 'Rien à retirer';
-    cleanHint.className = 'action-hint';
-    cleanHint.textContent = '';
+    setBtn(aiBtn, aiLbl, 'Retirer l\'IA seulement', { hidden: !r.ai.found });
+    setBtn(cleanBtn, cleanLbl, r.removable > 0 ? 'Tout retirer' : 'Rien à retirer', { disabled: r.removable === 0 });
+    if (r.ai.found) {
+      hintEl.className = 'action-hint ia';
+      hintEl.textContent = 'Si vous publiez cette image, pensez à indiquer qu\'elle a été faite avec l\'IA.';
+    } else hintEl.textContent = r.removable > 0 ? fmtSize(r.removable) + ' d\'informations à retirer · l\'image elle-même ne change pas' : '';
   }
 }
 
 // ── Nettoyage ────────────────────────────────────────────────────────────
-cleanBtn.addEventListener('click', async () => {
-  if (!cur) return;
-  if (cur.cleaned) { download(cur.blob, cur.outName); return; }
+async function applyClean(mode) {
   let res;
-  try { res = PixoMeta.strip(cur.bytes); }
+  try { res = mode === 'all' ? PixoMeta.strip(cur.bytes) : await PixoMeta.stripAI(cur.bytes); }
   catch (e) { console.error(e); toast('Nettoyage impossible.', true); return; }
+  if (mode === 'ia' && !res.changed) {
+    toast('Ces traces d\'IA ne s\'enlèvent pas seules : utilisez « Tout retirer ».');
+    return;
+  }
   const ext = extOf(cur.name);
   const okExt = { jpeg: ['jpg', 'jpeg', 'jfif'], png: ['png'], webp: ['webp'] }[res.format];
-  const outName = baseOf(cur.name) + '_sans-metadonnees.' + (okExt.includes(ext) ? ext : okExt[0]);
+  const outName = baseOf(cur.name) + (mode === 'all' ? '_sans-metadonnees.' : '_sans-ia.') + (okExt.includes(ext) ? ext : okExt[0]);
   const blob = new Blob([res.bytes], { type: PixoMeta.mime(res.format) });
   download(blob, outName);
-  const before = cur.report;
-  cur.bytes = res.bytes;
-  cur.report = await PixoMeta.analyze(res.bytes);
-  Object.assign(cur, { cleaned: true, removed: res.removed, blob, outName, before });
+  Object.assign(cur, { bytes: res.bytes, report: await PixoMeta.analyze(res.bytes), mode, blob, outName });
   render();
-  toast('Métadonnées retirées · ' + fmtSize(res.removed) + ' en moins');
+  toast(mode === 'all' ? 'Informations retirées, image téléchargée' : 'Traces d\'IA retirées, image téléchargée');
+}
+aiBtn.addEventListener('click', () => {
+  if (!cur) return;
+  if (cur.mode === 'ia') download(cur.blob, cur.outName); else applyClean('ia');
+});
+cleanBtn.addEventListener('click', () => {
+  if (!cur) return;
+  if (cur.mode === 'all') download(cur.blob, cur.outName); else applyClean('all');
 });
 </script>
 </body>

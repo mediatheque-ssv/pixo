@@ -4,7 +4,8 @@
    envoyé sur un serveur.
 
    PixoMeta.analyze(octets)  → Promise<rapport>   ce que contient l'image
-   PixoMeta.strip(octets)    → { bytes, removed, format }   image nettoyée
+   PixoMeta.strip(octets)    → { bytes, removed, format }   tout est retiré
+   PixoMeta.stripAI(octets)  → Promise<idem>   seules les traces d'IA sont retirées
 
    Suppression par liste blanche : on ne garde que ce qui sert à afficher
    l'image (pixels, profil couleur, orientation, animation). Tout le reste
@@ -700,6 +701,15 @@ function softwareItem(R, k, v, source) {
   return { k, v, ia: !!t };
 }
 
+const MJ_JOB = /Job ID:\s*[0-9a-f-]{16,}/i;
+const isGenParams = s => /Steps: \d+/.test(s) && /Sampler: /.test(s);
+// Une description peut contenir le prompt d'une IA (Midjourney y met « Job ID: … »)
+function descItem(R, v) {
+  if (MJ_JOB.test(v)) { R.tool('Midjourney'); R.flag('generated', 'prompt Midjourney'); return { k: 'Prompt', v, long: true, ia: true }; }
+  if (isGenParams(v)) { R.tool('Stable Diffusion'); R.flag('generated', 'paramètres Stable Diffusion'); return { k: 'Prompt et réglages', v, long: true, ia: true }; }
+  return { k: 'Description', v, long: true };
+}
+
 function exifGroup(R, tiff, title, size) {
   const t = parseTiff(tiff);
   if (!t) return R.group({ title, size, items: [], note: 'Bloc EXIF illisible.' });
@@ -715,7 +725,7 @@ function exifGroup(R, tiff, title, size) {
   const xpAuthor = v(0x9C9D); if (xpAuthor instanceof Uint8Array) { const s = clean(utf16(xpAuthor, true)); if (s) { items.push({ k: 'Auteur', v: s, perso: true }); R.perso('nom'); } }
   const copy = str(v(0x8298)); if (copy) items.push({ k: 'Copyright', v: copy });
   const soft = str(v(0x0131)); if (soft) items.push(softwareItem(R, 'Logiciel', soft, 'EXIF'));
-  const desc = str(v(0x010E)); if (desc) items.push({ k: 'Description', v: desc, long: true });
+  const desc = str(v(0x010E)); if (desc) items.push(descItem(R, desc));
   for (const [tag, k] of [[0x9C9B, 'Titre'], [0x9C9C, 'Commentaire'], [0x9C9E, 'Mots-clés'], [0x9C9F, 'Sujet']]) {
     const x = v(tag); if (x instanceof Uint8Array) { const s = clean(utf16(x, true)); if (s) items.push({ k, v: s }); }
   }
@@ -764,14 +774,15 @@ function xmpGroup(R, xml, size, title) {
   for (const s of uniq(xmpFind(xml, 'CreatorTool'))) items.push(softwareItem(R, 'Logiciel', s, 'XMP'));
   const agents = uniq(xmpFind(xml, 'softwareAgent'));
   if (agents.length) {
-    const it = softwareItem(R, 'Historique', agents.join(', '), 'XMP');
+    const it = softwareItem(R, 'Logiciels utilisés', agents.join(', '), 'XMP');
     it.long = agents.length > 3; items.push(it);
   }
   for (const s of uniq(xmpFind(xml, 'Credit'))) items.push(softwareItem(R, 'Crédit', s, 'XMP'));
   const creator = uniq(xmpFind(xml, 'creator')).concat(uniq(xmpFind(xml, 'Artist')));
   if (creator.length) { items.push({ k: 'Auteur', v: uniq(creator).join(', '), perso: true }); R.perso('nom'); }
   items.push({ k: 'Titre', v: uniq(xmpFind(xml, 'title')).join(' · ') });
-  items.push({ k: 'Description', v: uniq(xmpFind(xml, 'description')).join('\n'), long: true });
+  const descs = uniq(xmpFind(xml, 'description')).join('\n');
+  if (descs) items.push(descItem(R, descs));
   items.push({ k: 'Mots-clés', v: uniq(xmpFind(xml, 'subject')).join(', ') });
   items.push({ k: 'Droits', v: uniq(xmpFind(xml, 'rights')).join(' · ') });
   const dev = uniq(xmpFind(xml, 'Make').concat(xmpFind(xml, 'Model'))).join(' ');
@@ -781,7 +792,7 @@ function xmpGroup(R, xml, size, title) {
   const created = xmpFind(xml, 'DateCreated')[0] || xmpFind(xml, 'CreateDate')[0];
   if (created) items.push({ k: 'Créée le', v: isoDate(created) });
   if (/MotionPhoto|MicroVideo/.test(xml)) items.push({ k: 'Photo animée', v: 'une courte vidéo est intégrée à l\'image' });
-  if (/hdrgm:/.test(xml)) items.push({ k: 'HDR', v: 'carte de luminosité HDR intégrée' });
+  if (/hdrgm:/.test(xml)) items.push({ k: 'HDR', v: 'réglages de luminosité pour les écrans HDR' });
   return R.group({ title: title || 'XMP', size, items, raw: xml.trim() });
 }
 
@@ -817,7 +828,7 @@ function c2paGroup(R, j, size) {
   if (manifests.some(m => m.exifGps)) { items.push({ k: 'Position GPS', v: 'présente dans les Content Credentials', perso: true }); R.perso('position GPS'); }
   if (act.training) items.push({ k: 'Entraînement d\'IA', v: /notAllowed/i.test(act.training) ? 'non autorisé par l\'auteur' : /constrained/i.test(act.training) ? 'autorisé sous conditions' : 'autorisé' });
   return R.group({ title: 'Content Credentials (C2PA)', size, items, c2pa: true,
-    note: 'Pixo lit ces informations sans vérifier la signature.' });
+    note: 'Pixo lit cette signature sans vérifier qu\'elle est authentique.' });
 }
 
 // Textes intégrés aux PNG (tEXt, zTXt, iTXt)
@@ -867,9 +878,9 @@ function parseA1111(s) {
   const model = /Model: ([^,\n]+)/.exec(set), seed = /Seed: (\d+)/.exec(set);
   return [
     { k: 'Prompt', v: prompt, long: true, ia: true },
-    { k: 'Prompt négatif', v: neg, long: true },
-    { k: 'Modèle', v: model && model[1].trim() },
-    { k: 'Graine (seed)', v: seed && seed[1] },
+    { k: 'À éviter', v: neg, long: true },
+    { k: 'Modèle d\'IA', v: model && model[1].trim() },
+    { k: 'N° de tirage', v: seed && seed[1] },
     { k: 'Réglages', v: set, long: true, muted: true },
   ];
 }
@@ -910,8 +921,8 @@ async function analyzePngTexts(R, texts) {
     const c = parseComfy((by.prompt || by.workflow).text) || parseComfy((by.workflow || by.prompt).text) || { prompts: [], models: [] };
     genGroup(R, 'ComfyUI', [
       { k: 'Prompt', v: c.prompts.join('\n—\n'), long: true, ia: true },
-      { k: 'Modèle', v: c.models.join(', ') },
-      { k: 'Workflow', v: 'le graphe complet de génération est intégré', muted: true },
+      { k: 'Modèle d\'IA', v: c.models.join(', ') },
+      { k: 'Schéma', v: 'le schéma complet de création est intégré', muted: true },
     ], sizeOf(['prompt', 'workflow']));
   }
   const invoke = ['invokeai_metadata', 'invokeai_graph', 'sd-metadata', 'dream'].filter(k => by[k]);
@@ -927,8 +938,8 @@ async function analyzePngTexts(R, texts) {
     try { neg = JSON.parse(by.comment.text).uc || ''; } catch (e) {}
     genGroup(R, 'NovelAI', [
       { k: 'Prompt', v: by.description ? by.description.text : '', long: true, ia: true },
-      { k: 'Prompt négatif', v: neg, long: true },
-      { k: 'Modèle', v: by.source ? by.source.text : '' },
+      { k: 'À éviter', v: neg, long: true },
+      { k: 'Modèle d\'IA', v: by.source ? by.source.text : '' },
     ], sizeOf(['software', 'comment', 'description', 'source', 'title', 'generation time']));
   }
   // XMP et EXIF rangés dans des textes
@@ -977,6 +988,7 @@ async function analyzePngTexts(R, texts) {
       if (k === 'software' || k === 'source') return softwareItem(R, label, clean(t.text), 'PNG');
       if (k === 'author') { R.perso('nom'); return { k: label, v: clean(t.text), perso: true }; }
       const v = clean(t.text);
+      if (k === 'description' || k === 'comment') return Object.assign(descItem(R, v), { k: label });
       return { k: label, v: /^date|creation time/.test(k) ? isoDate(v) : v, long: v.length > 120 };
     });
     R.group({ title: 'Textes intégrés', size: rest.reduce((n, t) => n + t.size, 0), items });
@@ -990,7 +1002,7 @@ function otherGroup(R, list) {
 }
 function trailingGroup(R, n) {
   if (n > 0) R.group({ title: 'Données après l\'image', size: n, tag: 'tech',
-    items: [{ k: 'Contenu', v: 'données ajoutées après la fin de l\'image (souvent une 2e image ou une vidéo)', muted: true }] });
+    items: [{ k: 'Contenu', v: 'souvent une 2e image ou une courte vidéo (photo animée)', muted: true }] });
 }
 
 async function analyzeJpeg(b, R) {
@@ -1017,15 +1029,15 @@ async function analyzeJpeg(b, R) {
         if (perso) R.perso(f.ds >= 90 && f.ds <= 101 ? 'lieu' : 'nom');
         items.push(f.ds === 65 ? softwareItem(R, IIM[f.ds], f.v, 'IPTC') : { k: IIM[f.ds], v: f.v, perso, long: f.v.length > 120 });
       }
-      if (!items.length) items.push({ k: 'Contenu', v: res.length + ' ressource' + (res.length > 1 ? 's' : '') + ' Photoshop', muted: true });
+      if (!items.length) items.push({ k: 'Contenu', v: res.length + ' élément' + (res.length > 1 ? 's' : '') + ' ajouté' + (res.length > 1 ? 's' : '') + ' par Photoshop', muted: true });
       R.group({ title: 'IPTC / Photoshop', size, items });
     } else if (k === 'com') {
       const v = clean(decodeText(b.subarray(s.data, s.end)));
       if (v) R.group({ title: 'Commentaire', size, items: [softwareItem(R, 'Texte', v, 'commentaire')].map(it => Object.assign(it, { long: v.length > 120 })) });
     } else if (k === 'icc') R.keep('profil couleur');
-    else if (k === 'jfxx') others.push({ k: 'Miniature JFIF', v: 'petite copie de l\'image', size });
-    else if (k === 'mpf') others.push({ k: 'Images multiples (MPF)', v: 'référence vers une 2e image intégrée', size });
-    else if (k === 'app') others.push({ k: 'APP' + (s.m - 0xE0), v: clean(ascii(b, s.data, 24).replace(/[^\x20-\x7e].*$/, '')) || 'bloc privé', size });
+    else if (k === 'jfxx') others.push({ k: 'Miniature', v: 'petite copie de l\'image', size });
+    else if (k === 'mpf') others.push({ k: 'Deuxième image', v: 'une autre image est rangée dans le fichier', size });
+    else if (k === 'app') others.push({ k: 'Logiciel', v: 'données propres à un logiciel' + ((n => n ? ' (' + n + ')' : '')(clean(ascii(b, s.data, 24).replace(/[^\x20-\x7e].*$/, '')))), size });
   }
   const xml = xmps.map(x => x.xml).join('\n');
   let extXml = '';
@@ -1048,7 +1060,7 @@ async function analyzePng(b, R) {
     else if (c.type === 'tIME') {
       const d = b.subarray(c.data, c.dataEnd);
       if (d.length >= 7) others.push({ k: 'Date de modification', v: String(d[3]).padStart(2, '0') + '/' + String(d[2]).padStart(2, '0') + '/' + u16be(d, 0), size });
-    } else if (!pngKeep(c.type)) others.push({ k: c.type, v: 'bloc privé', size });
+    } else if (!pngKeep(c.type)) others.push({ k: 'Logiciel', v: 'données propres à un logiciel (' + c.type + ')', size });
   }
   await analyzePngTexts(R, texts);
   otherGroup(R, others);
@@ -1064,7 +1076,7 @@ async function analyzeWebp(b, R) {
     else if (c.type === 'XMP ') xmpGroup(R, TD8.decode(b.subarray(c.data, c.dataEnd)), size);
     else if (c.type === 'C2PA') c2paGroup(R, b.subarray(c.data, c.dataEnd), size);
     else if (c.type === 'ICCP') R.keep('profil couleur');
-    else if (!WEBP_KEEP.has(c.type)) others.push({ k: c.type.trim(), v: 'bloc privé', size });
+    else if (!WEBP_KEEP.has(c.type)) others.push({ k: 'Logiciel', v: 'données propres à un logiciel (' + c.type.trim() + ')', size });
   }
   otherGroup(R, others);
   trailingGroup(R, b.length - riffEnd);
@@ -1090,7 +1102,19 @@ async function analyze(input) {
   // Outil non nommé : on se rabat sur l'organisme qui a signé les Content Credentials
   if ((ai.generated || ai.edited || ai.other) && !ai.tools.length) for (const s of R.signers) { const t = toolOf(s); if (t) R.tool(t); }
   ai.found = ai.generated || ai.edited || ai.other;
+  const PLAIN = {
+    'Content Credentials (C2PA)': ['Signature d\'origine', 'C2PA'],
+    'XMP': ['Fiche descriptive', 'XMP'],
+    'EXIF': ['Infos de prise de vue', 'EXIF'],
+    'EXIF (copie ImageMagick)': ['Infos de prise de vue (copie)', 'EXIF'],
+    'IPTC / Photoshop': ['Légende et crédits', 'IPTC'],
+    'Paramètres de génération': ['Prompt et réglages de l\'IA', ''],
+    'Textes intégrés': ['Notes cachées dans le fichier', ''],
+    'Autres blocs': ['Autres données techniques', ''],
+    'Données après l\'image': ['Données ajoutées en fin de fichier', ''],
+  };
   for (const g of R.groups) {
+    if (PLAIN[g.title]) { g.tech = PLAIN[g.title][1]; g.title = PLAIN[g.title][0]; }
     if (!g.tag) g.tag = g.items.some(i => i.ia) ? 'ia' : g.items.some(i => i.perso) ? 'perso' : 'tech';
   }
   const order = { ia: 0, perso: 1, tech: 2 };
@@ -1103,7 +1127,168 @@ async function analyze(input) {
   return R;
 }
 
-const API = { analyze, strip, detectFormat, mime: f => FORMAT_MIME[f] || '', version: '1.0' };
+// ── Retrait des seules traces d'IA ───────────────────────────────────────
+// Retire : signature C2PA qui déclare l'IA, champs IPTC/XMP de l'IA, nom d'un
+// outil d'IA (logiciel, crédit, historique), prompts et réglages de génération.
+// Garde tout le reste (appareil, date, lieu, auteur…). Pixels inchangés.
+const TE = new TextEncoder();
+const bytesOf = str => Uint8Array.from(str, ch => ch.charCodeAt(0));
+const aiDst = v => !!dstOf(v).ai;
+const GEN_TEXT_KEYS = new Set(['parameters', 'prompt', 'workflow', 'invokeai_metadata', 'invokeai_graph', 'sd-metadata', 'dream', 'fooocus_scheme']);
+
+function xmpStripAI(xml) {
+  let out = xml;
+  const rm = (local, pred) => {
+    out = out.replace(new RegExp('\\s[\\w.-]+:' + local + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')', 'g'),
+      (m, a, b) => (pred(xmlUnesc(a !== undefined ? a : b)) ? '' : m));
+    out = out.replace(new RegExp('<([\\w.-]+:' + local + ')(\\s[^>]*?)?(?:/>|>([\\s\\S]*?)</\\1\\s*>)', 'g'), (m, q, attrs, inner) => {
+      const res = /rdf:resource\s*=\s*"([^"]*)"/.exec(attrs || '');
+      return pred(res ? xmlUnesc(res[1]) : stripTags(inner || '')) ? '' : m;
+    });
+  };
+  rm('DigitalSourceType', aiDst);
+  for (const k of ['AISystemUsed', 'AISystemVersionUsed', 'AIPromptInformation', 'AIPromptWriterName']) rm(k, () => true);
+  for (const k of ['CreatorTool', 'softwareAgent', 'Credit']) rm(k, v => !!toolOf(v));
+  rm('description', v => MJ_JOB.test(v) || isGenParams(v));
+  rm('UserComment', v => isGenParams(v) || !!toolOf(v));
+  return { xml: out, changed: out !== xml };
+}
+// EXIF : on efface la valeur sur place (mêmes positions, rien d'autre ne bouge)
+function tiffStripAI(tiff) {
+  const t = parseTiff(tiff);
+  if (!t) return false;
+  let changed = false;
+  const wipe = tag => { tiff.fill(0, tag.off, tag.off + tag.size); changed = true; };
+  const sw = t.ifd0[0x0131];
+  if (sw && toolOf(t.val(sw))) wipe(sw);
+  const de = t.ifd0[0x010E];
+  if (de) { const s = t.val(de); if (typeof s === 'string' && (MJ_JOB.test(s) || isGenParams(s))) wipe(de); }
+  const uc = t.exif[0x9286];
+  if (uc) { const s = userComment(t.val(uc)); if (isGenParams(s) || MJ_JOB.test(s) || toolOf(s)) wipe(uc); }
+  return changed;
+}
+function iimStripAI(d) {
+  let p = 0, changed = false;
+  while (p + 5 <= d.length && d[p] === 0x1C) {
+    let n = u16be(d, p + 3), h = 5;
+    if (n & 0x8000) { const nb = n & 0x7FFF; n = 0; for (let i = 0; i < nb; i++) n = n * 256 + d[p + 5 + i]; h = 5 + nb; }
+    if (d[p + 1] === 2 && d[p + 2] === 65 && toolOf(decodeText(d.subarray(p + h, p + h + n)))) { d.fill(0x20, p + h, p + h + n); changed = true; }
+    p += h + n;
+  }
+  return changed;
+}
+function jumbfIsAI(j) {
+  try {
+    const top = boxes(j, 0, j.length).find(x => x.type === 'jumb');
+    const store = top && superbox(j, top, 0);
+    if (!store) return false;
+    return store.children.map(readManifest).some(m => m.dst.some(aiDst) || toolOf(m.generator) || m.agents.some(a => toolOf(a)));
+  } catch (e) { return false; }
+}
+function riffBody(chunks) {
+  const body = concat(chunks), head = new Uint8Array(12);
+  head.set([0x52, 0x49, 0x46, 0x46]);
+  new DataView(head.buffer).setUint32(4, body.length + 4, true);
+  head.set([0x57, 0x45, 0x42, 0x50], 8);
+  return concat([head, body]);
+}
+
+function stripAIJpeg(b) {
+  const c = b.slice();
+  const { segs, eoi } = parseJpeg(c);
+  const dropC2pa = jpegJumbf(c, segs).some(jumbfIsAI);
+  const dropExt = segs.some(s => jpegKind(c, s) === 'xmpext' && xmpStripAI(TD8.decode(c.subarray(s.data + XMPEXT_ID.length + 40, s.end))).changed);
+  const out = [c.subarray(0, 2)];
+  for (const s of segs) {
+    const k = jpegKind(c, s);
+    if ((k === 'jumbf' && dropC2pa) || (k === 'xmpext' && dropExt)) continue;
+    if (k === 'exif') tiffStripAI(c.subarray(s.data + 6, s.end));
+    if (k === 'photoshop') { const r = photoshopResources(c, s.data + 14, s.end).find(x => x.id === 0x0404); if (r) iimStripAI(r.data); }
+    if (k === 'com') { const t = decodeText(c.subarray(s.data, s.end)); if (toolOf(t) || isGenParams(t) || MJ_JOB.test(t)) continue; }
+    if (k === 'xmp') {
+      const r = xmpStripAI(TD8.decode(c.subarray(s.data + XMP_ID.length, s.end)));
+      if (r.changed) {
+        const payload = concat([bytesOf(XMP_ID), TE.encode(r.xml)]);
+        if (payload.length > 65533) continue;
+        const seg = new Uint8Array(4 + payload.length);
+        seg.set([0xFF, 0xE1, (payload.length + 2) >> 8, (payload.length + 2) & 0xFF]); seg.set(payload, 4);
+        out.push(seg); continue;
+      }
+    }
+    out.push(c.subarray(s.start, s.end));
+  }
+  if (eoi < c.length) out.push(c.subarray(eoi));
+  return concat(out);
+}
+
+async function stripAIPng(b) {
+  const c = b.slice();
+  const { chunks, end } = parsePng(c);
+  const texts = new Map();
+  for (const ch of chunks) if (/^(tEXt|zTXt|iTXt)$/.test(ch.type)) texts.set(ch, await pngText(c, ch));
+  const novel = [...texts.values()].some(t => t && t.key.toLowerCase() === 'software' && /novel\s?ai/i.test(t.text));
+  const out = [c.subarray(0, 8)];
+  for (const ch of chunks) {
+    const t = texts.get(ch);
+    if (t) {
+      const k = t.key.toLowerCase();
+      if (GEN_TEXT_KEYS.has(k)) continue;
+      if (novel && ['software', 'comment', 'description', 'source', 'title', 'generation time'].includes(k)) continue;
+      if (/^(software|source|exif:software)$/.test(k) && toolOf(t.text)) continue;
+      if (/^(description|comment|exif:imagedescription|exif:usercomment)$/.test(k) && (MJ_JOB.test(t.text) || isGenParams(t.text))) continue;
+      if (k === 'xml:com.adobe.xmp') {
+        const r = xmpStripAI(t.text);
+        if (r.changed) { out.push(pngChunk('iTXt', concat([bytesOf('XML:com.adobe.xmp\0\0\0\0\0'), TE.encode(r.xml)]))); continue; }
+      }
+      if (k === 'raw profile type exif' || k === 'raw profile type app1') {
+        const by = hexProfile(t.text);
+        if (by && tiffStripAI(startsWith(by, 0, 'Exif\0') ? by.subarray(6) : by)) continue;
+      }
+      if (k === 'raw profile type xmp') { const by = hexProfile(t.text); if (by && xmpStripAI(TD8.decode(by)).changed) continue; }
+    } else if (ch.type === 'caBX') {
+      if (jumbfIsAI(c.subarray(ch.data, ch.dataEnd))) continue;
+    } else if (ch.type === 'eXIf') {
+      const d = c.subarray(ch.data, ch.dataEnd);
+      if (tiffStripAI(d)) { out.push(pngChunk('eXIf', d)); continue; }
+    }
+    out.push(c.subarray(ch.start, ch.end));
+  }
+  if (end < c.length) out.push(c.subarray(end));
+  return concat(out);
+}
+
+function stripAIWebp(b) {
+  const c = b.slice();
+  const { chunks, riffEnd } = parseWebp(c);
+  const out = [];
+  for (const ch of chunks) {
+    if (ch.type === 'C2PA' && jumbfIsAI(c.subarray(ch.data, ch.dataEnd))) continue;
+    if (ch.type === 'EXIF') tiffStripAI(webpExifTiff(c, ch));
+    if (ch.type === 'XMP ') {
+      const r = xmpStripAI(TD8.decode(c.subarray(ch.data, ch.dataEnd)));
+      if (r.changed) {
+        const x = TE.encode(r.xml), chunk = new Uint8Array(8 + x.length + (x.length & 1));
+        chunk.set(bytesOf('XMP ')); new DataView(chunk.buffer).setUint32(4, x.length, true); chunk.set(x, 8);
+        out.push(chunk); continue;
+      }
+    }
+    out.push(c.subarray(ch.start, ch.end));
+  }
+  const res = riffBody(out);
+  return riffEnd < c.length ? concat([res, c.subarray(riffEnd)]) : res;
+}
+
+async function stripAI(input) {
+  const b = toU8(input);
+  const format = detectFormat(b);
+  if (!format) throw new Error('format non pris en charge (JPG, PNG ou WebP)');
+  const bytes = format === 'jpeg' ? stripAIJpeg(b) : format === 'png' ? await stripAIPng(b) : stripAIWebp(b);
+  let same = bytes.length === b.length;
+  for (let i = 0; same && i < b.length; i++) if (bytes[i] !== b[i]) same = false;
+  return { bytes, removed: b.length - bytes.length, format, changed: !same };
+}
+
+const API = { analyze, strip, stripAI, detectFormat, mime: f => FORMAT_MIME[f] || '', version: '1.1' };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 else root.PixoMeta = API;
 })(typeof self !== 'undefined' ? self : this);
