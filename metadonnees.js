@@ -828,7 +828,7 @@ function c2paGroup(R, j, size) {
   if (manifests.some(m => m.exifGps)) { items.push({ k: 'Position GPS', v: 'présente dans les Content Credentials', perso: true }); R.perso('position GPS'); }
   if (act.training) items.push({ k: 'Entraînement d\'IA', v: /notAllowed/i.test(act.training) ? 'non autorisé par l\'auteur' : /constrained/i.test(act.training) ? 'autorisé sous conditions' : 'autorisé' });
   return R.group({ title: 'Content Credentials (C2PA)', size, items, c2pa: true,
-    note: 'Pixo affiche ce que dit ce certificat, mais ne vérifie pas qu\'il est authentique.' });
+    note: 'Pixo montre ce que dit cette signature, mais ne peut pas garantir qu\'elle est vraie.' });
 }
 
 // Textes intégrés aux PNG (tEXt, zTXt, iTXt)

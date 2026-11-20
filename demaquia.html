@@ -387,10 +387,10 @@ details.raw pre {
 
   <div class="info-box">
     <span class="label">// démaquia</span><br>
-    L'outil repère la <span class="label">signature d'origine</span> que posent ChatGPT, Gemini ou Adobe Firefly, la mention « image générée par IA » qu'ajoute par exemple Meta AI, le <span class="label">prompt</span> et les réglages laissés par Stable Diffusion ou ComfyUI, et les informations plus classiques : appareil photo, date, lieu, auteur.<br>
+    L'outil repère la <span class="label">signature d'origine</span> que posent ChatGPT, Gemini ou Adobe Firefly, la mention « image générée par IA » qu'ajoute par exemple Meta AI, le <span class="label">prompt</span> (la consigne donnée à l'IA) laissé par Stable Diffusion ou ComfyUI, et les informations plus classiques : appareil photo, date, lieu, auteur.<br>
     <span class="label">Retirer l'IA seulement</span> efface uniquement les traces d'IA et garde le reste. <span class="label">Tout retirer</span> efface toutes les informations cachées. Dans les deux cas, l'image elle-même ne change pas.<br>
     À savoir : une image sans ces informations n'est pas forcément vraie, une capture d'écran suffit à les effacer. Google cache aussi une marque invisible dans les pixels de ses images (SynthID) : l'outil ne peut ni la voir ni l'enlever.<br>
-    Pour vérifier qu'une signature d'origine est authentique : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>.<br>
+    Pour vérifier qu'une signature d'origine est vraie : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>.<br>
     Tout se passe dans votre navigateur : <span class="label">aucune image n'est envoyée sur internet</span>.
   </div>
 
@@ -568,7 +568,7 @@ function groupHTML(g, done) {
   }
   if (g.note) {
     h += '<div class="group-note">' + esc(g.note) +
-      (g.c2pa ? ' Pour en être sûr : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>' : '') + '</div>';
+      (g.c2pa ? ' Pour le vérifier : <a href="https://contentcredentials.org/verify" target="_blank" rel="noopener">contentcredentials.org/verify</a>' : '') + '</div>';
   }
   if (g.raw) h += '<details class="raw"><summary>Voir le texte complet</summary><pre>' + esc(g.raw) + '</pre></details>';
   return h + '</div>';
